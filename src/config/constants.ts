@@ -1,10 +1,9 @@
 // ENV variables and defaults for authentication configuration
 export const ACCESS_EXPIRES = process.env.ACCESS_EXPIRES || "15m";
 export const REFRESH_DAYS = Number(process.env.REFRESH_TOKEN_DAYS ?? 30);
-export const ACCESS_COOKIE =
-  process.env.ACCESS_COOKIE ?? process.env.COOKIE_ACCESS ?? "accessToken";
+export const ACCESS_COOKIE = process.env.ACCESS_COOKIE?.trim() || "accessToken";
 export const REFRESH_COOKIE =
-  process.env.REFRESH_COOKIE ?? process.env.COOKIE_REFRESH ?? "refreshToken";
+  process.env.REFRESH_COOKIE?.trim() || "refreshToken";
 export const CRON_INTERVAL_MS = Number(
   process.env.CRON_INTERVAL_MS ?? 24 * 60 * 60 * 1000
 );
