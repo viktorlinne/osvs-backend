@@ -19,7 +19,6 @@ describe("Auth routes (register, login, me)", () => {
       lastname: "Example",
       dateOfBirth: "1990-01-01",
       official: "",
-      counter: 0,
       mobile: "0700000000",
       city: "City",
       address: "Street 1",
@@ -88,9 +87,8 @@ describe("Auth routes (register, login, me)", () => {
       .set("Accept", "application/json");
 
     expect(res.status).toBe(200);
-    // API now returns `accessToken` and also sets cookies
-    expect(res.body).toHaveProperty("accessToken");
-    expect(typeof res.body.accessToken).toBe("string");
+    // API sets auth cookies (access + refresh)
+    expect(res.headers["set-cookie"]).toBeDefined();
   });
 
   test("GET /api/auth/me returns user and roles", async () => {
@@ -104,7 +102,6 @@ describe("Auth routes (register, login, me)", () => {
       lastname: "Tester",
       dateOfBirth: "1992-02-02",
       official: "",
-      counter: 0,
       mobile: "0701111111",
       city: "City",
       address: "Road 2",

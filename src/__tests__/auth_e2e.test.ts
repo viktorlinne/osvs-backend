@@ -53,16 +53,15 @@ describe("Auth endpoints (smoke)", () => {
       .post("/api/auth/login")
       .send({ email: "bob@example.com", password: "pw" });
     expect([200, 201]).toContain(loginRes.status);
-    expect(loginRes.body).toHaveProperty("accessToken");
     const cookies = loginRes.headers["set-cookie"];
-    // ensure agent received cookies
+    // ensure agent received cookies (access + refresh)
     expect(cookies).toBeDefined();
 
     // Refresh
     const refreshRes = await agent.post("/api/auth/refresh");
-    // check refresh response
+    // check refresh response and that cookies were set
     expect([200, 201]).toContain(refreshRes.status);
-    expect(refreshRes.body).toHaveProperty("accessToken");
+    expect(refreshRes.headers["set-cookie"]).toBeDefined();
 
     // Logout
     const logoutRes = await agent.post("/api/auth/logout");
