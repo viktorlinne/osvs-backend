@@ -11,7 +11,6 @@ export type UserRecord = {
   lastname: string;
   dateOfBirth: string;
   official: string;
-  counter: number;
   mobile: string;
   homeNumber?: string | null;
   city: string;
@@ -32,7 +31,6 @@ export type CreateUserInput = {
   city: string;
   address: string;
   zipcode: string;
-  counter?: number;
   picture?: string | null;
 };
 
