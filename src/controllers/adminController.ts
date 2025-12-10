@@ -4,6 +4,7 @@ import {
   cleanupExpiredRevocations,
   cleanupExpiredRefreshTokens,
 } from "../services/tokenService";
+import { listRoles } from "../services/userService";
 
 export async function cleanupTokens(
   _req: Request,
@@ -20,4 +21,18 @@ export async function cleanupTokens(
   }
 }
 
-export default { cleanupTokens };
+export async function getRoles(
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const roles = await listRoles();
+    return res.status(200).json({ roles });
+  } catch (err) {
+    logger.error("adminController.getRoles error:", err);
+    return next(err);
+  }
+}
+
+export default { cleanupTokens, getRoles };
