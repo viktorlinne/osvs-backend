@@ -42,14 +42,6 @@ const registerSchema = z.object({
   city: z.string().min(1),
   address: z.string().min(1),
   zipcode: z.string().min(1),
-  counter: z.preprocess((val) => {
-    if (val === undefined || val === null || val === "") return undefined;
-    if (typeof val === "string") {
-      const n = Number(val);
-      return Number.isFinite(n) ? n : undefined;
-    }
-    return typeof val === "number" ? val : undefined;
-  }, z.number().optional()),
 });
 
 // Schema for login request
