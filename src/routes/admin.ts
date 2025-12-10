@@ -14,4 +14,12 @@ router.post(
   adminController.cleanupTokens
 );
 
+// List available roles
+router.get(
+  "/roles",
+  authMiddleware,
+  requireRole(UserRole.Admin),
+  adminController.getRoles
+);
+
 export default router;
