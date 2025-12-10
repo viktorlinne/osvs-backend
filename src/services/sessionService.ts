@@ -23,7 +23,7 @@ export async function loginWithEmail(
   email: string,
   password: string,
   res: Response
-): Promise<{ accessToken: string } | null> {
+): Promise<Record<string, unknown> | null> {
   const user = await findByEmail(email);
   if (!user || !user.id || !user.passwordHash) return null;
   const ok = await verifyPassword(password, user.passwordHash);
@@ -41,7 +41,7 @@ export async function loginWithEmail(
   await createRefreshToken(refreshToken, user.id!, refreshExpires);
 
   setAuthCookies(res, accessToken, refreshToken, refreshDays);
-  return { accessToken };
+  return {};
 }
 
 export async function refreshFromCookie(res: Response, refresh: string) {
@@ -83,7 +83,7 @@ export async function refreshFromCookie(res: Response, refresh: string) {
   }
 
   setAuthCookies(res, accessToken, newRefresh, refreshDays);
-  return { accessToken };
+  return {};
 }
 
 import type { Request } from "express";
@@ -112,12 +112,11 @@ export async function logoutFromRequest(
       }
     }
 
-    // revoke refresh token if present
-    const refresh =
-      (req.cookies && req.cookies.refreshToken) ||
-      (req.body && typeof req.body.refreshToken === "string"
-        ? req.body.refreshToken
-        : undefined);
+    // revoke refresh token if present (use configured cookie name)
+    const { REFRESH_COOKIE } = await import("../config/constants");
+    const refresh = req.cookies
+      ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
+      : undefined;
     if (refresh) await revokeRefreshToken(refresh);
 
     clearAuthCookies(res);
