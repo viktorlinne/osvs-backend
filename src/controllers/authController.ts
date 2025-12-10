@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { RequestWithBody, RequestWithCookies } from "../types/requests";
 import sessionService from "../services/sessionService";
+import { REFRESH_COOKIE } from "../config/constants";
 import logger from "../utils/logger";
 import {
   findByEmail,
@@ -49,7 +50,9 @@ export async function refresh(
   next: NextFunction
 ): Promise<Response | void> {
   try {
-    const refresh = req.cookies?.refreshToken;
+    const refresh = req.cookies
+      ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
+      : undefined;
     if (!refresh)
       return res.status(401).json({ error: "Missing refresh token" });
     const out = await sessionService.refreshFromCookie(res, String(refresh));
@@ -97,7 +100,7 @@ export async function forgotPassword(
     const frontend =
       process.env.FRONTEND_URL ||
       process.env.APP_URL ||
-      "http://localhost:3000";
+      "http://localhost:5173";
     const resetLink = `${frontend.replace(/\/$/, "")}/auth/reset?token=${raw}`;
     try {
       await sendPasswordReset(user.email, resetLink);
@@ -161,7 +164,6 @@ export async function register(
         city?: string;
         address?: string;
         zipcode?: string;
-        counter?: number | string;
       }
     | undefined
   >,
@@ -181,7 +183,6 @@ export async function register(
       city,
       address,
       zipcode,
-      counter,
     } = req.body ?? {};
 
     // Validate required fields — routes normally validate, but enforce here too
@@ -211,13 +212,6 @@ export async function register(
 
     let user;
     try {
-      const counterNum =
-        counter === undefined || counter === null || counter === ""
-          ? 0
-          : typeof counter === "string"
-          ? Number(counter)
-          : counter;
-
       user = await createUser({
         username: username as string,
         email: email as string,
@@ -226,7 +220,6 @@ export async function register(
         lastname: lastname as string,
         dateOfBirth: dateOfBirth as string,
         official: official ?? "",
-        counter: Number.isFinite(counterNum) ? counterNum : 0,
         mobile: mobile as string,
         city: city as string,
         address: address as string,
@@ -242,7 +235,8 @@ export async function register(
     }
 
     if (!user) return res.status(500).json({ error: "Failed to create user" });
-    return res.status(201).json({ user });
+    const roles = user.id ? await getUserRoles(user.id) : [];
+    return res.status(201).json({ user, roles });
   } catch (err) {
     logger.error("authController.register error:", err);
     return next(err);
