@@ -142,6 +142,91 @@ export async function revokeAllSessions(userId: number): Promise<void> {
   }
 }
 
+/**
+ * Award an achievement to a user. Inserts or updates the award timestamp.
+ * If `awardedAt` is omitted, uses current time.
+ */
+export async function setUserAchievement(
+  userId: number,
+  achievementId: number,
+  awardedAt?: Date
+): Promise<number> {
+  const when = awardedAt ? awardedAt : new Date();
+  const sql =
+    "INSERT INTO users_achievements (uid, aid, awardedAt) VALUES (?, ?, ?)";
+  const [result] = await pool.execute<ResultSetHeader>(sql, [
+    userId,
+    achievementId,
+    when,
+  ]);
+  const insertId =
+    result && typeof result.insertId === "number" ? result.insertId : 0;
+  return insertId;
+}
+
+export async function getUserAchievements(userId: number): Promise<
+  Array<{
+    id: number;
+    aid: number;
+    awardedAt: string;
+    title: string;
+  }>
+> {
+  const sql = `
+    SELECT ua.id, ua.aid, ua.awardedAt, a.title
+    FROM users_achievements ua
+    JOIN achievements a ON a.id = ua.aid
+    WHERE ua.uid = ?
+    ORDER BY ua.awardedAt DESC, ua.id DESC
+  `;
+  const [rows] = await pool.execute(sql, [userId]);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r) => ({
+      id: Number(r.id),
+      aid: Number(r.aid),
+      awardedAt: r.awardedAt ? String(r.awardedAt) : "",
+      title: String(r.title ?? ""),
+    }))
+    .filter((it) => Number.isFinite(it.id) && Number.isFinite(it.aid));
+}
+
+export async function listRoles(): Promise<
+  Array<{ id: number; role: string }>
+> {
+  const [rows] = await pool.execute(
+    "SELECT id, role FROM roles ORDER BY id ASC"
+  );
+  const arr = rows as unknown as Array<{ id?: number; role?: unknown }>;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r) => ({ id: Number(r.id), role: String(r.role ?? "") }))
+    .filter((r) => Number.isFinite(r.id));
+}
+
+export async function setUserRoles(
+  userId: number,
+  roleIds: number[]
+): Promise<void> {
+  // Replace user's roles atomically: delete existing and insert new ones
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query("DELETE FROM users_roles WHERE uid = ?", [userId]);
+    if (Array.isArray(roleIds) && roleIds.length > 0) {
+      const values = roleIds.map((rid) => [userId, rid]);
+      await conn.query("INSERT INTO users_roles (uid, rid) VALUES ?", [values]);
+    }
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 export async function createUser(
   input: CreateUserInput
 ): Promise<PublicUser | undefined> {
@@ -159,7 +244,6 @@ export async function createUser(
     city,
     address,
     zipcode,
-    counter = 0,
     picture,
   } = trimmed;
 
@@ -197,8 +281,8 @@ export async function createUser(
   }
 
   const sql = `INSERT INTO users
-    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, official, counter, mobile, city, address, zipcode)
-    VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, official, mobile, city, address, zipcode)
+    VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const params = [
     username,
@@ -216,7 +300,6 @@ export async function createUser(
       }
     })(),
     official,
-    counter,
     mobile,
     city,
     address,
@@ -271,6 +354,19 @@ export async function createUser(
 
   const user = await findById(insertId);
   if (!user) return undefined;
+
+  // Ensure new users get the Member role by default (if the role exists)
+  try {
+    await pool.execute(
+      "INSERT INTO users_roles (uid, rid) SELECT ?, id FROM roles WHERE role = 'Member' LIMIT 1",
+      [insertId]
+    );
+  } catch (err) {
+    logger.warn(
+      { err, userId: insertId },
+      "Failed to assign default Member role"
+    );
+  }
 
   return toPublicUser(user);
 }
