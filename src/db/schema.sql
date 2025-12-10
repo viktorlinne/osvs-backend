@@ -53,7 +53,6 @@ CREATE TABLE `users` (
   `dateOfBirth` date NOT NULL,
   `official` varchar(256) NOT NULL,
   `revokedAt` datetime DEFAULT NULL,
-  `counter` int(11) NOT NULL,
   `mobile` varchar(256) NOT NULL,
   `homeNumber` varchar(256) DEFAULT NULL,
   `city` varchar(256) NOT NULL,
@@ -79,6 +78,7 @@ CREATE TABLE `events` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
   `description` text NOT NULL,
+  `lodgeMeeting` tinyint(1),
   `price` int(11) NOT NULL,
   `startDate` datetime NOT NULL,
   `endDate` datetime NOT NULL,
@@ -116,7 +116,6 @@ CREATE TABLE `users_roles` (
     REFERENCES `users` (`id`)
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 -- Users ↔ Lodges
 CREATE TABLE `users_lodges` (
   `uid` int(11) NOT NULL,
@@ -147,98 +146,22 @@ CREATE TABLE `lodges_establishments` (
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Lodges ↔ Events
-CREATE TABLE `lodges_events` (
-  `lid` int(11) NOT NULL,
-  `eid` int(11) NOT NULL,
-  PRIMARY KEY (`lid`,`eid`),
-  KEY `fk_lodges_events_event` (`eid`),
-  CONSTRAINT `fk_lodges_events_event` FOREIGN KEY (`eid`)
-    REFERENCES `events` (`id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_lodges_events_lodge` FOREIGN KEY (`lid`)
-    REFERENCES `lodges` (`id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Establishments ↔ Events
-CREATE TABLE `establishments_events` (
-  `esid` int(11) NOT NULL,
-  `eid` int(11) NOT NULL,
-  PRIMARY KEY (`esid`,`eid`),
-  KEY `fk_establishments_events_event` (`eid`),
-  CONSTRAINT `fk_establishments_events_establishment` FOREIGN KEY (`esid`)
-    REFERENCES `establishments` (`id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_establishments_events_event` FOREIGN KEY (`eid`)
-    REFERENCES `events` (`id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Users ↔ Posts
-CREATE TABLE `users_posts` (
-  `uid` int(11) NOT NULL,
-  `pid` int(11) NOT NULL,
-  PRIMARY KEY (`uid`,`pid`),
-  KEY `fk_user_posts_post` (`pid`),
-  CONSTRAINT `fk_user_posts_post` FOREIGN KEY (`pid`)
-    REFERENCES `posts` (`id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_user_posts_user` FOREIGN KEY (`uid`)
-    REFERENCES `users` (`id`)
-    ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Users ↔ Mails
-CREATE TABLE `users_mails` (
-  `uid` int(11) NOT NULL,
-  `mid` int(11) NOT NULL,
-  PRIMARY KEY (`uid`,`mid`),
-  KEY `fk_user_mails_mail` (`mid`),
-  CONSTRAINT `fk_user_mails_mail` FOREIGN KEY (`mid`)
-    REFERENCES `mails` (`id`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_user_mails_user` FOREIGN KEY (`uid`)
-    REFERENCES `users` (`id`)
-    ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Event attendances (RSVP)
-CREATE TABLE `event_attendances` (
-  `uid` int(11) NOT NULL,
-  `eid` int(11) NOT NULL,
-  `rsvp` tinyint(1) NOT NULL DEFAULT 0,
-  `food` tinyint(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`uid`,`eid`),
-  KEY `fk_event_attendances_event` (`eid`),
-  CONSTRAINT `fk_event_attendances_event` FOREIGN KEY (`eid`)
-    REFERENCES `events` (`id`)
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_event_attendances_user` FOREIGN KEY (`uid`)
-    REFERENCES `users` (`id`)
-    ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 -- Achievements
 CREATE TABLE `achievements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(256) NOT NULL,
+  `title` enum('I:a Graden','II:a Graden','III:e Graden') NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Users ↔ Achievements (which user has which achievement)
 CREATE TABLE `users_achievements` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
   `aid` int(11) NOT NULL,
-  `awardedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  PRIMARY KEY (`uid`,`aid`),
+  `awardedAt` datetime NOT NULL,
+  PRIMARY KEY (`id`),
   KEY `fk_users_achievements_achievement` (`aid`),
+  KEY `fk_users_achievements_user` (`uid`),
   CONSTRAINT `fk_users_achievements_achievement` FOREIGN KEY (`aid`)
     REFERENCES `achievements` (`id`)
     ON DELETE CASCADE
@@ -248,6 +171,95 @@ CREATE TABLE `users_achievements` (
     ON DELETE CASCADE
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- =====================================================
+-- Seed data for local development / tests
+-- Ensures an `alice` user and a second example user exist, with roles and one achievement
+-- These statements are idempotent where practical.
+-- =====================================================
+
+-- Roles (ensure base roles exist)
+INSERT INTO `roles` (`id`, `role`) VALUES
+  (1, 'Admin'),
+  (2, 'Editor'),
+  (3, 'Member')
+ON DUPLICATE KEY UPDATE `role` = VALUES(`role`);
+
+-- Achievements (ensure enum titles are present)
+INSERT INTO `achievements` (`id`, `title`) VALUES
+  (1, 'I:a Graden'),
+  (2, 'II:a Graden'),
+  (3, 'III:e Graden')
+ON DUPLICATE KEY UPDATE `title` = VALUES(`title`);
+
+-- Users: Alice (id=1) and example Bob (id=2)
+-- Note: passwordHash uses SHA256 for a deterministic seeded value for local testing.
+INSERT INTO `users` (
+  `id`, `username`, `email`, `passwordHash`, `createdAt`, `picture`, `firstname`, `lastname`, `dateOfBirth`, `official`, `mobile`, `homeNumber`, `city`, `address`, `zipcode`, `notes`
+) VALUES
+  (
+    1,
+    'alice',
+    'alice@example.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
+    CURRENT_DATE(),
+    NULL,
+    'Alice',
+    'Example',
+    '1985-06-15',
+    'Software Engineer',
+    '+46701234567',
+    NULL,
+    'Stockholm',
+    'Storgatan 1',
+    '11122',
+    NULL
+  ),
+  (
+    2,
+    'bob',
+    'bob@example.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$rDHqFYtGQFkrtQB+z/qo1A$qMOLscJ+esVBDhUfeg3wN6IxI0bqllCMR80jRLmJBkE",
+    CURRENT_DATE(),
+    NULL,
+    'Bob',
+    'Tester',
+    '1990-01-01',
+    'QA',
+    '+46709876543',
+    NULL,
+    'Stockholm',
+    'Testvägen 2',
+    '22233',
+    NULL
+  )
+ON DUPLICATE KEY UPDATE
+  `username` = VALUES(`username`),
+  `email` = VALUES(`email`),
+  `passwordHash` = VALUES(`passwordHash`),
+  `picture` = VALUES(`picture`),
+  `firstname` = VALUES(`firstname`),
+  `lastname` = VALUES(`lastname`),
+  `dateOfBirth` = VALUES(`dateOfBirth`),
+  `official` = VALUES(`official`),
+  `mobile` = VALUES(`mobile`),
+  `homeNumber` = VALUES(`homeNumber`),
+  `city` = VALUES(`city`),
+  `address` = VALUES(`address`),
+  `zipcode` = VALUES(`zipcode`),
+  `notes` = VALUES(`notes`);
+
+-- Assign roles: give Alice all roles (1,2,3) and Bob the Member role (3)
+-- Replace any existing role assignments for these seeded users to keep test state predictable.
+DELETE FROM `users_roles` WHERE `uid` IN (1,2);
+INSERT INTO `users_roles` (`uid`, `rid`) VALUES
+  (1,1), (1,2), (1,3),
+  (2,3);
+
+-- Ensure a sample achievement exists for Bob (single, replace any existing for that user/achievement)
+DELETE FROM `users_achievements` WHERE `uid` = 2 AND `aid` = 1;
+INSERT INTO `users_achievements` (`uid`, `aid`, `awardedAt`) VALUES
+  (2, 1, '2025-12-01 10:00:00');
 
 -- =====================================================
 -- PAYMENT TABLES

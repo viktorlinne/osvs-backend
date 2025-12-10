@@ -46,10 +46,10 @@ async function migrate() {
     `;
 
     await conn.query(dropSQL);
-    logger.info("✅ Dropped all existing tables");
+    logger.info("Dropped all existing tables");
 
     await conn.query(sql);
-    logger.info("✅ Migration completed: all tables created successfully!");
+    logger.info("Migration completed: all tables created successfully!");
   } catch (err) {
     logger.error("Migration failed:", err);
   } finally {
