@@ -9,6 +9,8 @@
     "allowSyntheticDefaultImports": true,
     "verbatimModuleSyntax": false,
     "strict": true,
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "types": ["node", "jest"]
+  },
+  "exclude": ["node_modules", "dist", "jest.config.ts"]
 }
