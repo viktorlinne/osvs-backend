@@ -1,15 +1,59 @@
 import fs from "fs";
-import pool from "../config/db";
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
+import logger from "../utils/logger";
+
+dotenv.config();
 
 async function migrate() {
+  let conn;
   try {
     const sql = fs.readFileSync("src/db/schema.sql", "utf8");
-    console.log("Running migration...");
-    await pool.query(sql);
-    console.log("Migration completed successfully!");
+    logger.info("Running migration using dedicated connection...");
+
+    conn = await mysql.createConnection({
+      host: process.env.DB_HOST ?? "localhost",
+      user: process.env.DB_USER ?? "root",
+      password: process.env.DB_PASS ?? "",
+      multipleStatements: true,
+    });
+
+    // Drop all tables in reverse order of foreign key dependencies (dev-friendly)
+    const dropSQL = `
+      CREATE DATABASE IF NOT EXISTS osvs DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
+      USE osvs;
+      SET FOREIGN_KEY_CHECKS = 0;
+      DROP TABLE IF EXISTS event_payments;
+      DROP TABLE IF EXISTS membership_payments;
+      DROP TABLE IF EXISTS users_achievements;
+      DROP TABLE IF EXISTS achievements;
+      DROP TABLE IF EXISTS event_attendances;
+      DROP TABLE IF EXISTS users_mails;
+      DROP TABLE IF EXISTS users_posts;
+      DROP TABLE IF EXISTS establishments_events;
+      DROP TABLE IF EXISTS lodges_events;
+      DROP TABLE IF EXISTS lodges_establishments;
+      DROP TABLE IF EXISTS users_lodges;
+      DROP TABLE IF EXISTS users_roles;
+      DROP TABLE IF EXISTS mails;
+      DROP TABLE IF EXISTS events;
+      DROP TABLE IF EXISTS posts;
+      DROP TABLE IF EXISTS users;
+      DROP TABLE IF EXISTS establishments;
+      DROP TABLE IF EXISTS lodges;
+      DROP TABLE IF EXISTS roles;
+      SET FOREIGN_KEY_CHECKS = 1;
+    `;
+
+    await conn.query(dropSQL);
+    logger.info("✅ Dropped all existing tables");
+
+    await conn.query(sql);
+    logger.info("✅ Migration completed: all tables created successfully!");
   } catch (err) {
-    console.error("Migration failed:", err);
+    logger.error("Migration failed:", err);
   } finally {
+    if (conn) await conn.end();
     process.exit();
   }
 }
