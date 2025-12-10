@@ -5,7 +5,12 @@ import {
   deleteProfilePicture,
   getPublicUrl,
 } from "../utils/fileUpload";
-import { updatePicture } from "../services/userService";
+import {
+  updatePicture,
+  setUserAchievement,
+  getUserAchievements,
+  getUserRoles,
+} from "../services/userService";
 import logger from "../utils/logger";
 
 export async function updatePictureHandler(
@@ -33,8 +38,8 @@ export async function updatePictureHandler(
       // Clean up uploaded file if DB update fails
       try {
         await deleteProfilePicture(newKey);
-      } catch (e) {
-        logger.error("Failed to cleanup uploaded file after DB error:", e);
+      } catch (err) {
+        logger.error("Failed to cleanup uploaded file after DB error:", err);
       }
       throw err;
     }
@@ -55,8 +60,179 @@ export async function updatePictureHandler(
   }
 }
 
+export async function updateOtherPictureHandler(
+  req: AuthenticatedRequest & { file?: Express.Multer.File },
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId)
+      return res.status(401).json({ error: "Invalid token payload" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+    const newKey = await uploadToStorage(file);
+    if (!newKey)
+      return res.status(500).json({ error: "Failed to upload file" });
+
+    // Update DB and get old key to delete
+    let oldKey: string | null = null;
+    try {
+      oldKey = await updatePicture(targetId, newKey);
+    } catch (err) {
+      logger.error("Failed to update picture in DB:", err);
+      try {
+        await deleteProfilePicture(newKey);
+      } catch (err) {
+        logger.error("Failed to cleanup uploaded file after DB error:", err);
+      }
+      throw err;
+    }
+
+    if (oldKey) {
+      try {
+        await deleteProfilePicture(oldKey);
+      } catch (err) {
+        logger.warn("Failed to delete old profile picture:", err);
+      }
+    }
+
+    const url = await getPublicUrl(newKey);
+    return res.json({ pictureKey: newKey, pictureUrl: url });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 export async function placeholderMe(_req: AuthenticatedRequest, res: Response) {
   return res.status(200).json({});
 }
 
-export default { placeholderMe, updatePictureHandler };
+export async function addAchievementHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId) return res.status(401).json({ error: "Unauthorized" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const { achievementId, awardedAt } = req.body as {
+      achievementId?: number;
+      awardedAt?: string | null;
+    };
+
+    if (!achievementId || !Number.isFinite(Number(achievementId))) {
+      return res
+        .status(400)
+        .json({ error: "Missing or invalid achievementId" });
+    }
+
+    const when = awardedAt ? new Date(awardedAt) : undefined;
+    if (when && Number.isNaN(when.getTime()))
+      return res.status(400).json({ error: "Invalid awardedAt date" });
+
+    const newId = await setUserAchievement(
+      targetId,
+      Number(achievementId),
+      when
+    );
+
+    return res.status(201).json({ success: true, id: newId, awardedAt: when });
+  } catch (err) {
+    logger.error("Failed to set an achievement", err);
+    return res.status(500).json({ error: "Failed to set achievement" });
+  }
+}
+
+export async function getAchievementsHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId) return res.status(401).json({ error: "Unauthorized" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const rows = await getUserAchievements(targetId);
+    return res.status(200).json({ achievements: rows });
+  } catch (err) {
+    logger.error("Failed to get achievements", err);
+    return res.status(500).json({ error: "Failed to get achievements" });
+  }
+}
+
+export async function setRolesHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId) return res.status(401).json({ error: "Unauthorized" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const { roleIds } = req.body as { roleIds?: number[] };
+    if (!Array.isArray(roleIds))
+      return res
+        .status(400)
+        .json({ error: "roleIds must be an array of numbers" });
+
+    const numericIds = roleIds
+      .map((r) => Number(r))
+      .filter((n) => Number.isFinite(n));
+
+    await import("../services/userService").then(({ setUserRoles }) =>
+      setUserRoles(targetId, numericIds)
+    );
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error("Failed to set roles", err);
+    return res.status(500).json({ error: "Failed to set roles" });
+  }
+}
+
+export async function getRolesHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId) return res.status(401).json({ error: "Unauthorized" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const roles = await getUserRoles(targetId);
+    return res.status(200).json({ roles });
+  } catch (err) {
+    logger.error("Failed to get roles", err);
+    return res.status(500).json({ error: "Failed to get roles" });
+  }
+}
+
+export default {
+  placeholderMe,
+  updatePictureHandler,
+  updateOtherPictureHandler,
+  addAchievementHandler,
+  setRolesHandler,
+  getAchievementsHandler,
+  getRolesHandler,
+};
