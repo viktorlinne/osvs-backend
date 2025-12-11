@@ -146,6 +146,35 @@ CREATE TABLE `lodges_establishments` (
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Lodges ↔ Events (link events to lodges)
+CREATE TABLE `lodges_events` (
+  `lid` int(11) NOT NULL,
+  `eid` int(11) NOT NULL,
+  PRIMARY KEY (`lid`,`eid`),
+  KEY `fk_lodges_events_event` (`eid`),
+  CONSTRAINT `fk_lodges_events_lodge` FOREIGN KEY (`lid`)
+    REFERENCES `lodges` (`id`)
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_lodges_events_event` FOREIGN KEY (`eid`)
+    REFERENCES `events` (`id`)
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Establishments ↔ Events (link events to establishments)
+CREATE TABLE `establishments_events` (
+  `esid` int(11) NOT NULL,
+  `eid` int(11) NOT NULL,
+  PRIMARY KEY (`esid`,`eid`),
+  KEY `fk_establishments_events_event` (`eid`),
+  CONSTRAINT `fk_establishments_events_establishment` FOREIGN KEY (`esid`)
+    REFERENCES `establishments` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_establishments_events_event` FOREIGN KEY (`eid`)
+    REFERENCES `events` (`id`)
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- Achievements
 CREATE TABLE `achievements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -258,6 +287,12 @@ INSERT INTO `lodges` (`id`, `name`, `description`) VALUES
   (5, 'Capella', 'Femte Logen')
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
 
+-- Establishments seed (ensure some establishments exist for local/dev testing)
+INSERT INTO `establishments` (`id`, `name`, `address`) VALUES
+  (1, 'Main Hall', 'Storgatan 10'),
+  (2, 'North Lodge', 'Nordvägen 5')
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `address` = VALUES(`address`);
+
 -- Assign roles: give Alice all roles (1,2,3) and Bob the Member role (3)
 -- Replace any existing role assignments for these seeded users to keep test state predictable.
 DELETE FROM `users_roles` WHERE `uid` IN (1,2);
@@ -277,6 +312,31 @@ INSERT INTO `users_lodges` (`uid`, `lid`) VALUES
   (2, 2)
 ON DUPLICATE KEY UPDATE `lid` = VALUES(`lid`);
 
+
+-- Seed events for local/dev testing
+INSERT INTO `events` (`id`, `title`, `description`, `lodgeMeeting`, `price`, `startDate`, `endDate`) VALUES
+  (1, 'Founders Meeting', 'Annual founders meeting and dinner.', 1, 0, '2026-02-14 18:00:00', '2026-02-14 21:00:00'),
+  (2, 'Summer Gathering', 'Open summer gathering with activities.', 0, 100, '2026-06-20 10:00:00', '2026-06-20 18:00:00')
+ON DUPLICATE KEY UPDATE
+  `title` = VALUES(`title`),
+  `description` = VALUES(`description`),
+  `lodgeMeeting` = VALUES(`lodgeMeeting`),
+  `price` = VALUES(`price`),
+  `startDate` = VALUES(`startDate`),
+  `endDate` = VALUES(`endDate`);
+
+-- Seed relationships: attach events to lodges and establishments for local testing
+DELETE FROM `lodges_events` WHERE (lid, eid) IN ((1,1),(2,2));
+INSERT INTO `lodges_events` (`lid`, `eid`) VALUES
+  (1,1),
+  (2,2)
+ON DUPLICATE KEY UPDATE `lid` = VALUES(`lid`), `eid` = VALUES(`eid`);
+
+DELETE FROM `establishments_events` WHERE (esid, eid) IN ((1,1),(2,2));
+INSERT INTO `establishments_events` (`esid`, `eid`) VALUES
+  (1,1),
+  (2,2)
+ON DUPLICATE KEY UPDATE `esid` = VALUES(`esid`), `eid` = VALUES(`eid`);
 
 INSERT INTO `posts` (`id`, `title`, `description`, `picture`) VALUES
   (1, 'Welcome to OSVS', 'This is the first post on our new platform!', 'posts/postPlaceholder.png'),

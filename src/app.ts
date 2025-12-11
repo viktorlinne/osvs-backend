@@ -9,12 +9,13 @@ import requestId from "./middleware/requestId";
 import * as Sentry from "@sentry/node";
 import { Integrations } from "@sentry/tracing";
 
-// Route imnports 
+// Route imports
 import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
 import lodgesRouter from "./routes/lodges";
 import postsRouter from "./routes/posts";
+import eventsRouter from "./routes/events";
 
 dotenv.config();
 
@@ -59,10 +60,12 @@ app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 // Admin routes (manual/diagnostic operations)
 app.use("/api/admin", adminRouter);
-// Lodge routes 
+// Lodge routes
 app.use("/api/lodges", lodgesRouter);
 // Post routes
 app.use("/api/posts", postsRouter);
+// Events routes
+app.use("/api/events", eventsRouter);
 
 // root
 app.get("/", (_req, res) => res.send("Backend is running"));
