@@ -1,0 +1,340 @@
+{
+  "info": {
+    "_postman_id": "osvs-updated-collection",
+    "name": "osvs (organized)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('has auth cookies', () => {",
+                  "  pm.expect(pm.cookies.get('osvs_access')).to.exist;",
+                  "  pm.expect(pm.cookies.get('osvs_refresh')).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"S3cureP@ssw0rd\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/auth/login",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"charlie\",\n  \"email\": \"charlie@example.com\",\n  \"password\": \"P@ssw0rd123\",\n  \"firstname\": \"Charlie\",\n  \"lastname\": \"Test\",\n  \"dateOfBirth\": \"1995-01-01\",\n  \"official\": \"None\",\n  \"mobile\": \"+46700000000\",\n  \"city\": \"Stockholm\",\n  \"address\": \"Street 1\",\n  \"zipcode\": \"11111\",\n  \"lodgeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/auth/register",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/auth/forgot-password",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<token>\",\n  \"password\": \"NewPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/auth/reset-password",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "reset-password"]
+            }
+          }
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseURL}}/api/auth/refresh",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseURL}}/api/auth/logout",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/auth/me",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update Current User (PUT /api/users/me)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Anna\",\n  \"lastname\": \"Karlsson\",\n  \"city\": \"Stockholm\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/users/me",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "users", "me"]
+            }
+          },
+          "description": "Partial update for current user. Only include fields to change."
+        },
+        {
+          "name": "Admin Update User (PUT /api/users/:id)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Erik\",\n  \"zipcode\": \"41122\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/users/{{userId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "users", "{{userId}}"]
+            }
+          },
+          "description": "Admin-only: update other user's profile. Set environment variable `userId` before use."
+        },
+        {
+          "name": "Upload My Picture (multipart)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "picture", "type": "file", "src": "" }]
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/users/me/picture",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "users", "me", "picture"]
+            }
+          }
+        },
+        {
+          "name": "Upload Other User Picture (multipart)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "picture", "type": "file", "src": "" }]
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/users/{{userId}}/picture",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "users", "{{userId}}", "picture"]
+            }
+          }
+        },
+        {
+          "name": "Set Roles (POST /api/users/:id/roles)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"roleIds\": [1,2]\n}" },
+            "url": {
+              "raw": "{{baseURL}}/api/users/{{userId}}/roles",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "users", "{{userId}}", "roles"]
+            }
+          }
+        },
+        {
+          "name": "Post Achievement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"achievementId\": 1,\n  \"awardedAt\": \"2025-01-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/users/{{userId}}/achievements",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "users", "{{userId}}", "achievements"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "List Roles",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/admin/roles",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "admin", "roles"]
+            }
+          }
+        },
+        {
+          "name": "Cleanup Tokens",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseURL}}/api/admin/cleanup-tokens",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "admin", "cleanup-tokens"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lodges",
+      "item": [
+        {
+          "name": "List Lodges",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/lodges",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "lodges"]
+            }
+          }
+        },
+        {
+          "name": "Create Lodge",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Lodge\",\n  \"description\": \"The Newest Lodge\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/lodges",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "lodges"]
+            }
+          }
+        },
+        {
+          "name": "Update Lodge",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Renamed\",\n  \"description\": \"Updated\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/lodges/{{lodgeId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "lodges", "{{lodgeId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Misc",
+      "item": [
+        {
+          "name": "Revoke All Sessions",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseURL}}/api/auth/revoke-all",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "revoke-all"]
+            }
+          }
+        },
+        {
+          "name": "Request Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/auth/forgot-password",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "forgot-password"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseURL", "value": "http://localhost:4000" },
+    { "key": "userId", "value": "2" },
+    { "key": "lodgeId", "value": "1" }
+  ]
+}
