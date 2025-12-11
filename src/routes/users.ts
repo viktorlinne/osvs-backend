@@ -8,6 +8,7 @@ import {
   setRolesSchema,
   setLodgeSchema,
 } from "./schemas/users";
+import { updateUserSchema } from "./schemas/users";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 
@@ -16,12 +17,29 @@ const router = express.Router();
 // Minimal placeholder routes used in tests. Expand as needed.
 router.get("/me", authMiddleware, usersController.placeholderMe);
 
+// Update current user's profile
+router.put(
+  "/me",
+  authMiddleware,
+  validateBody(updateUserSchema),
+  usersController.updateMeHandler
+);
+
 // Update current user's profile picture
 router.post(
   "/me/picture",
   authMiddleware,
   uploadProfilePicture,
   usersController.updatePictureHandler
+);
+
+// Admin: update another user's profile (partial)
+router.put(
+  "/:id",
+  authMiddleware,
+  requireRole(UserRole.Admin),
+  validateBody(updateUserSchema),
+  usersController.updateUserHandler
 );
 
 // Update another user's profile picture (editor/admin only)

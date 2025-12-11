@@ -68,6 +68,64 @@ export async function findById(id: number): Promise<UserRecord | undefined> {
   return isValidUserRecord(user) ? user : undefined;
 }
 
+export async function updateUserProfile(
+  userId: number,
+  data: Partial<{
+    firstname: string;
+    lastname: string;
+    dateOfBirth: string;
+    official?: string | null;
+    mobile?: string;
+    city?: string;
+    address?: string;
+    zipcode?: string;
+  }>
+): Promise<void> {
+  // Build set clause dynamically
+  const fields: string[] = [];
+  const params: Array<string | null> = [];
+
+  if (typeof data.firstname === "string") {
+    fields.push("firstname = ?");
+    params.push(data.firstname.trim());
+  }
+  if (typeof data.lastname === "string") {
+    fields.push("lastname = ?");
+    params.push(data.lastname.trim());
+  }
+  if (typeof data.dateOfBirth === "string") {
+    // normalizeToSqlDate will validate/throw if invalid
+    params.push(normalizeToSqlDate(data.dateOfBirth));
+    fields.push("dateOfBirth = ?");
+  }
+  if (typeof data.official !== "undefined") {
+    fields.push("official = ?");
+    params.push(data.official ?? null);
+  }
+  if (typeof data.mobile !== "undefined") {
+    fields.push("mobile = ?");
+    params.push(data.mobile ?? null);
+  }
+  if (typeof data.city !== "undefined") {
+    fields.push("city = ?");
+    params.push(data.city ?? null);
+  }
+  if (typeof data.address !== "undefined") {
+    fields.push("address = ?");
+    params.push(data.address ?? null);
+  }
+  if (typeof data.zipcode !== "undefined") {
+    fields.push("zipcode = ?");
+    params.push(data.zipcode ?? null);
+  }
+
+  if (fields.length === 0) return;
+
+  const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
+  params.push(String(userId));
+  await pool.execute(sql, params);
+}
+
 export async function getUserRoles(userId: number): Promise<UserRole[]> {
   const sql =
     "SELECT r.role FROM roles r JOIN users_roles ur ON ur.rid = r.id WHERE ur.uid = ?";

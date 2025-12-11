@@ -24,3 +24,19 @@ export const setRolesSchema = z.object({
 export const setLodgeSchema = z.object({
   lodgeId: z.union([z.coerce.number().int().positive(), z.null()]),
 });
+
+export const updateUserSchema = z.object({
+  firstname: z.string().min(1).optional(),
+  lastname: z.string().min(1).optional(),
+  dateOfBirth: z
+    .string()
+    .optional()
+    .refine((v) => v == null || isValidDateString(v), {
+      message: "dateOfBirth must be a valid date string",
+    }),
+  official: z.string().optional().nullable(),
+  mobile: z.string().optional(),
+  city: z.string().optional(),
+  address: z.string().optional(),
+  zipcode: z.string().optional(),
+});

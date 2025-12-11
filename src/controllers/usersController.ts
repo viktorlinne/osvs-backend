@@ -10,7 +10,10 @@ import {
   setUserAchievement,
   getUserAchievements,
   getUserRoles,
+  updateUserProfile,
+  findById as findUserById,
 } from "../services/userService";
+import { toPublicUser } from "../utils/serialize";
 import { getUserLodge, setUserLodge } from "../services/lodgeService";
 import logger from "../utils/logger";
 
@@ -113,6 +116,73 @@ export async function updateOtherPictureHandler(
 
 export async function placeholderMe(_req: AuthenticatedRequest, res: Response) {
   return res.status(200).json({});
+}
+
+export async function updateMeHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const uid = req.user?.userId;
+    if (!uid) return res.status(401).json({ error: "Invalid token payload" });
+
+    // `validateBody` middleware ensures `req.body` matches schema
+    const payload = req.body as Partial<{
+      firstname: string;
+      lastname: string;
+      dateOfBirth: string;
+      official?: string | null;
+      mobile?: string;
+      city?: string;
+      address?: string;
+      zipcode?: string;
+    }>;
+
+    await updateUserProfile(uid, payload);
+
+    const updated = await findUserById(uid);
+    if (!updated) return res.status(404).json({ error: "User not found" });
+
+    return res.status(200).json({ user: toPublicUser(updated) });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+export async function updateUserHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId) return res.status(401).json({ error: "Unauthorized" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const payload = req.body as Partial<{
+      firstname: string;
+      lastname: string;
+      dateOfBirth: string;
+      official?: string | null;
+      mobile?: string;
+      city?: string;
+      address?: string;
+      zipcode?: string;
+    }>;
+
+    await updateUserProfile(targetId, payload);
+
+    const updated = await findUserById(targetId);
+    if (!updated) return res.status(404).json({ error: "User not found" });
+
+    return res.status(200).json({ user: toPublicUser(updated) });
+  } catch (err) {
+    return next(err);
+  }
 }
 
 export async function addAchievementHandler(
@@ -281,6 +351,7 @@ export async function setLodgeHandler(
 
 export default {
   placeholderMe,
+  updateMeHandler,
   updatePictureHandler,
   updateOtherPictureHandler,
   addAchievementHandler,
@@ -289,4 +360,5 @@ export default {
   getRolesHandler,
   getLodgeHandler,
   setLodgeHandler,
+  updateUserHandler,
 };
