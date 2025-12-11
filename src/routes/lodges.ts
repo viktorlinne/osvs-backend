@@ -7,6 +7,8 @@ import {
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
+import { validateBody } from "../middleware/validate";
+import { createLodgeSchema, updateLodgeSchema } from "./schemas/lodges";
 
 const router = express.Router();
 
@@ -18,6 +20,7 @@ router.post(
   "/",
   authMiddleware,
   requireRole(UserRole.Admin),
+  validateBody(createLodgeSchema),
   createLodgeHandler
 );
 
@@ -26,6 +29,7 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole(UserRole.Admin),
+  validateBody(updateLodgeSchema),
   updateLodgeHandler
 );
 

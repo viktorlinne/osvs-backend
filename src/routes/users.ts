@@ -2,6 +2,12 @@ import express from "express";
 import usersController from "../controllers/usersController";
 import authMiddleware from "../middleware/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
+import { validateBody } from "../middleware/validate";
+import {
+  addAchievementSchema,
+  setRolesSchema,
+  setLodgeSchema,
+} from "./schemas/users";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 
@@ -32,6 +38,7 @@ router.post(
   "/:id/achievements",
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
+  validateBody(addAchievementSchema),
   usersController.addAchievementHandler
 );
 
@@ -56,6 +63,7 @@ router.post(
   "/:id/roles",
   authMiddleware,
   requireRole(UserRole.Admin),
+  validateBody(setRolesSchema),
   usersController.setRolesHandler
 );
 
@@ -72,6 +80,7 @@ router.post(
   "/:id/lodges",
   authMiddleware,
   requireRole(UserRole.Admin),
+  validateBody(setLodgeSchema),
   usersController.setLodgeHandler
 );
 

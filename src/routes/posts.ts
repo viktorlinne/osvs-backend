@@ -9,6 +9,8 @@ import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
+import { validateBody } from "../middleware/validate";
+import { createPostSchema, updatePostSchema } from "./schemas/posts";
 
 const router = express.Router();
 
@@ -24,6 +26,7 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
   uploadProfilePicture,
+  validateBody(createPostSchema),
   createPostHandler
 );
 
@@ -33,6 +36,7 @@ router.put(
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
   uploadProfilePicture,
+  validateBody(updatePostSchema),
   updatePostHandler
 );
 

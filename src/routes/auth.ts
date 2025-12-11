@@ -1,7 +1,12 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { z } from "zod";
 import { validateBody } from "../middleware/validate";
+import {
+  registerSchema,
+  loginSchema,
+  forgotSchema,
+  resetSchema,
+} from "./schemas/auth";
 import authMiddleware from "../middleware/auth";
 import * as authController from "../controllers/authController";
 import { requireRole } from "../middleware/authorize";
@@ -29,38 +34,7 @@ const registerLimiter = rateLimit({
   },
 });
 
-// Schema for user reigstration
-const registerSchema = z.object({
-  username: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(8),
-  firstname: z.string().min(1),
-  lastname: z.string().min(1),
-  dateOfBirth: z.string().min(1),
-  official: z.string().optional(),
-  mobile: z.string().min(1),
-  city: z.string().min(1),
-  address: z.string().min(1),
-  zipcode: z.string().min(1),
-  lodgeId: z.coerce.number().int().positive(),
-});
-
-// Schema for login request
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-
-// Schema for password reset request
-const forgotSchema = z.object({
-  email: z.string().email(),
-});
-
-// Schema for password reset
-const resetSchema = z.object({
-  token: z.string().min(8),
-  password: z.string().min(8),
-});
+// Auth schemas are imported from ./schemas/auth
 
 // Register a user (admin/editor only)
 router.post(
