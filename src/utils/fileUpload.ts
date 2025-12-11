@@ -54,10 +54,23 @@ export const uploadProfilePicture = multer({
  * Upload parsed multer file buffer to the configured storage adapter.
  * Returns the storage key (string) or null if no file provided.
  */
+export type UploadOptions = {
+  folder?: string; // e.g. "posts" or "profiles"
+  prefix?: string; // e.g. "post_" or "profile_"
+  size?: { width: number; height: number };
+};
+
 export async function uploadToStorage(
-  file: Express.Multer.File | undefined
+  file: Express.Multer.File | undefined,
+  opts?: UploadOptions
 ): Promise<string | null> {
   if (!file || !file.buffer) return null;
+
+  const {
+    folder,
+    prefix = "profile_",
+    size = { width: 200, height: 200 },
+  } = opts || {};
 
   // Validate + normalize image using sharp (this also guards against fake mimetypes)
   let outBuffer: Buffer;
@@ -67,8 +80,13 @@ export async function uploadToStorage(
     const meta = await img.metadata();
     if (!meta || !meta.format) throw new Error("Invalid image file");
 
-    // Enforce standardized output: center-crop to 200x200 and convert to WebP
-    img.resize({ width: 200, height: 200, fit: "cover", position: "centre" });
+    // Enforce standardized output: center-crop and convert to WebP
+    img.resize({
+      width: size.width,
+      height: size.height,
+      fit: "cover",
+      position: "centre",
+    });
     img.webp({ quality: 80 });
     outMime = "image/webp";
     outBuffer = await img.toBuffer();
@@ -79,14 +97,14 @@ export async function uploadToStorage(
 
   // We always output WebP for optimized, cache-friendly images
   const ext = ".webp";
-  const key = `profile_${Date.now()}_${Math.random()
-    .toString(36)
-    .slice(2, 10)}${ext}`;
+  const rand = Math.random().toString(36).slice(2, 10);
+  const name = `${prefix}${Date.now()}_${rand}${ext}`;
+  const key = folder ? `${folder}/${name}` : name;
   try {
     const res = await storageAdapter.upload(key, outBuffer, outMime);
     return res.key;
   } catch (err) {
-    logger.error("Failed to upload profile picture to storage:", err);
+    logger.error("Failed to upload file to storage:", err);
     return null;
   }
 }

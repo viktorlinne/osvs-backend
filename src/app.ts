@@ -14,6 +14,7 @@ import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
 import lodgesRouter from "./routes/lodges";
+import postsRouter from "./routes/posts";
 
 dotenv.config();
 
@@ -60,6 +61,8 @@ app.use("/api/users", usersRouter);
 app.use("/api/admin", adminRouter);
 // Lodge routes 
 app.use("/api/lodges", lodgesRouter);
+// Post routes
+app.use("/api/posts", postsRouter);
 
 // root
 app.get("/", (_req, res) => res.send("Backend is running"));

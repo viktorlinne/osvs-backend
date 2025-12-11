@@ -69,7 +69,7 @@ CREATE TABLE `posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
   `description` varchar(256) NOT NULL,
-  `picture` blob DEFAULT NULL,
+  `picture` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -277,6 +277,14 @@ INSERT INTO `users_lodges` (`uid`, `lid`) VALUES
   (2, 2)
 ON DUPLICATE KEY UPDATE `lid` = VALUES(`lid`);
 
+
+INSERT INTO `posts` (`id`, `title`, `description`, `picture`) VALUES
+  (1, 'Welcome to OSVS', 'This is the first post on our new platform!', 'posts/postPlaceholder.png'),
+  (2, 'Upcoming Event', 'Join us for our annual gathering next month.', 'posts/postPlaceholder.png')
+ON DUPLICATE KEY UPDATE
+  `title` = VALUES(`title`),
+  `description` = VALUES(`description`),
+  `picture` = VALUES(`picture`);
 -- =====================================================
 -- PAYMENT TABLES
 -- =====================================================

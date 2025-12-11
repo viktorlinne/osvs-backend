@@ -3,14 +3,14 @@ import {
   listLodgesHandler,
   createLodgeHandler,
   updateLodgeHandler,
-} from "../controllers/lodgeController";
+} from "../controllers/lodgesController";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 
 const router = express.Router();
 
-// Public: list lodges
+// Authenticated: list lodges
 router.get("/", authMiddleware, listLodgesHandler);
 
 // Admin: create lodge
