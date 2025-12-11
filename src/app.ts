@@ -13,6 +13,7 @@ import { Integrations } from "@sentry/tracing";
 import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
+import lodgesRouter from "./routes/lodges";
 
 dotenv.config();
 
@@ -57,6 +58,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 // Admin routes (manual/diagnostic operations)
 app.use("/api/admin", adminRouter);
+// Lodge routes 
+app.use("/api/lodges", lodgesRouter);
 
 // root
 app.get("/", (_req, res) => res.send("Backend is running"));

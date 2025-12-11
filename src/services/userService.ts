@@ -228,7 +228,8 @@ export async function setUserRoles(
 }
 
 export async function createUser(
-  input: CreateUserInput
+  input: CreateUserInput,
+  lodgeId?: number | null
 ): Promise<PublicUser | undefined> {
   // Trim all string inputs first
   const trimmed = trimUserInput(input);
@@ -306,11 +307,68 @@ export async function createUser(
     zipcode,
   ];
 
-  let result: ResultSetHeader;
+  // Use a transaction when assigning roles and optional lodge to ensure
+  // we don't create a user without the required lodge assignment.
+  const conn = await pool.getConnection();
+  let insertId: number | undefined;
   try {
+    await conn.beginTransaction();
     logger.debug("createUser params:", params);
-    const exec = await pool.execute<ResultSetHeader>(sql, params);
-    result = exec[0];
+    const exec = await conn.execute<ResultSetHeader>(sql, params);
+    const result = exec[0] as ResultSetHeader;
+    insertId =
+      result && typeof result.insertId === "number"
+        ? result.insertId
+        : undefined;
+
+    if (!insertId) {
+      await conn.rollback();
+      return undefined;
+    }
+
+    // Ensure new users get the Member role by default (if the role exists)
+    try {
+      await conn.execute(
+        "INSERT INTO users_roles (uid, rid) SELECT ?, id FROM roles WHERE role = 'Member' LIMIT 1",
+        [insertId]
+      );
+    } catch (err) {
+      logger.warn(
+        { err, userId: insertId },
+        "Failed to assign default Member role"
+      );
+      await conn.rollback();
+      throw err;
+    }
+
+    // If a lodgeId is provided we must validate it exists and assign it.
+    if (typeof lodgeId !== "undefined" && lodgeId !== null) {
+      const [rows] = await conn.execute(
+        "SELECT id FROM lodges WHERE id = ? LIMIT 1",
+        [lodgeId]
+      );
+      const arr = rows as unknown as Array<Record<string, unknown>>;
+      if (!Array.isArray(arr) || arr.length === 0) {
+        await conn.rollback();
+        throw new ValidationError(["lodgeId"]);
+      }
+
+      try {
+        await conn.execute(
+          "INSERT INTO users_lodges (uid, lid) VALUES (?, ?)",
+          [insertId, lodgeId]
+        );
+      } catch (err) {
+        logger.warn(
+          { err, userId: insertId, lodgeId },
+          "Failed to assign lodge to new user"
+        );
+        await conn.rollback();
+        throw err;
+      }
+    }
+
+    await conn.commit();
   } catch (err) {
     const dbErr = err as {
       message?: string;
@@ -320,7 +378,6 @@ export async function createUser(
       sqlState?: string;
       sql?: string;
     };
-
     logger.error("Register error - insert failed:", {
       message: dbErr?.message,
       code: dbErr?.code,
@@ -329,6 +386,12 @@ export async function createUser(
       sqlState: dbErr?.sqlState,
       sql: dbErr?.sql,
     });
+
+    // If we started a transaction ensure it's rolled back and connection released
+    try {
+      await conn.rollback();
+    } catch {}
+    conn.release();
 
     if (dbErr && (dbErr.code === "ER_DUP_ENTRY" || dbErr.errno === 1062)) {
       const msg = dbErr.message || "";
@@ -347,26 +410,13 @@ export async function createUser(
     }
     throw err;
   }
-  const insertId =
-    result && typeof result.insertId === "number" ? result.insertId : undefined;
+  // If we successfully committed earlier, release connection and fetch user
+  try {
+    conn.release();
+  } catch {}
 
   if (!insertId) return undefined;
-
   const user = await findById(insertId);
   if (!user) return undefined;
-
-  // Ensure new users get the Member role by default (if the role exists)
-  try {
-    await pool.execute(
-      "INSERT INTO users_roles (uid, rid) SELECT ?, id FROM roles WHERE role = 'Member' LIMIT 1",
-      [insertId]
-    );
-  } catch (err) {
-    logger.warn(
-      { err, userId: insertId },
-      "Failed to assign default Member role"
-    );
-  }
-
   return toPublicUser(user);
 }

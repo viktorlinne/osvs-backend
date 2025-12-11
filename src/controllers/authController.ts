@@ -184,6 +184,7 @@ export async function register(
       address,
       zipcode,
     } = req.body ?? {};
+    const lodgeId = (req.body as Record<string, unknown>)["lodgeId"];
 
     // Validate required fields — routes normally validate, but enforce here too
     if (
@@ -203,6 +204,17 @@ export async function register(
         .json({ error: "Missing required registration fields" });
     }
 
+    // Enforce lodge assignment during registration
+    if (typeof lodgeId === "undefined" || lodgeId === null) {
+      return res
+        .status(400)
+        .json({ error: "lodgeId is required for registration" });
+    }
+    const numericLodgeId = Number(lodgeId);
+    if (!Number.isFinite(numericLodgeId)) {
+      return res.status(400).json({ error: "Invalid lodgeId" });
+    }
+
     const hash = await hashPassword(password as string);
 
     // Registration uses a placeholder profile image by default; picture
@@ -212,20 +224,23 @@ export async function register(
 
     let user;
     try {
-      user = await createUser({
-        username: username as string,
-        email: email as string,
-        passwordHash: hash,
-        firstname: firstname as string,
-        lastname: lastname as string,
-        dateOfBirth: dateOfBirth as string,
-        official: official ?? "",
-        mobile: mobile as string,
-        city: city as string,
-        address: address as string,
-        zipcode: zipcode as string,
-        picture: pictureKey,
-      });
+      user = await createUser(
+        {
+          username: username as string,
+          email: email as string,
+          passwordHash: hash,
+          firstname: firstname as string,
+          lastname: lastname as string,
+          dateOfBirth: dateOfBirth as string,
+          official: official ?? "",
+          mobile: mobile as string,
+          city: city as string,
+          address: address as string,
+          zipcode: zipcode as string,
+          picture: pictureKey,
+        },
+        numericLodgeId
+      );
     } catch (err) {
       // If we uploaded a picture but user creation failed, clean it up
       if (pictureKey) {

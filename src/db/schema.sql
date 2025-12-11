@@ -249,6 +249,15 @@ ON DUPLICATE KEY UPDATE
   `zipcode` = VALUES(`zipcode`),
   `notes` = VALUES(`notes`);
 
+-- Lodges seed (ensure some lodges exist for local/dev testing)
+INSERT INTO `lodges` (`id`, `name`, `description`) VALUES
+  (1, 'Stamlogen', 'Första Logen'),
+  (2, 'Stella Polaris', 'Andra Logen'),
+  (3, 'Regulus', 'Tredje Logen'),
+  (4, 'Orion', 'Fjärde Logen'),
+  (5, 'Capella', 'Femte Logen')
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
+
 -- Assign roles: give Alice all roles (1,2,3) and Bob the Member role (3)
 -- Replace any existing role assignments for these seeded users to keep test state predictable.
 DELETE FROM `users_roles` WHERE `uid` IN (1,2);
@@ -260,6 +269,13 @@ INSERT INTO `users_roles` (`uid`, `rid`) VALUES
 DELETE FROM `users_achievements` WHERE `uid` = 2 AND `aid` = 1;
 INSERT INTO `users_achievements` (`uid`, `aid`, `awardedAt`) VALUES
   (2, 1, '2025-12-01 10:00:00');
+
+-- Ensure seeded users have predictable lodge assignments (replace existing assignments)
+DELETE FROM `users_lodges` WHERE `uid` IN (1,2);
+INSERT INTO `users_lodges` (`uid`, `lid`) VALUES
+  (1, 1),
+  (2, 2)
+ON DUPLICATE KEY UPDATE `lid` = VALUES(`lid`);
 
 -- =====================================================
 -- PAYMENT TABLES

@@ -11,6 +11,7 @@ import {
   getUserAchievements,
   getUserRoles,
 } from "../services/userService";
+import { getUserLodge, setUserLodge } from "../services/lodgeService";
 import logger from "../utils/logger";
 
 export async function updatePictureHandler(
@@ -227,6 +228,57 @@ export async function getRolesHandler(
   }
 }
 
+export async function getLodgeHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId) return res.status(401).json({ error: "Unauthorized" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const lodge = await getUserLodge(targetId);
+    return res.status(200).json({ lodge });
+  } catch (err) {
+    logger.error("Failed to get user lodge", err);
+    return res.status(500).json({ error: "Failed to get user lodge" });
+  }
+}
+
+export async function setLodgeHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const callerId = req.user?.userId;
+    if (!callerId) return res.status(401).json({ error: "Unauthorized" });
+
+    const targetId = Number(req.params.id);
+    if (!Number.isFinite(targetId))
+      return res.status(400).json({ error: "Invalid target user id" });
+
+    const { lodgeId } = req.body as { lodgeId?: number | null };
+    if (typeof lodgeId === "undefined") {
+      return res
+        .status(400)
+        .json({ error: "Missing lodgeId (use null to remove)" });
+    }
+
+    const numericLid = lodgeId === null ? null : Number(lodgeId);
+    if (numericLid !== null && !Number.isFinite(numericLid))
+      return res.status(400).json({ error: "Invalid lodgeId" });
+
+    await setUserLodge(targetId, numericLid);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error("Failed to set user lodge", err);
+    return res.status(500).json({ error: "Failed to set user lodge" });
+  }
+}
+
 export default {
   placeholderMe,
   updatePictureHandler,
@@ -235,4 +287,6 @@ export default {
   setRolesHandler,
   getAchievementsHandler,
   getRolesHandler,
+  getLodgeHandler,
+  setLodgeHandler,
 };

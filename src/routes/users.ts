@@ -59,4 +59,20 @@ router.post(
   usersController.setRolesHandler
 );
 
+// Get a user's lodge (admin only)
+router.get(
+  "/:id/lodges",
+  authMiddleware,
+  requireRole(UserRole.Admin),
+  usersController.getLodgeHandler
+);
+
+// Set (replace) a user's lodge (admin only). Send `{ "lodgeId": <id> }` or `{ "lodgeId": null }` to remove.
+router.post(
+  "/:id/lodges",
+  authMiddleware,
+  requireRole(UserRole.Admin),
+  usersController.setLodgeHandler
+);
+
 export default router;
