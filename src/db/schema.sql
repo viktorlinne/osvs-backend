@@ -347,6 +347,15 @@ ON DUPLICATE KEY UPDATE
   `description` = VALUES(`description`),
   `picture` = VALUES(`picture`);
 
+-- Mails seed (ensure some mails exist for local/dev testing)
+INSERT INTO `mails` (`id`, `lid`, `title`, `content`) VALUES
+  (1, 1, 'Welcome Mail', 'Welcome to the lodge! Please read the guidelines.'),
+  (2, 2, 'Event Reminder', 'Reminder: upcoming event this weekend. Please RSVP!')
+ON DUPLICATE KEY UPDATE
+  `lid` = VALUES(`lid`),
+  `title` = VALUES(`title`),
+  `content` = VALUES(`content`);
+
 -- Event attendances (RSVP)
 CREATE TABLE IF NOT EXISTS `events_attendances` (
   `uid` int(11) NOT NULL,
