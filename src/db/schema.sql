@@ -35,6 +35,7 @@ CREATE TABLE `lodges` (
 CREATE TABLE `establishments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(256) NOT NULL,
+  `description` varchar (256) NOT NULL,
   `address` varchar(256) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -288,10 +289,10 @@ INSERT INTO `lodges` (`id`, `name`, `description`) VALUES
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
 
 -- Establishments seed (ensure some establishments exist for local/dev testing)
-INSERT INTO `establishments` (`id`, `name`, `address`) VALUES
-  (1, 'Main Hall', 'Storgatan 10'),
-  (2, 'North Lodge', 'Nordvägen 5')
-ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `address` = VALUES(`address`);
+INSERT INTO `establishments` (`id`, `name`, `description`, `address`) VALUES
+  (1, 'Main Hall', 'Central meeting hall', 'Storgatan 10'),
+  (2, 'North Lodge', 'Secondary meeting place', 'Nordvägen 5')
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`), `address` = VALUES(`address`);
 
 -- Assign roles: give Alice all roles (1,2,3) and Bob the Member role (3)
 -- Replace any existing role assignments for these seeded users to keep test state predictable.

@@ -140,6 +140,33 @@ async function migrateAdditions() {
     } catch {
       // ignore
     }
+
+    // Create establishments table and join table for lodges <-> establishments
+    try {
+      await conn.query(`
+        CREATE TABLE IF NOT EXISTS establishments (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          description TEXT DEFAULT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+        CREATE TABLE IF NOT EXISTS lodges_establishments (
+          lid INT NOT NULL,
+          esid INT NOT NULL,
+          PRIMARY KEY (lid, esid),
+          KEY fk_le_lodge (lid),
+          KEY fk_le_establishment (esid),
+          CONSTRAINT fk_le_lodge FOREIGN KEY (lid) REFERENCES lodges (id) ON DELETE CASCADE,
+          CONSTRAINT fk_le_establishment FOREIGN KEY (esid) REFERENCES establishments (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+      `);
+      logger.info("Added establishments + lodges_establishments tables");
+    } catch (err) {
+      logger.warn(
+        "Could not create establishments tables (may already exist)",
+        err
+      );
+    }
   } catch (err) {
     logger.error("Failed to apply additions migration:", err);
   } finally {
