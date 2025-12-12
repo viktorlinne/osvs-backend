@@ -368,6 +368,15 @@ ON DUPLICATE KEY UPDATE
   `description` = VALUES(`description`),
   `picture` = VALUES(`picture`);
 
+-- Sample mails for local/dev testing
+INSERT INTO `mails` (`id`, `lid`, `title`, `content`) VALUES
+  (1, 1, 'Welcome Newsletter', 'Welcome to Stamlogen — we´re glad you joined!'),
+  (2, 1, 'Event Reminder', 'Reminder: Founders Meeting on 2026-02-14. Please RSVP.')
+ON DUPLICATE KEY UPDATE `lid` = VALUES(`lid`), `title` = VALUES(`title`), `content` = VALUES(`content`);
+
+-- Seed some internal inbox entries so the frontend shows messages
+-- (moved) seed for users_mails will be inserted after table creation to avoid ordering issues
+
 -- Event attendances (RSVP)
 CREATE TABLE IF NOT EXISTS `events_attendances` (
   `uid` int(11) NOT NULL,
