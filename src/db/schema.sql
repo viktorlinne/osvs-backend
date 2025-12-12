@@ -345,6 +345,17 @@ ON DUPLICATE KEY UPDATE
   `title` = VALUES(`title`),
   `description` = VALUES(`description`),
   `picture` = VALUES(`picture`);
+
+-- Event attendances (RSVP)
+CREATE TABLE IF NOT EXISTS `events_attendances` (
+  `uid` int(11) NOT NULL,
+  `eid` int(11) NOT NULL,
+  `rsvp` tinyint(1) DEFAULT 0 NOT NULL,
+  PRIMARY KEY (`uid`,`eid`),
+  KEY `fk_events_attendances_event` (`eid`),
+  CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 -- =====================================================
 -- PAYMENT TABLES
 -- =====================================================

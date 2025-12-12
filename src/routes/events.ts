@@ -13,6 +13,8 @@ import {
   linkEstablishmentHandler,
   unlinkEstablishmentHandler,
   listForUserHandler,
+  rsvpHandler,
+  getUserRsvpHandler,
 } from "../controllers/eventsController";
 import { validateBody } from "../middleware/validate";
 import {
@@ -20,6 +22,7 @@ import {
   updateEventSchema,
   linkLodgeSchema,
   linkEstablishmentSchema,
+  rsvpSchema,
 } from "./schemas/events";
 
 const router = express.Router();
@@ -90,5 +93,11 @@ router.delete(
   validateBody(linkEstablishmentSchema),
   unlinkEstablishmentHandler
 );
+
+// RSVP: set current user's RSVP for event (going / not-going)
+router.post("/:id/rsvp", authMiddleware, validateBody(rsvpSchema), rsvpHandler);
+
+// Get current user's RSVP for an event
+router.get("/:id/rsvp", authMiddleware, getUserRsvpHandler);
 
 export default router;

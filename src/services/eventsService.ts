@@ -1,5 +1,6 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
+import { toDbRsvp, fromDbRsvp, RsvpStatus } from "../utils/rsvp";
 
 export type EventRecord = {
   id: number;
@@ -134,8 +135,9 @@ export async function linkLodgeToEvent(
   } catch (err) {
     try {
       await conn.rollback();
-    } catch {}
-    throw err;
+    } catch {
+      throw err;
+    }
   } finally {
     conn.release();
   }
@@ -166,8 +168,9 @@ export async function linkEstablishmentToEvent(
   } catch (err) {
     try {
       await conn.rollback();
-    } catch {}
-    throw err;
+    } catch {
+      throw err;
+    }
   } finally {
     conn.release();
   }
@@ -211,6 +214,44 @@ export async function listEventsForUser(
     .filter((e) => Number.isFinite(e.id));
 }
 
+export async function isUserInvitedToEvent(
+  userId: number,
+  eventId: number
+): Promise<boolean> {
+  const sql = `
+    SELECT 1 FROM lodges_events le
+    JOIN users_lodges ul ON ul.lid = le.lid
+    WHERE le.eid = ? AND ul.uid = ? LIMIT 1
+  `;
+  const [rows] = await pool.execute(sql, [eventId, userId]);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  return Array.isArray(arr) && arr.length > 0;
+}
+
+export async function setUserRsvp(
+  userId: number,
+  eventId: number,
+  rsvp: RsvpStatus
+): Promise<void> {
+  const rsvpValue = toDbRsvp(rsvp);
+  const sql =
+    "INSERT INTO events_attendances (uid, eid, rsvp) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rsvp = VALUES(rsvp)";
+  await pool.execute(sql, [userId, eventId, rsvpValue]);
+}
+
+export async function getUserRsvp(
+  userId: number,
+  eventId: number
+): Promise<RsvpStatus | null> {
+  const [rows] = await pool.execute(
+    "SELECT rsvp FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
+    [userId, eventId]
+  );
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  return fromDbRsvp(arr[0].rsvp);
+}
+
 export default {
   listEvents,
   getEventById,
@@ -222,4 +263,7 @@ export default {
   linkEstablishmentToEvent,
   unlinkEstablishmentFromEvent,
   listEventsForUser,
+  isUserInvitedToEvent,
+  setUserRsvp,
+  getUserRsvp,
 };

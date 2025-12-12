@@ -36,7 +36,7 @@ export const createEventSchema = z
           path: ["startDate", "endDate"],
         });
       }
-    } catch (e) {
+    } catch {
       // ignore; individual field refinements will handle invalid dates
     }
   });
@@ -89,4 +89,8 @@ export const linkLodgeSchema = z.object({
 
 export const linkEstablishmentSchema = z.object({
   esId: z.coerce.number().int().positive(),
+});
+
+export const rsvpSchema = z.object({
+  status: z.enum(["going", "not-going"]),
 });

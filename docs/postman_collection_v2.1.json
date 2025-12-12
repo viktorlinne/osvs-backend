@@ -300,6 +300,97 @@
       ]
     },
     {
+      "name": "Events",
+      "item": [
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/events",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events"]
+            }
+          }
+        },
+        {
+          "name": "Get Event",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/events/{{eventId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events", "{{eventId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Event\",\n  \"description\": \"Details\",\n  \"startDate\": \"2026-08-01T18:00:00\",\n  \"endDate\": \"2026-08-01T21:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/events",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events"]
+            }
+          }
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Updated\"\n}" },
+            "url": {
+              "raw": "{{baseURL}}/api/events/{{eventId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events", "{{eventId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseURL}}/api/events/{{eventId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events", "{{eventId}}"]
+            }
+          }
+        },
+        {
+          "name": "RSVP - Set (POST /api/events/:id/rsvp)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"going\"\n}" },
+            "url": {
+              "raw": "{{baseURL}}/api/events/{{eventId}}/rsvp",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events", "{{eventId}}", "rsvp"]
+            }
+          }
+        },
+        {
+          "name": "RSVP - Get current user's RSVP (GET /api/events/:id/rsvp)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/events/{{eventId}}/rsvp",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events", "{{eventId}}", "rsvp"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Misc",
       "item": [
         {
@@ -335,6 +426,7 @@
   "variable": [
     { "key": "baseURL", "value": "http://localhost:4000" },
     { "key": "userId", "value": "2" },
-    { "key": "lodgeId", "value": "1" }
+    { "key": "lodgeId", "value": "1" },
+    { "key": "eventId", "value": "1" }
   ]
 }

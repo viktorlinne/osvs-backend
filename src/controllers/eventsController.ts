@@ -2,7 +2,7 @@ import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import logger from "../utils/logger";
 import * as eventsService from "../services/eventsService";
-import { uploadProfilePicture } from "../utils/fileUpload";
+import { ValidationError } from "../utils/errors";
 
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
@@ -43,7 +43,14 @@ export async function createEventHandler(
 ) {
   try {
     const { title, description, lodgeMeeting, price, startDate, endDate } =
-      req.body as any;
+      req.body as {
+        title?: string;
+        description?: string;
+        lodgeMeeting?: boolean | null;
+        price?: number;
+        startDate?: string;
+        endDate?: string;
+      };
     if (!title || !description || !startDate || !endDate) {
       return res.status(400).json({ error: "Missing required fields" });
     }
@@ -71,7 +78,14 @@ export async function updateEventHandler(
     const id = Number(req.params.id);
     if (!Number.isFinite(id))
       return res.status(400).json({ error: "Invalid id" });
-    const payload = req.body as any;
+    const payload = req.body as Partial<{
+      title: string;
+      description: string;
+      lodgeMeeting: boolean | null;
+      price: number;
+      startDate: string;
+      endDate: string;
+    }>;
     await eventsService.updateEvent(id, payload);
     return res.status(200).json({ success: true });
   } catch (err) {
@@ -122,8 +136,9 @@ export async function unlinkLodgeHandler(
 ) {
   try {
     const id = Number(req.params.id);
-    const bodyLodge = (req.body && (req.body as any).lodgeId) as unknown;
-    const queryLodge = (req.query && (req.query as any).lodgeId) as unknown;
+    const bodyLodge = (req.body as { lodgeId?: string | number | undefined })
+      .lodgeId;
+    const queryLodge = (req.query as Record<string, unknown>)?.lodgeId;
     const lodgeId = Number(bodyLodge ?? queryLodge);
     if (!Number.isFinite(id) || !Number.isFinite(lodgeId))
       return res.status(400).json({ error: "Invalid ids" });
@@ -160,8 +175,8 @@ export async function unlinkEstablishmentHandler(
 ) {
   try {
     const id = Number(req.params.id);
-    const bodyEs = (req.body && (req.body as any).esId) as unknown;
-    const queryEs = (req.query && (req.query as any).esId) as unknown;
+    const bodyEs = (req.body as { esId?: string | number | undefined }).esId;
+    const queryEs = (req.query as Record<string, unknown>)?.esId;
     const esId = Number(bodyEs ?? queryEs);
     if (!Number.isFinite(id) || !Number.isFinite(esId))
       return res.status(400).json({ error: "Invalid ids" });
@@ -185,6 +200,69 @@ export async function listForUserHandler(
     return res.status(200).json({ events: rows });
   } catch (err) {
     logger.error("Failed to list events for user", err);
+    return next(err);
+  }
+}
+
+export async function rsvpHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const uid = req.user?.userId;
+    if (!uid) return res.status(401).json({ error: "Unauthorized" });
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id))
+      return res.status(400).json({ error: "Invalid id" });
+
+    const { status } = req.body as { status?: string };
+    if (status !== "going" && status !== "not-going")
+      return res.status(400).json({ error: "Invalid status" });
+
+    const ev = await eventsService.getEventById(id);
+    if (!ev) return res.status(404).json({ error: "Event not found" });
+
+    // Prevent RSVPing for past events
+    const now = new Date();
+    if (new Date(ev.startDate) <= now)
+      return res
+        .status(400)
+        .json({ error: "Cannot RSVP for past or started events" });
+
+    // Ensure user is invited via lodge membership
+    const invited = await eventsService.isUserInvitedToEvent(uid, id);
+    if (!invited)
+      return res.status(403).json({ error: "Not invited to this event" });
+
+    await eventsService.setUserRsvp(uid, id, status as "going" | "not-going");
+    return res.status(200).json({ success: true, status });
+  } catch (err) {
+    if (err instanceof ValidationError)
+      return res.status(400).json({ error: err.message });
+    logger.error("Failed to set RSVP", err);
+    return next(err);
+  }
+}
+
+export async function getUserRsvpHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const uid = req.user?.userId;
+    if (!uid) return res.status(401).json({ error: "Unauthorized" });
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id))
+      return res.status(400).json({ error: "Invalid id" });
+
+    const status = await eventsService.getUserRsvp(uid, id);
+    return res.status(200).json({ rsvp: status });
+  } catch (err) {
+    logger.error("Failed to get RSVP", err);
     return next(err);
   }
 }
