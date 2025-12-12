@@ -1,6 +1,6 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
-import { sendMail } from "./mailerService";
+import { sendMail } from "./brevoService";
 
 export type MailRecord = {
   id: number;

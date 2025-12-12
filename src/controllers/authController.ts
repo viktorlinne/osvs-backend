@@ -16,7 +16,7 @@ import {
   findPasswordResetToken,
   consumePasswordResetToken,
 } from "../services/passwordResetService";
-import { sendPasswordReset } from "../services/mailerService";
+import { sendPasswordReset } from "../services/brevoService";
 import { hashPassword } from "../services/authService";
 import { clearAuthCookies } from "../utils/authTokens";
 import crypto from "crypto";
