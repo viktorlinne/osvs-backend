@@ -17,6 +17,7 @@ import lodgesRouter from "./routes/lodges";
 import postsRouter from "./routes/posts";
 import eventsRouter from "./routes/events";
 import establishmentsRouter from "./routes/establishments";
+import mailsRouter from "./routes/mails";
 
 dotenv.config();
 
@@ -69,6 +70,9 @@ app.use("/api/posts", postsRouter);
 app.use("/api/events", eventsRouter);
 // Establishments
 app.use("/api/establishments", establishmentsRouter);
+
+// Mails
+app.use("/api/mails", mailsRouter);
 
 // root health check
 app.get("/", (_req, res) => res.send("Backend is running"));

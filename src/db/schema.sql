@@ -263,6 +263,25 @@ INSERT INTO `users` (
     '22233',
     NULL
   )
+ ,
+  (
+    3,
+    'viktorlinne',
+    'viktor.linne@gmail.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAA",
+    CURRENT_DATE(),
+    NULL,
+    'Viktor',
+    'Linné',
+    '2002-01-18',
+    'Webadmin',
+    '+46708788520',
+    NULL,
+    'Kungsbacka',
+    '',
+    '43490',
+    NULL
+  )
 ON DUPLICATE KEY UPDATE
   `username` = VALUES(`username`),
   `email` = VALUES(`email`),
@@ -296,21 +315,23 @@ ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`descrip
 
 -- Assign roles: give Alice all roles (1,2,3) and Bob the Member role (3)
 -- Replace any existing role assignments for these seeded users to keep test state predictable.
-DELETE FROM `users_roles` WHERE `uid` IN (1,2);
+DELETE FROM `users_roles` WHERE `uid` IN (1,2,3);
 INSERT INTO `users_roles` (`uid`, `rid`) VALUES
   (1,1), (1,2), (1,3),
-  (2,3);
-
+  (2,3),
+  (3,1), (3,2), (3,3);
+  
 -- Ensure a sample achievement exists for Bob (single, replace any existing for that user/achievement)
 DELETE FROM `users_achievements` WHERE `uid` = 2 AND `aid` = 1;
 INSERT INTO `users_achievements` (`uid`, `aid`, `awardedAt`) VALUES
   (2, 1, '2025-12-01 10:00:00');
 
 -- Ensure seeded users have predictable lodge assignments (replace existing assignments)
-DELETE FROM `users_lodges` WHERE `uid` IN (1,2);
+DELETE FROM `users_lodges` WHERE `uid` IN (1,2,3);
 INSERT INTO `users_lodges` (`uid`, `lid`) VALUES
   (1, 1),
-  (2, 2)
+  (2, 2),
+  (3, 1)
 ON DUPLICATE KEY UPDATE `lid` = VALUES(`lid`);
 
 
@@ -347,15 +368,6 @@ ON DUPLICATE KEY UPDATE
   `description` = VALUES(`description`),
   `picture` = VALUES(`picture`);
 
--- Mails seed (ensure some mails exist for local/dev testing)
-INSERT INTO `mails` (`id`, `lid`, `title`, `content`) VALUES
-  (1, 1, 'Welcome Mail', 'Welcome to the lodge! Please read the guidelines.'),
-  (2, 2, 'Event Reminder', 'Reminder: upcoming event this weekend. Please RSVP!')
-ON DUPLICATE KEY UPDATE
-  `lid` = VALUES(`lid`),
-  `title` = VALUES(`title`),
-  `content` = VALUES(`content`);
-
 -- Event attendances (RSVP)
 CREATE TABLE IF NOT EXISTS `events_attendances` (
   `uid` int(11) NOT NULL,
@@ -365,6 +377,19 @@ CREATE TABLE IF NOT EXISTS `events_attendances` (
   KEY `fk_events_attendances_event` (`eid`),
   CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Users ↔ Mails (inbox entries generated when a mail is sent to users)
+CREATE TABLE IF NOT EXISTS `users_mails` (
+  `uid` int(11) NOT NULL,
+  `mid` int(11) NOT NULL,
+  `sentAt` datetime NOT NULL,
+  `isRead` tinyint(1) NOT NULL DEFAULT 0,
+  `delivered` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`uid`,`mid`),
+  KEY `fk_users_mails_mail` (`mid`),
+  CONSTRAINT `fk_users_mails_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_mails_mail` FOREIGN KEY (`mid`) REFERENCES `mails` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 -- =====================================================
 -- PAYMENT TABLES

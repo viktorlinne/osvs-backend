@@ -403,6 +403,52 @@
       ]
     },
     {
+      "name": "Mails",
+      "item": [
+        {
+          "name": "Create Mail (POST /api/mails)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lid\": 1,\n  \"title\": \"Newsletter\",\n  \"content\": \"Hello lodge members!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/mails",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "mails"]
+            }
+          },
+          "description": "Admin/Editor only: create a mail record for a lodge. Authenticate first (login)."
+        },
+        {
+          "name": "Send Mail (POST /api/mails/:id/send)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseURL}}/api/mails/{{mailId}}/send",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "mails", "{{mailId}}", "send"]
+            }
+          },
+          "description": "Admin/Editor only: send created mail to lodge members. Set environment variable `mailId` from Create Mail response."
+        },
+        {
+          "name": "Inbox (GET /api/mails/inbox)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/mails/inbox",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "mails", "inbox"]
+            }
+          },
+          "description": "Get current user's inbox (if internal inbox entries are present)."
+        }
+      ]
+    },
+    {
       "name": "Events",
       "item": [
         {
@@ -526,10 +572,12 @@
       ]
     }
   ],
-  "variable": [
+  "variables": [
     { "key": "baseURL", "value": "http://localhost:4000" },
     { "key": "userId", "value": "2" },
     { "key": "lodgeId", "value": "1" },
-    { "key": "eventId", "value": "1" }
+    { "key": "eventId", "value": "1" },
+    { "key": "estId", "value": "1" },
+    { "key": "mailId", "value": "1" }
   ]
 }
