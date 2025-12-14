@@ -3,10 +3,12 @@ import { randomUUID } from "crypto";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import compression from "compression";
+import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import pinoHttp from "pino-http";
 import logger from "./utils/logger";
 import requestId from "./middleware/requestId";
+import requestTiming from "./middleware/requestTiming";
 import * as Sentry from "@sentry/node";
 import { Integrations } from "@sentry/tracing";
 import errorHandler from "./middleware/errorHandler";
@@ -49,8 +51,21 @@ if (process.env.SENTRY_DSN) {
 app.use(cors());
 // Response compression (P0 performance win)
 app.use(compression());
+// Request timing middleware (P1)
+app.use(requestTiming);
 app.use(express.json());
 app.use(cookieParser());
+
+// Rate limit auth endpoints to protect from brute-force
+app.use(
+  "/api/auth",
+  rateLimit({
+    windowMs: Number(process.env.AUTH_RATE_WINDOW_MS ?? 60_000),
+    max: Number(process.env.AUTH_RATE_MAX ?? 10),
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+);
 
 app.use(
   pinoHttp({

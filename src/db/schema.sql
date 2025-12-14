@@ -174,6 +174,7 @@ CREATE TABLE `establishments_events` (
   CONSTRAINT `fk_establishments_events_event` FOREIGN KEY (`eid`)
     REFERENCES `events` (`id`)
     ON UPDATE CASCADE
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Achievements

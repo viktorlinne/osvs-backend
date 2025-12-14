@@ -5,9 +5,14 @@ import {
   getPaymentHandler,
   getByTokenHandler,
 } from "../controllers/stripeController";
+import {
+  createEventPaymentHandler,
+  getEventPaymentHandler,
+  getEventByTokenHandler,
+} from "../controllers/stripeController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema, tokenParamSchema } from "./schemas/params";
+import { eventIdParamSchema, idParamSchema, tokenParamSchema } from "./schemas/params";
 
 const router = express.Router();
 
@@ -27,6 +32,27 @@ router.get(
   "/membership/status/:token",
   validateParams(tokenParamSchema),
   wrapAsync(getByTokenHandler)
+);
+
+// Event payment endpoints
+router.post(
+  "/event/:eventId",
+  authMiddleware,
+  validateParams(eventIdParamSchema),
+  wrapAsync(createEventPaymentHandler)
+);
+
+router.get(
+  "/event/:id",
+  authMiddleware,
+  validateParams(idParamSchema),
+  wrapAsync(getEventPaymentHandler)
+);
+
+router.get(
+  "/event/status/:token",
+  validateParams(tokenParamSchema),
+  wrapAsync(getEventByTokenHandler)
 );
 
 export default router;

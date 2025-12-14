@@ -10,3 +10,10 @@ export const idParamSchema = z.object({
 export const tokenParamSchema = z.object({
   token: z.string().min(1),
 });
+
+export const eventIdParamSchema = z.object({
+  eventId: z.preprocess((v) => {
+    if (typeof v === "string") return Number(v);
+    return v;
+  }, z.number().int().positive()),
+});

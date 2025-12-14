@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "../types/auth";
 import logger from "../utils/logger";
 import * as eventsService from "../services/eventsService";
 import { ValidationError } from "../utils/errors";
+import { getCached, setCached, delPattern } from "../infra/cache";
 
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
@@ -17,6 +18,12 @@ export async function listEventsHandler(
     : 20;
   const offset =
     Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
+  const cacheKey = `events:limit:${limit}:offset:${offset}`;
+  const cached = await getCached(cacheKey);
+  if (cached && Array.isArray(cached as unknown[])) {
+    return res.status(200).json({ events: cached });
+  }
+
   const rows = await eventsService.listEvents(limit, offset);
   const dto = rows.map((r) => ({
     id: r.id,
@@ -25,6 +32,7 @@ export async function listEventsHandler(
     endDate: r.endDate,
     price: r.price,
   }));
+  void setCached(cacheKey, dto);
   return res.status(200).json({ events: dto });
 }
 
@@ -86,6 +94,7 @@ export async function updateEventHandler(
     endDate: string;
   }>;
   await eventsService.updateEvent(id, payload);
+  void delPattern("events:*");
   return res.status(200).json({ success: true });
 }
 
@@ -98,6 +107,7 @@ export async function deleteEventHandler(
   if (!Number.isFinite(id))
     return res.status(400).json({ error: "Invalid id" });
   await eventsService.deleteEvent(id);
+  void delPattern("events:*");
   return res.status(200).json({ success: true });
 }
 
@@ -111,6 +121,7 @@ export async function linkLodgeHandler(
   if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId)))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.linkLodgeToEvent(id, Number(lodgeId));
+  void delPattern("events:*");
   return res.status(200).json({ success: true });
 }
 
@@ -127,6 +138,7 @@ export async function unlinkLodgeHandler(
   if (!Number.isFinite(id) || !Number.isFinite(lodgeId))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.unlinkLodgeFromEvent(id, lodgeId);
+  void delPattern("events:*");
   return res.status(200).json({ success: true });
 }
 
@@ -140,6 +152,7 @@ export async function linkEstablishmentHandler(
   if (!Number.isFinite(id) || !Number.isFinite(Number(esId)))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.linkEstablishmentToEvent(id, Number(esId));
+  void delPattern("events:*");
   return res.status(200).json({ success: true });
 }
 
@@ -155,6 +168,7 @@ export async function unlinkEstablishmentHandler(
   if (!Number.isFinite(id) || !Number.isFinite(esId))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.unlinkEstablishmentFromEvent(id, esId);
+  void delPattern("events:*");
   return res.status(200).json({ success: true });
 }
 

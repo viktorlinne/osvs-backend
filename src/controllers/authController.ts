@@ -177,15 +177,15 @@ export async function register(
       .json({ error: "Missing required registration fields" });
   }
 
-  // Enforce lodge assignment during registration
-  if (typeof lodgeId === "undefined" || lodgeId === null) {
-    return res
-      .status(400)
-      .json({ error: "lodgeId is required for registration" });
-  }
-  const numericLodgeId = Number(lodgeId);
-  if (!Number.isFinite(numericLodgeId)) {
-    return res.status(400).json({ error: "Invalid lodgeId" });
+  // `lodgeId` is optional during registration; validate only when provided
+  let numericLodgeId: number | undefined;
+  if (typeof lodgeId !== "undefined" && lodgeId !== null) {
+    numericLodgeId = Number(lodgeId);
+    if (!Number.isFinite(numericLodgeId)) {
+      return res.status(400).json({ error: "Invalid lodgeId" });
+    }
+  } else {
+    numericLodgeId = undefined;
   }
 
   const hash = await hashPassword(password as string);

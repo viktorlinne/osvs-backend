@@ -121,6 +121,59 @@ export async function createMembershipPaymentIfMissing(
   return await createMembershipPayment({ uid, year, amount });
 }
 
+export async function createMembershipPaymentsIfMissingBulk(
+  uids: number[],
+  year: number,
+  amount?: number
+): Promise<MembershipPayment[]> {
+  if (!Array.isArray(uids) || uids.length === 0) return [];
+  const amt = typeof amount === "number" ? amount : 600;
+
+  // Find which users already have invoices for this year
+  const placeholders = uids.map(() => "?").join(",");
+  const existingRows = await query<{ uid: number }>(
+    `SELECT uid FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
+    [year, ...uids]
+  );
+  const existingSet = new Set(existingRows.map((r) => Number(r.uid)));
+
+  // Prepare values for missing users
+  const now = new Date();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const values: Array<Array<unknown>> = [];
+  const tokens: Record<number, string> = {};
+  for (const uid of uids) {
+    if (existingSet.has(uid)) continue;
+    const token = randomBytes(16).toString("hex");
+    tokens[uid] = token;
+    values.push([uid, amt, year, "Pending", null, token, expiresAt, now, now]);
+  }
+
+  if (values.length === 0) {
+    // nothing to create
+    return await query<MembershipPayment>(
+      `SELECT * FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
+      [year, ...uids]
+    );
+  }
+
+  try {
+    await pool.query(
+      `INSERT IGNORE INTO membership_payments (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt) VALUES ?`,
+      [values]
+    );
+  } catch (err) {
+    // ignore errors from bulk insert — we'll try to return whatever exists
+  }
+
+  // Return all payments for these users/year
+  const rows = await query<MembershipPayment>(
+    `SELECT * FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
+    [year, ...uids]
+  );
+  return rows;
+}
+
 export default {
   createMembershipPayment,
   getById,

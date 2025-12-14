@@ -1,0 +1,1449 @@
+{
+	"info": {
+		"_postman_id": "4bcf7730-e7a7-4bce-b990-48a099b68b12",
+		"name": "osvs (organized)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "41680732"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('has auth cookies', () => {",
+									"  pm.expect(pm.cookies.get('osvs_access')).to.exist;",
+									"  pm.expect(pm.cookies.get('osvs_refresh')).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"S3cureP@ssw0rd\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/auth/login",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"charlie\",\n  \"email\": \"charlie@example.com\",\n  \"password\": \"P@ssw0rd123\",\n  \"firstname\": \"Charlie\",\n  \"lastname\": \"Test\",\n  \"dateOfBirth\": \"1995-01-01\",\n  \"official\": \"None\",\n  \"mobile\": \"+46700000000\",\n  \"city\": \"Stockholm\",\n  \"address\": \"Street 1\",\n  \"zipcode\": \"11111\",\n  \"lodgeId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/auth/register",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"alice@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/auth/forgot-password",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"<token>\",\n  \"password\": \"NewPassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/auth/reset-password",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"reset-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/auth/refresh",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/auth/logout",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/auth/me",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Current User (PUT /api/users/me)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstname\": \"Anna\",\n  \"lastname\": \"Karlsson\",\n  \"city\": \"Stockholm\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/users/me",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Update User (PUT /api/users/:id)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstname\": \"Erik\",\n  \"zipcode\": \"41122\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/users/{{userId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload My Picture (multipart)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "picture",
+									"type": "file",
+									"src": "postman-cloud:///1f0d60ec-2796-4ff0-a58c-ab41689db686"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/users/me/picture",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me",
+								"picture"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Other User Picture (multipart)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "picture",
+									"type": "file",
+									"src": "postman-cloud:///1f0d60ec-2796-4ff0-a58c-ab41689db686"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/users/{{userId}}/picture",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"picture"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set Roles (POST /api/users/:id/roles)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"roleIds\": [1,2]\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/users/{{userId}}/roles",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Post Achievement",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"achievementId\": 1,\n  \"awardedAt\": \"2025-01-01\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/users/{{userId}}/achievements",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{userId}}",
+								"achievements"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "List Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/admin/roles",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cleanup Tokens",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/admin/cleanup-tokens",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"cleanup-tokens"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Lodges",
+			"item": [
+				{
+					"name": "List Lodges",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/lodges",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"lodges"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Lodge",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"New Lodge\",\n  \"description\": \"The Newest Lodge\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/lodges",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"lodges"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Lodge",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Renamed\",\n  \"description\": \"Updated\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/lodges/{{lodgeId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"lodges",
+								"{{lodgeId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Establishments",
+			"item": [
+				{
+					"name": "List Establishments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/establishments",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"establishments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Establishment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/establishments/{{estId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"establishments",
+								"{{estId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Establishment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"New Establishment\",\n  \"description\": \"Main branch\",\n  \"address\": \"Street 12, City\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/establishments",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"establishments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Establishment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Renamed Establishment\",\n  \"address\": \"New address 3\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/establishments/{{estId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"establishments",
+								"{{estId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Establishment",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/establishments/{{estId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"establishments",
+								"{{estId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Link Lodge to Establishment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"lodgeId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/establishments/{{estId}}/lodges",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"establishments",
+								"{{estId}}",
+								"lodges"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unlink Lodge from Establishment",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"lodgeId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/establishments/{{estId}}/lodges",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"establishments",
+								"{{estId}}",
+								"lodges"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Posts",
+			"item": [
+				{
+					"name": "List Posts (GET /api/posts)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/posts",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Post (GET /api/posts/:id)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/posts/{{postId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Post (POST /api/posts)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Hello\",\n  \"description\": \"A short post\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/posts",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Post (PUT /api/posts/:id)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated\",\n  \"description\": \"Updated content\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/posts/{{postId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{postId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Events",
+			"item": [
+				{
+					"name": "List Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/events",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/events/{{eventId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{eventId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List My Events (GET /api/events/mine)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/events/mine",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"mine"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Event",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"New Event\",\n  \"description\": \"Details\",\n  \"startDate\": \"2026-08-01T18:00:00\",\n  \"endDate\": \"2026-08-01T21:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/events",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Event",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Updated\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/events/{{eventId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{eventId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Event",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/events/{{eventId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{eventId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Link Lodge to Event (POST /api/events/:id/lodges)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"lodgeId\": {{lodgeId}}\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/events/{{eventId}}/lodges",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{eventId}}",
+								"lodges"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unlink Lodge from Event (DELETE /api/events/:id/lodges)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"lodgeId\": {{lodgeId}}\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/events/{{eventId}}/lodges",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{eventId}}",
+								"lodges"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "RSVP - Set (POST /api/events/:id/rsvp)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"going\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/events/{{eventId}}/rsvp",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{eventId}}",
+								"rsvp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "RSVP - Get current user's RSVP (GET /api/events/:id/rsvp)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/events/{{eventId}}/rsvp",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{eventId}}",
+								"rsvp"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Mails",
+			"item": [
+				{
+					"name": "Create Mail (POST /api/mails)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"lid\": 1,\n  \"title\": \"Newsletter\",\n  \"content\": \"Hello lodge members!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/mails",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"mails"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Send Mail (POST /api/mails/:id/send)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/mails/{{mailId}}/send",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"mails",
+								"{{mailId}}",
+								"send"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Inbox (GET /api/mails/inbox)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/mails/inbox",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"mails",
+								"inbox"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Misc",
+			"item": [
+				{
+					"name": "Revoke All Sessions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/auth/revoke-all",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"revoke-all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Request Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"alice@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/auth/forgot-password",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Stripe",
+			"item": [
+				{
+					"name": "Create Membership PaymentIntent (POST /api/stripe/membership)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+									"const body = pm.response.json();",
+									"if (body && body.payment && body.payment.id) { pm.environment.set('paymentId', body.payment.id); }",
+									"if (body && body.intent_id) { pm.environment.set('intentId', body.intent_id); }",
+									"// also expose client_secret for manual frontend testing (optional)",
+									"if (body && body.client_secret) { pm.environment.set('clientSecret', body.client_secret); }",
+									"if (body && body.payment && body.payment.invoice_token) { pm.environment.set('invoiceToken', body.payment.invoice_token); }"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"year\": 2026\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/stripe/membership",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"stripe",
+								"membership"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Membership Payment (GET /api/stripe/membership/:id)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/stripe/membership/{{paymentId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"stripe",
+								"membership",
+								"{{paymentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Membership Status by Token (GET /api/stripe/membership/status/:token)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/stripe/membership/status/{{invoiceToken}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"stripe",
+								"membership",
+								"status",
+								"{{invoiceToken}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Event PaymentIntent (POST /api/stripe/event/:id)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+									"const body = pm.response.json();",
+									"if (body && body.payment && body.payment.id) { pm.environment.set('paymentId', body.payment.id); }",
+									"if (body && body.intent_id) { pm.environment.set('intentId', body.intent_id); }",
+									"if (body && body.client_secret) { pm.environment.set('clientSecret', body.client_secret); }"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/stripe/event/{{eventId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"stripe",
+								"event",
+								"{{eventId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event Payment (GET /api/stripe/event/:id)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/stripe/event/{{eventId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"stripe",
+								"event",
+								"{{eventId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Event Status by Token (GET /api/stripe/event/status/:token)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/stripe/event/status/{{invoiceToken}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"stripe",
+								"event",
+								"status",
+								"{{invoiceToken}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Swish",
+			"item": [
+				{
+					"name": "Create Membership (POST /api/swish/membership)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"year\": 2026,\n  \"amount\": 600\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/swish/membership",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"swish",
+								"membership"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Membership (GET /api/swish/membership/:id)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/swish/membership/{{paymentId}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"swish",
+								"membership",
+								"{{paymentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Membership Status (GET /api/swish/membership/status/:token)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/swish/membership/status/{{invoiceToken}}",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"swish",
+								"membership",
+								"status",
+								"{{invoiceToken}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Payment Webhook (POST /api/swish/webhook)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"provider\": \"swish\",\n  \"providerRef\": \"<provider-ref>\",\n  \"status\": \"paid\",\n  \"metadata\": {\"invoice_token\": \"<invoice-token>\"}\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/swish/webhook",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"swish",
+								"webhook"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseURL",
+			"value": "http://localhost:4000",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "lodgeId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "estId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "eventId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "postId",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "mailId",
+			"value": "",
+			"type": "default"
+		}
+	]
+}

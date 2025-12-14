@@ -7,6 +7,7 @@ import {
   getPublicUrl,
   deleteProfilePicture,
 } from "../utils/fileUpload";
+import { getCached, setCached, delPattern } from "../infra/cache";
 
 export async function listPostsHandler(
   _req: AuthenticatedRequest,
@@ -22,6 +23,12 @@ export async function listPostsHandler(
   const offset =
     Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
   const rows = await postsService.listPosts(limit, offset);
+  // Cache key includes pagination so front-end can page deterministically
+  const cacheKey = `posts:limit:${limit}:offset:${offset}`;
+  const cached = await getCached(cacheKey);
+  if (cached && Array.isArray(cached as unknown[])) {
+    return res.status(200).json({ posts: cached });
+  }
   // Resolve public URLs for pictures if present
   const withUrls = await Promise.all(
     rows.map(async (r) => ({
@@ -33,6 +40,9 @@ export async function listPostsHandler(
       description: r.description ? String(r.description).slice(0, 200) : "",
     }))
   );
+
+  // store cache (best-effort)
+  void setCached(cacheKey, withUrls);
   res.status(200).json({ posts: withUrls });
 }
 
@@ -80,6 +90,8 @@ export async function createPostHandler(
   }
 
   const id = await postsService.createPost(title, description, pictureKey);
+  // invalidate list caches
+  void delPattern("posts:*");
   return res.status(201).json({ success: true, id });
 }
 
@@ -119,6 +131,9 @@ export async function updatePostHandler(
       description ?? null,
       newKey
     );
+
+    // Invalidate list caches after an update
+    void delPattern("posts:*");
 
     return res.status(200).json({ success: true });
   } catch (err) {

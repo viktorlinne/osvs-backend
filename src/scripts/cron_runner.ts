@@ -21,17 +21,17 @@ async function createAnniversaryInvoices() {
       "SELECT id FROM users WHERE MONTH(createdAt) = ? AND DAY(createdAt) = ?",
       [month, day]
     );
-    for (const r of rows) {
+    const uids = rows
+      .map((r) => Number(r.id))
+      .filter((x) => Number.isFinite(x));
+    if (uids.length > 0) {
       try {
-        await paymentsService.createMembershipPaymentIfMissing(
-          r.id,
+        await paymentsService.createMembershipPaymentsIfMissingBulk(
+          uids,
           now.getFullYear()
         );
       } catch (err) {
-        logger.warn(
-          { err, userId: r.id },
-          "Failed to create anniversary invoice for user"
-        );
+        logger.warn({ err }, "Failed to bulk-create anniversary invoices");
       }
     }
   } catch (err) {
