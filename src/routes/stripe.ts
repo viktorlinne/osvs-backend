@@ -4,7 +4,6 @@ import {
   createMembershipHandler,
   getPaymentHandler,
   getByTokenHandler,
-  // (wait until later to implement) webhookHandler,
 } from "../controllers/stripeController";
 
 const router = express.Router();
@@ -18,7 +17,5 @@ router.get("/membership/:id", authMiddleware, getPaymentHandler);
 // Get payment status by invoice token (public)
 router.get("/membership/status/:token", getByTokenHandler);
 
-// Payment provider webhook (provider posts updates here) — use raw body for signature verification
-// NOTE: webhook route is mounted directly in app.ts before body parsing middleware
 
 export default router;
