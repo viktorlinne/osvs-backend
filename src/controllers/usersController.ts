@@ -20,7 +20,7 @@ import logger from "../utils/logger";
 export async function updatePictureHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   try {
     const uid = req.user?.userId;
@@ -60,14 +60,14 @@ export async function updatePictureHandler(
     const url = await getPublicUrl(newKey);
     return res.json({ pictureKey: newKey, pictureUrl: url });
   } catch (err) {
-    return next(err);
+    return _next(err);
   }
 }
 
 export async function updateOtherPictureHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   try {
     const callerId = req.user?.userId;
@@ -110,7 +110,7 @@ export async function updateOtherPictureHandler(
     const url = await getPublicUrl(newKey);
     return res.json({ pictureKey: newKey, pictureUrl: url });
   } catch (err) {
-    return next(err);
+    return _next(err);
   }
 }
 
@@ -121,7 +121,7 @@ export async function placeholderMe(_req: AuthenticatedRequest, res: Response) {
 export async function updateMeHandler(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   try {
     const uid = req.user?.userId;
@@ -146,14 +146,14 @@ export async function updateMeHandler(
 
     return res.status(200).json({ user: toPublicUser(updated) });
   } catch (err) {
-    return next(err);
+    return _next(err);
   }
 }
 
 export async function updateUserHandler(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   try {
     const callerId = req.user?.userId;
@@ -181,7 +181,7 @@ export async function updateUserHandler(
 
     return res.status(200).json({ user: toPublicUser(updated) });
   } catch (err) {
-    return next(err);
+    return _next(err);
   }
 }
 

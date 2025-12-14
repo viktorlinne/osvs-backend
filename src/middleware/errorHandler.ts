@@ -3,7 +3,6 @@ import { ValidationError, ConflictError, HttpError } from "../utils/errors";
 import logger from "../utils/logger";
 import * as Sentry from "@sentry/node";
 
-// Express error-handling middleware
 export default function errorHandler(
   err: unknown,
   req: Request,
@@ -13,6 +12,20 @@ export default function errorHandler(
   const requestId =
     res.locals.requestId ??
     (req as unknown as { requestId?: string }).requestId;
+
+  // Handle JSON parse errors from body-parser (Bad Request)
+  if (err instanceof SyntaxError) {
+    const maybe = err as unknown as { status?: number; body?: unknown };
+    if (maybe.status === 400 && "body" in maybe) {
+      logger.warn({ msg: "Invalid JSON body", err, requestId });
+      return res.status(400).json({
+        error: "InvalidJson",
+        message: "Invalid JSON in request body",
+        status: 400,
+        requestId,
+      });
+    }
+  }
 
   // Known validation error (400)
   if (err instanceof ValidationError) {
@@ -55,19 +68,30 @@ export default function errorHandler(
     });
   }
 
-  // Unknown error: log and return 500
-  // capture in Sentry (if configured) with request scope
+  // Unknown error: capture and return 500
   try {
     Sentry.captureException(err as Error);
   } catch {
     /* ignore */
   }
 
-  logger.error({ msg: "Unhandled error", err, requestId });
+  // Log with stack when available; include requestId for correlation
+  if (err instanceof Error) {
+    logger.error({
+      msg: "Unhandled error",
+      err: { message: err.message, stack: err.stack },
+      requestId,
+    });
+  } else {
+    logger.error({ msg: "Unhandled error", err, requestId });
+  }
+
+  const includeStack = process.env.NODE_ENV !== "production";
   return res.status(500).json({
     error: "InternalError",
     message: "Internal server error",
     status: 500,
     requestId,
+    ...(includeStack && err instanceof Error ? { stack: err.stack } : {}),
   });
 }

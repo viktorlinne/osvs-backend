@@ -4,6 +4,9 @@ import {
   createLodgeHandler,
   updateLodgeHandler,
 } from "../controllers/lodgesController";
+import { wrapAsync } from "../middleware/asyncHandler";
+import { validateParams } from "../middleware/validate";
+import { idParamSchema } from "./schemas/params";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
@@ -13,7 +16,7 @@ import { createLodgeSchema, updateLodgeSchema } from "./schemas/lodges";
 const router = express.Router();
 
 // Authenticated: list lodges
-router.get("/", authMiddleware, listLodgesHandler);
+router.get("/", authMiddleware, wrapAsync(listLodgesHandler));
 
 // Admin: create lodge
 router.post(
@@ -21,7 +24,7 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(createLodgeSchema),
-  createLodgeHandler
+  wrapAsync(createLodgeHandler)
 );
 
 // Admin: update lodge
@@ -30,7 +33,8 @@ router.put(
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(updateLodgeSchema),
-  updateLodgeHandler
+  validateParams(idParamSchema),
+  wrapAsync(updateLodgeHandler)
 );
 
 export default router;

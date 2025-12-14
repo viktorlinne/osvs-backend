@@ -1,11 +1,11 @@
 // Minimal declaration for sib-api-v3-sdk to satisfy TypeScript
 declare module "sib-api-v3-sdk" {
-  export const ApiClient: any;
+  export const ApiClient: unknown;
   export class TransactionalEmailsApi {
     constructor();
-    sendTransacEmail(body: any): Promise<any>;
+    sendTransacEmail(body: unknown): Promise<unknown>;
   }
   export class SendSmtpEmail {
-    constructor(init?: any);
+    constructor(init?: Record<string, unknown>);
   }
 }

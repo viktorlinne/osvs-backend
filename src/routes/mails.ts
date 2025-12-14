@@ -2,13 +2,15 @@ import express from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
-import { validateBody } from "../middleware/validate";
+import { validateBody, validateParams } from "../middleware/validate";
 import { createMailSchema } from "./schemas/mails";
 import {
   createMailHandler,
   sendMailHandler,
   inboxHandler,
 } from "../controllers/mailsController";
+import { wrapAsync } from "../middleware/asyncHandler";
+import { idParamSchema } from "./schemas/params";
 
 const router = express.Router();
 
@@ -18,7 +20,7 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
   validateBody(createMailSchema),
-  createMailHandler
+  wrapAsync(createMailHandler)
 );
 
 // Send a mail to the lodge members (admin/editor)
@@ -26,10 +28,11 @@ router.post(
   "/:id/send",
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
-  sendMailHandler
+  validateParams(idParamSchema),
+  wrapAsync(sendMailHandler)
 );
 
 // Get current user's inbox
-router.get("/inbox", authMiddleware, inboxHandler);
+router.get("/inbox", authMiddleware, wrapAsync(inboxHandler));
 
 export default router;

@@ -1,6 +1,7 @@
 import pool from "../config/db";
 import { query } from "../utils/query";
 import { randomBytes } from "crypto";
+import type { ResultSetHeader } from "mysql2";
 
 export interface MembershipPayment {
   id: number;
@@ -38,7 +39,7 @@ export async function createMembershipPayment(
   (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt)
   VALUES (?, ?, ?, 'Pending', ?, ?, ?, NOW(), NOW())`;
 
-  const [res] = await pool.execute(sql, [
+  const [res] = await pool.execute<ResultSetHeader>(sql, [
     uid,
     amount,
     year,
@@ -46,7 +47,7 @@ export async function createMembershipPayment(
     invoice_token,
     expiresAt,
   ]);
-  const insertId = (res as any).insertId as number;
+  const insertId = (res.insertId ?? 0) as number;
 
   const rows = await query<MembershipPayment>(
     "SELECT * FROM membership_payments WHERE id = ?",
@@ -77,12 +78,20 @@ export async function updateByProviderRef(
   provider: string,
   providerRef: string,
   status: string,
-  metadata: any = null
+  metadata: Record<string, unknown> | null = null
 ): Promise<void> {
   // Update matching row(s) by invoice_token OR provider_ref.
   // This covers the case where the PaymentIntent metadata contains an invoice_token
   // for an existing Pending invoice, or when provider_ref is already set.
   const metadataStr = metadata ? JSON.stringify(metadata) : null;
+  // extract invoice_token from metadata when present and a string
+  let invoiceToken: string | null = null;
+  if (
+    metadata &&
+    typeof (metadata as Record<string, unknown>).invoice_token === "string"
+  ) {
+    invoiceToken = (metadata as Record<string, any>).invoice_token as string;
+  }
   await pool.execute(
     "UPDATE membership_payments SET status = ?, provider = ?, provider_ref = ?, metadata = ? WHERE invoice_token = ? OR provider_ref = ?",
     [
@@ -90,7 +99,7 @@ export async function updateByProviderRef(
       provider,
       providerRef,
       metadataStr,
-      metadata?.invoice_token ?? null,
+      invoiceToken ?? null,
       providerRef,
     ]
   );

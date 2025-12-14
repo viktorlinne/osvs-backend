@@ -1,5 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import request from "supertest";
+import type { Request, Response, NextFunction } from "express";
+import { UserRole, type AuthenticatedRequest } from "../types/auth";
+import type { UserRecord } from "../types/user";
 
 // We'll isolate module loading so our mocks are applied before routes are required
 describe("Auth routes (register, login, me)", () => {
@@ -23,14 +25,18 @@ describe("Auth routes (register, login, me)", () => {
       city: "City",
       address: "Street 1",
       zipcode: "12345",
-    } as any;
+    } as Partial<UserRecord>;
 
     jest.doMock("../services/userService", () => ({
       createUser: jest.fn().mockResolvedValue(mockUser),
     }));
 
     jest.doMock("../utils/fileUpload", () => ({
-      uploadProfilePicture: (_req: any, _res: any, next: any) => next(),
+      uploadProfilePicture: (
+        _req: Request,
+        _res: Response,
+        next: NextFunction
+      ) => next(),
       uploadToStorage: jest.fn().mockResolvedValue(null),
     }));
 
@@ -62,7 +68,7 @@ describe("Auth routes (register, login, me)", () => {
       id: 2,
       email: "bob@example.com",
       passwordHash: "hashedpw",
-    } as any;
+    } as Partial<UserRecord>;
 
     jest.doMock("../services/userService", () => ({
       findByEmail: jest.fn().mockResolvedValue(mockUser),
@@ -106,12 +112,16 @@ describe("Auth routes (register, login, me)", () => {
       city: "City",
       address: "Road 2",
       zipcode: "54321",
-    } as any;
+    } as Partial<UserRecord>;
 
     // mock auth middleware to attach user
     jest.doMock("../middleware/auth", () => {
-      const fn = (req: any, _res: any, next: any) => {
-        req.user = { userId: 3, roles: ["admin"] };
+      const fn = (
+        req: AuthenticatedRequest,
+        _res: Response,
+        next: NextFunction
+      ) => {
+        req.user = { userId: 3, roles: [UserRole.Admin] };
         next();
       };
       return { __esModule: true, default: fn };
@@ -124,7 +134,11 @@ describe("Auth routes (register, login, me)", () => {
 
     jest.doMock("../utils/fileUpload", () => ({
       __esModule: true,
-      uploadProfilePicture: (_req: any, _res: any, next: any) => next(),
+      uploadProfilePicture: (
+        _req: Request,
+        _res: Response,
+        next: NextFunction
+      ) => next(),
       getPublicUrl: jest.fn().mockResolvedValue("http://example.com/pic.jpg"),
     }));
 

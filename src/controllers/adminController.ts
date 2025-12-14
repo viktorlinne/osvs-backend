@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import logger from "../utils/logger";
 import {
   cleanupExpiredRevocations,
   cleanupExpiredRefreshTokens,
@@ -9,30 +8,20 @@ import { listRoles } from "../services/userService";
 export async function cleanupTokens(
   _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
-  try {
-    await cleanupExpiredRevocations();
-    await cleanupExpiredRefreshTokens();
-    return res.status(200).json({ ok: true });
-  } catch (err) {
-    logger.error("adminController.cleanupTokens error:", err);
-    return next(err);
-  }
+  await cleanupExpiredRevocations();
+  await cleanupExpiredRefreshTokens();
+  return res.status(200).json({ ok: true });
 }
 
 export async function getRoles(
   _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
-  try {
-    const roles = await listRoles();
-    return res.status(200).json({ roles });
-  } catch (err) {
-    logger.error("adminController.getRoles error:", err);
-    return next(err);
-  }
+  const roles = await listRoles();
+  return res.status(200).json({ roles });
 }
 
 export default { cleanupTokens, getRoles };

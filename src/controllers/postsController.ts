@@ -1,7 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import logger from "../utils/logger";
 import * as postsService from "../services/postsService";
 import {
   uploadToStorage,
@@ -12,90 +11,71 @@ import {
 export async function listPostsHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
-  try {
-    const rows = await postsService.listPosts();
-    // Resolve public URLs for pictures if present
-    const withUrls = await Promise.all(
-      rows.map(async (r) => ({
-        ...r,
-        // Use a shared post placeholder when no picture is set
-        pictureUrl: await getPublicUrl(
-          r.picture ?? "posts/postPlaceholder.png"
-        ),
-      }))
-    );
-    res.status(200).json({ posts: withUrls });
-  } catch (error) {
-    logger.error("Error listing posts", error);
-    next(error);
-  }
+  const rows = await postsService.listPosts();
+  // Resolve public URLs for pictures if present
+  const withUrls = await Promise.all(
+    rows.map(async (r) => ({
+      ...r,
+      // Use a shared post placeholder when no picture is set
+      pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
+    }))
+  );
+  res.status(200).json({ posts: withUrls });
 }
 
 export async function getPostHandler(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
-  try {
-    const postId = Number(req.params.id);
-    if (!Number.isFinite(postId))
-      return res.status(400).json({ error: "Invalid post id" });
+  const postId = Number(req.params.id);
+  if (!Number.isFinite(postId))
+    return res.status(400).json({ error: "Invalid post id" });
 
-    const post = await postsService.getPostById(postId);
-    if (!post) return res.status(404).json({ error: "Post not found" });
+  const post = await postsService.getPostById(postId);
+  if (!post) return res.status(404).json({ error: "Post not found" });
 
-    const pictureUrl = await getPublicUrl(
-      post.picture ?? "posts/postPlaceholder.png"
-    );
-    return res.status(200).json({ post: { ...post, pictureUrl } });
-  } catch (err) {
-    logger.error("Error fetching post", err);
-    return next(err);
-  }
+  const pictureUrl = await getPublicUrl(
+    post.picture ?? "posts/postPlaceholder.png"
+  );
+  return res.status(200).json({ post: { ...post, pictureUrl } });
 }
 
 export async function createPostHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
-  try {
-    const { title, description } = req.body as {
-      title?: string;
-      description?: string;
-    };
+  const { title, description } = req.body as {
+    title?: string;
+    description?: string;
+  };
+  if (!title || !description)
+    return res.status(400).json({ error: "Missing title or description" });
 
-    if (!title || !description) {
-      return res.status(400).json({ error: "Missing title or description" });
-    }
-
-    // Upload image (optional) and process it as a post image (resized + webp)
-    const file = req.file;
-    let pictureKey: string | null = null;
-    if (file) {
-      const key = await uploadToStorage(file, {
-        folder: "posts",
-        prefix: "post_",
-        size: { width: 800, height: 600 },
-      });
-      if (!key) return res.status(500).json({ error: "Failed to store image" });
-      pictureKey = key;
-    }
-
-    const id = await postsService.createPost(title, description, pictureKey);
-    return res.status(201).json({ success: true, id });
-  } catch (err) {
-    logger.error("Error creating post", err);
-    return next(err);
+  // Upload image (optional) and process it as a post image (resized + webp)
+  const file = req.file;
+  let pictureKey: string | null = null;
+  if (file) {
+    const key = await uploadToStorage(file, {
+      folder: "posts",
+      prefix: "post_",
+      size: { width: 800, height: 600 },
+    });
+    if (!key) return res.status(500).json({ error: "Failed to store image" });
+    pictureKey = key;
   }
+
+  const id = await postsService.createPost(title, description, pictureKey);
+  return res.status(201).json({ success: true, id });
 }
 
 export async function updatePostHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   let newKey: string | null = null;
   try {
@@ -135,10 +115,10 @@ export async function updatePostHandler(
     if (newKey) {
       try {
         await deleteProfilePicture(newKey);
-      } catch (e) {
+      } catch  {
         // ignore
       }
     }
-    return next(err);
+    throw err;
   }
 }

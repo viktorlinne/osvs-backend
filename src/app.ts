@@ -8,6 +8,7 @@ import logger from "./utils/logger";
 import requestId from "./middleware/requestId";
 import * as Sentry from "@sentry/node";
 import { Integrations } from "@sentry/tracing";
+import errorHandler from "./middleware/errorHandler";
 
 // Route imports
 import authRouter from "./routes/auth";
@@ -91,14 +92,15 @@ app.use("/api/stripe", stripeRouter);
 // root health check
 app.get("/", (_req, res) => res.send("Backend is running"));
 
-import errorHandler from "./middleware/errorHandler";
 app.use(errorHandler);
 
 // Process-level error handlers for visibility during development/ops
 process.on("uncaughtException", (err) => {
   try {
     Sentry.captureException(err as Error);
-  } catch {}
+  } catch {
+    // ignore Sentry errors
+  }
   logger.fatal({ msg: "uncaughtException", err });
   // depending on your deploy strategy you might want to exit
 });
@@ -106,7 +108,9 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
   try {
     Sentry.captureException(reason as Error);
-  } catch {}
+  } catch {
+    // ignore Sentry errors
+  }
   logger.error({ msg: "unhandledRejection", reason });
 });
 

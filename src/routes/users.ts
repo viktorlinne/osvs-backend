@@ -1,5 +1,8 @@
 import express from "express";
 import usersController from "../controllers/usersController";
+import { wrapAsync } from "../middleware/asyncHandler";
+import { validateParams } from "../middleware/validate";
+import { idParamSchema } from "./schemas/params";
 import authMiddleware from "../middleware/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
 import { validateBody } from "../middleware/validate";
@@ -15,31 +18,32 @@ import { UserRole } from "../types/auth";
 const router = express.Router();
 
 // Minimal placeholder routes used in tests. Expand as needed.
-router.get("/me", authMiddleware, usersController.placeholderMe);
+router.get("/me", authMiddleware, wrapAsync(usersController.placeholderMe));
 
 // Update current user's profile
 router.put(
   "/me",
   authMiddleware,
   validateBody(updateUserSchema),
-  usersController.updateMeHandler
+  wrapAsync(usersController.updateMeHandler)
 );
 
 // Update current user's profile picture
-router.post(
-  "/me/picture",
+router.put(
+  "/:id",
   authMiddleware,
-  uploadProfilePicture,
-  usersController.updatePictureHandler
+  requireRole(UserRole.Admin),
+  validateBody(updateUserSchema),
+  validateParams(idParamSchema),
+  wrapAsync(usersController.updateUserHandler)
 );
-
 // Admin: update another user's profile (partial)
 router.put(
   "/:id",
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(updateUserSchema),
-  usersController.updateUserHandler
+  wrapAsync(usersController.updateUserHandler)
 );
 
 // Update another user's profile picture (editor/admin only)
@@ -48,7 +52,7 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Editor, UserRole.Admin),
   uploadProfilePicture,
-  usersController.updateOtherPictureHandler
+  wrapAsync(usersController.updateOtherPictureHandler)
 );
 
 // Award an achievement to a user (admin/editor only)
@@ -57,7 +61,7 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
   validateBody(addAchievementSchema),
-  usersController.addAchievementHandler
+  wrapAsync(usersController.addAchievementHandler)
 );
 
 // Get a user's achievement history (admin/editor only)
@@ -65,7 +69,7 @@ router.get(
   "/:id/achievements",
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
-  usersController.getAchievementsHandler
+  wrapAsync(usersController.getAchievementsHandler)
 );
 
 // Get a user's roles (admin only)
@@ -73,7 +77,7 @@ router.get(
   "/:id/roles",
   authMiddleware,
   requireRole(UserRole.Admin),
-  usersController.getRolesHandler
+  wrapAsync(usersController.getRolesHandler)
 );
 
 // Set roles for a user (admin only)
@@ -82,7 +86,7 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(setRolesSchema),
-  usersController.setRolesHandler
+  wrapAsync(usersController.setRolesHandler)
 );
 
 // Get a user's lodge (admin only)
@@ -90,7 +94,7 @@ router.get(
   "/:id/lodges",
   authMiddleware,
   requireRole(UserRole.Admin),
-  usersController.getLodgeHandler
+  wrapAsync(usersController.getLodgeHandler)
 );
 
 // Set (replace) a user's lodge (admin only). Send `{ "lodgeId": <id> }` or `{ "lodgeId": null }` to remove.
@@ -99,7 +103,7 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(setLodgeSchema),
-  usersController.setLodgeHandler
+  wrapAsync(usersController.setLodgeHandler)
 );
 
 export default router;

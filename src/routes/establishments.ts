@@ -11,6 +11,9 @@ import {
   linkLodgeHandler,
   unlinkLodgeHandler,
 } from "../controllers/establishmentsController";
+import { wrapAsync } from "../middleware/asyncHandler";
+import { validateParams } from "../middleware/validate";
+import { idParamSchema } from "./schemas/params";
 import { validateBody } from "../middleware/validate";
 import {
   createEstablishmentSchema,
@@ -21,8 +24,13 @@ import {
 const router = express.Router();
 
 // List/get
-router.get("/", authMiddleware, listEstablishmentsHandler);
-router.get("/:id", authMiddleware, getEstablishmentHandler);
+router.get("/", authMiddleware, wrapAsync(listEstablishmentsHandler));
+router.get(
+  "/:id",
+  authMiddleware,
+  validateParams(idParamSchema),
+  wrapAsync(getEstablishmentHandler)
+);
 
 // Admin CRUD
 router.post(
@@ -30,20 +38,20 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(createEstablishmentSchema),
-  createEstablishmentHandler
+  wrapAsync(createEstablishmentHandler)
 );
 router.put(
   "/:id",
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(updateEstablishmentSchema),
-  updateEstablishmentHandler
+  wrapAsync(updateEstablishmentHandler)
 );
 router.delete(
   "/:id",
   authMiddleware,
   requireRole(UserRole.Admin),
-  deleteEstablishmentHandler
+  wrapAsync(deleteEstablishmentHandler)
 );
 
 // Link/unlink lodges to establishments
@@ -52,14 +60,14 @@ router.post(
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(linkLodgeSchema),
-  linkLodgeHandler
+  wrapAsync(linkLodgeHandler)
 );
 router.delete(
   "/:id/lodges",
   authMiddleware,
   requireRole(UserRole.Admin),
   validateBody(linkLodgeSchema),
-  unlinkLodgeHandler
+  wrapAsync(unlinkLodgeHandler)
 );
 
 export default router;

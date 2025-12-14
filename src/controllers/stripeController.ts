@@ -1,14 +1,18 @@
 import { Request, Response } from "express";
+import type { AuthenticatedRequest } from "../types/auth";
 import stripeService from "../services/stripeService";
 import * as membershipPaymentsService from "../services/membershipPaymentsService";
 import pool from "../config/db";
 import { Stripe } from "stripe";
 
 // Create membership invoice and return client_secret for Stripe.js
-export async function createMembershipHandler(req: Request, res: Response) {
+export async function createMembershipHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
   try {
-    const user = (req as any).user;
-    const uid: number = user && user.userId;
+    const user = req.user;
+    const uid: number = user?.userId as number;
     const { year, amount } = req.body as { year: number; amount?: number };
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
     if (typeof year !== "number")
@@ -37,11 +41,10 @@ export async function createMembershipHandler(req: Request, res: Response) {
       currency: payment.currency ?? "SEK",
       metadata,
     });
-
     return res.json({
       payment,
-      client_secret: (intent as any).client_secret,
-      intent_id: (intent as any).id,
+      client_secret: intent.client_secret ?? null,
+      intent_id: intent.id ?? null,
     });
   } catch (err) {
     return res.status(500).json({ error: String(err) });
@@ -99,7 +102,7 @@ export async function webhookHandler(req: Request, res: Response) {
       } else if (metadata.type === "event") {
         // Update matching event_payments row(s)
         const invoiceToken = metadata.invoice_token as string | undefined;
-        const [rows] = await pool.execute(
+        const [_rows] = await pool.execute(
           "UPDATE event_payments SET status = 'Paid', provider = ?, provider_ref = ? WHERE invoice_token = ? OR provider_ref = ?",
           ["stripe", providerRef, invoiceToken ?? null, providerRef]
         );
@@ -116,7 +119,7 @@ export async function webhookHandler(req: Request, res: Response) {
           metadata
         );
       } else if (metadata.type === "event") {
-        await pool.execute(
+        const [_rows] = await pool.execute(
           "UPDATE event_payments SET status = 'Failed', provider = ?, provider_ref = ? WHERE invoice_token = ? OR provider_ref = ?",
           ["stripe", providerRef, metadata.invoice_token ?? null, providerRef]
         );

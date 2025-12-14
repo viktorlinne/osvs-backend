@@ -5,6 +5,9 @@ import {
   createPostHandler,
   updatePostHandler,
 } from "../controllers/postsController";
+import { wrapAsync } from "../middleware/asyncHandler";
+import { validateParams } from "../middleware/validate";
+import { idParamSchema } from "./schemas/params";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
@@ -15,10 +18,15 @@ import { createPostSchema, updatePostSchema } from "./schemas/posts";
 const router = express.Router();
 
 // Authenticated list posts
-router.get("/", authMiddleware, listPostsHandler);
+router.get("/", authMiddleware, wrapAsync(listPostsHandler));
 
 // Authenticated get post by id
-router.get("/:id", authMiddleware, getPostHandler);
+router.get(
+  "/:id",
+  authMiddleware,
+  validateParams(idParamSchema),
+  wrapAsync(getPostHandler)
+);
 
 // Editor/Admin create post
 router.post(
@@ -27,7 +35,7 @@ router.post(
   requireRole(UserRole.Admin, UserRole.Editor),
   uploadProfilePicture,
   validateBody(createPostSchema),
-  createPostHandler
+  wrapAsync(createPostHandler)
 );
 
 // Editor/Admin update post (atomic)
@@ -37,7 +45,7 @@ router.put(
   requireRole(UserRole.Admin, UserRole.Editor),
   uploadProfilePicture,
   validateBody(updatePostSchema),
-  updatePostHandler
+  wrapAsync(updatePostHandler)
 );
 
 export default router;

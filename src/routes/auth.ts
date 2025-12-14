@@ -9,6 +9,7 @@ import {
 } from "./schemas/auth";
 import authMiddleware from "../middleware/auth";
 import * as authController from "../controllers/authController";
+import { wrapAsync } from "../middleware/asyncHandler";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 
@@ -43,7 +44,7 @@ router.post(
   validateBody(registerSchema),
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
-  authController.register
+  wrapAsync(authController.register)
 );
 
 // Request login with email and password
@@ -51,26 +52,26 @@ router.post(
   "/login",
   loginLimiter,
   validateBody(loginSchema),
-  authController.login
+  wrapAsync(authController.login)
 );
 
 // Request a password reset: returns a one-time token in tmp/ (for Postman/dev).
 router.post(
   "/forgot-password",
   validateBody(forgotSchema),
-  authController.forgotPassword
+  wrapAsync(authController.forgotPassword)
 );
 
 // Perform password reset using token
 router.post(
   "/reset-password",
   validateBody(resetSchema),
-  authController.resetPassword
+  wrapAsync(authController.resetPassword)
 );
 
-router.post("/refresh", authController.refresh);
-router.get("/me", authMiddleware, authController.me);
-router.post("/logout", authMiddleware, authController.logout);
-router.post("/revoke-all", authMiddleware, authController.revokeAll);
+router.post("/refresh", wrapAsync(authController.refresh));
+router.get("/me", authMiddleware, wrapAsync(authController.me));
+router.post("/logout", authMiddleware, wrapAsync(authController.logout));
+router.post("/revoke-all", authMiddleware, wrapAsync(authController.revokeAll));
 
 export default router;

@@ -3,6 +3,7 @@ import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 import adminController from "../controllers/adminController";
+import { wrapAsync } from "../middleware/asyncHandler";
 
 const router = Router();
 
@@ -11,7 +12,7 @@ router.post(
   "/cleanup-tokens",
   authMiddleware,
   requireRole(UserRole.Admin),
-  adminController.cleanupTokens
+  wrapAsync(adminController.cleanupTokens)
 );
 
 // List available roles
@@ -19,7 +20,7 @@ router.get(
   "/roles",
   authMiddleware,
   requireRole(UserRole.Admin),
-  adminController.getRoles
+  wrapAsync(adminController.getRoles)
 );
 
 export default router;
