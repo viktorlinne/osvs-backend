@@ -4,6 +4,40 @@ import {
   cleanupExpiredRefreshTokens,
 } from "../services/tokenService";
 import { CRON_INTERVAL_MS } from "../config/constants";
+import { query } from "../utils/query";
+import * as paymentsService from "../services/membershipPaymentsService";
+
+async function createAnniversaryInvoices() {
+  try {
+    const now = new Date();
+    const month = now.getMonth() + 1; // JS months 0-11
+    const day = now.getDate();
+    logger.info(
+      { month, day },
+      "Cron: creating anniversary invoices for users"
+    );
+
+    const rows = await query<{ id: number }>(
+      "SELECT id FROM users WHERE MONTH(createdAt) = ? AND DAY(createdAt) = ?",
+      [month, day]
+    );
+    for (const r of rows) {
+      try {
+        await paymentsService.createMembershipPaymentIfMissing(
+          r.id,
+          now.getFullYear()
+        );
+      } catch (err) {
+        logger.warn(
+          { err, userId: r.id },
+          "Failed to create anniversary invoice for user"
+        );
+      }
+    }
+  } catch (err) {
+    logger.error("Anniversary invoice creation failed:", err);
+  }
+}
 
 async function runCleanup() {
   try {
@@ -18,10 +52,13 @@ async function runCleanup() {
 
 // Run immediately on start
 runCleanup();
+// Also run anniversary invoice creation immediately on start
+createAnniversaryInvoices();
 
 // Schedule to run using configurable interval (defaults to 24 hours)
 globalThis.setInterval(() => {
   runCleanup();
+  createAnniversaryInvoices();
 }, CRON_INTERVAL_MS);
 
 // Keep process alive when run as a script

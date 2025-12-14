@@ -7,6 +7,7 @@ import { normalizeToSqlDate } from "../utils/dates";
 import { ValidationError, ConflictError } from "../utils/errors";
 import logger from "../utils/logger";
 import { revokeAllRefreshTokensForUser } from "./tokenService";
+import * as paymentsService from "./membershipPaymentsService";
 
 // Type guard to ensure DB result is a valid UserRecord
 export function isValidUserRecord(value: unknown): value is UserRecord {
@@ -448,7 +449,9 @@ export async function createUser(
     // If we started a transaction ensure it's rolled back and connection released
     try {
       await conn.rollback();
-    } catch {}
+    } catch {
+      // Ignore rollback errors
+    }
     conn.release();
 
     if (dbErr && (dbErr.code === "ER_DUP_ENTRY" || dbErr.errno === 1062)) {
@@ -471,9 +474,24 @@ export async function createUser(
   // If we successfully committed earlier, release connection and fetch user
   try {
     conn.release();
-  } catch {}
+  } catch {
+    // Ignore release errors
+  }
 
   if (!insertId) return undefined;
+  // Create a membership payment invoice for the new user (current year)
+  try {
+    await paymentsService.createMembershipPayment({
+      uid: insertId,
+      year: new Date().getFullYear(),
+    });
+  } catch (err) {
+    logger.warn(
+      { err, userId: insertId },
+      "Failed to create membership invoice for new user"
+    );
+    // Do not fail user registration if invoice creation fails; continue.
+  }
   const user = await findById(insertId);
   if (!user) return undefined;
   return toPublicUser(user);

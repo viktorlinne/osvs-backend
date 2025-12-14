@@ -80,7 +80,7 @@ CREATE TABLE `events` (
   `title` varchar(256) NOT NULL,
   `description` text NOT NULL,
   `lodgeMeeting` tinyint(1),
-  `price` int(11) NOT NULL,
+  `price` decimal(10,2) NOT NULL,
   `startDate` datetime NOT NULL,
   `endDate` datetime NOT NULL,
   PRIMARY KEY (`id`)
@@ -337,8 +337,8 @@ ON DUPLICATE KEY UPDATE `lid` = VALUES(`lid`);
 
 -- Seed events for local/dev testing
 INSERT INTO `events` (`id`, `title`, `description`, `lodgeMeeting`, `price`, `startDate`, `endDate`) VALUES
-  (1, 'Founders Meeting', 'Annual founders meeting and dinner.', 1, 0, '2026-02-14 18:00:00', '2026-02-14 21:00:00'),
-  (2, 'Summer Gathering', 'Open summer gathering with activities.', 0, 100, '2026-06-20 10:00:00', '2026-06-20 18:00:00')
+  (1, 'Founders Meeting', 'Annual founders meeting and dinner.', 1, 275.00, '2026-02-14 18:00:00', '2026-02-14 21:00:00'),
+  (2, 'Summer Gathering', 'Open summer gathering with activities.', 0, 0.00, '2026-06-20 10:00:00', '2026-06-20 18:00:00')
 ON DUPLICATE KEY UPDATE
   `title` = VALUES(`title`),
   `description` = VALUES(`description`),
@@ -408,10 +408,19 @@ CREATE TABLE IF NOT EXISTS `users_mails` (
 CREATE TABLE `membership_payments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
-  `amount` int(11) NOT NULL,
+  `amount` decimal(10,2)  NOT NULL DEFAULT 600.00,
   `year` int(11) NOT NULL,
-  `status` enum('approved','paid','failed','expired','refunded') NOT NULL,
+  `status` enum('Pending','Paid','Failed','Refunded') NOT NULL DEFAULT 'Pending',
+  `provider` varchar(64) DEFAULT NULL,
+  `provider_ref` varchar(256) DEFAULT NULL,
+  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
+  `invoice_token` varchar(128) DEFAULT NULL,
+  `expiresAt` datetime DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
+  `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
+  `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_membership_uid_year` (`uid`,`year`),
   KEY `fk_membership_payments_user` (`uid`),
   CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`)
     REFERENCES `users` (`id`)
@@ -423,12 +432,18 @@ CREATE TABLE `event_payments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
   `eid` int(11) NOT NULL,
-  `amount` decimal(10,2) NOT NULL,
-  `status` enum('pending','approved','paid','failed','expired','refunded') NOT NULL,
-  `swishId` varchar(256) DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `status` enum('Pending','Paid','Failed','Refunded') NOT NULL DEFAULT 'Pending',
+  `provider` varchar(64) DEFAULT NULL,
+  `provider_ref` varchar(256) DEFAULT NULL,
+  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
+  `invoice_token` varchar(128) DEFAULT NULL,
+  `expiresAt` datetime DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
   `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
   `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_event_payments_uid_eid` (`uid`,`eid`),
   KEY `fk_event_payments_user` (`uid`),
   KEY `fk_event_payments_event` (`eid`),
   CONSTRAINT `fk_event_payments_event` FOREIGN KEY (`eid`)

@@ -514,6 +514,40 @@
           }
         },
         {
+          "name": "Link Lodge to Event (POST /api/events/:id/lodges)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lodgeId\": {{lodgeId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/events/{{eventId}}/lodges",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events", "{{eventId}}", "lodges"]
+            }
+          },
+          "description": "Admin/Editor only: link a lodge to an event. Creates event payments for lodge members if event price > 0. Authenticate first (login)."
+        },
+        {
+          "name": "Unlink Lodge from Event (DELETE /api/events/:id/lodges)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lodgeId\": {{lodgeId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/events/{{eventId}}/lodges",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "events", "{{eventId}}", "lodges"]
+            }
+          },
+          "description": "Admin/Editor only: unlink a lodge from an event."
+        },
+        {
           "name": "RSVP - Set (POST /api/events/:id/rsvp)",
           "request": {
             "method": "POST",
@@ -570,14 +604,203 @@
           }
         }
       ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create Membership Invoice (POST /api/payments/membership)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"year\": 2026,\n  \"amount\": 600\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/payments/membership",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "payments", "membership"]
+            }
+          },
+          "description": "Create a membership payment invoice for the authenticated user. Returns payment record including `id` and `invoice_token`."
+        },
+        {
+          "name": "Get Membership Payment (GET /api/payments/membership/:id)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/payments/membership/{{paymentId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "payments", "membership", "{{paymentId}}"]
+            }
+          },
+          "description": "Authenticated endpoint: fetch a membership payment by id (owner or admin). Set `paymentId` from Create response."
+        },
+        {
+          "name": "Get Payment Status by Token (GET /api/payments/membership/status/:token)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/payments/membership/status/{{invoiceToken}}",
+              "host": ["{{baseURL}}"],
+              "path": [
+                "api",
+                "payments",
+                "membership",
+                "status",
+                "{{invoiceToken}}"
+              ]
+            }
+          },
+          "description": "Public endpoint to check invoice status by token. Set `invoiceToken` from Create response."
+        },
+        {
+          "name": "Payment Provider Webhook (POST /api/payments/webhook)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"swish\",\n  \"providerRef\": \"<provider-ref>\",\n  \"status\": \"paid\",\n  \"metadata\": {\"invoice_token\": \"<invoice-token>\"}\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/payments/webhook",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "payments", "webhook"]
+            }
+          },
+          "description": "Endpoint for payment providers to POST status updates."
+        }
+      ]
+    },
+    {
+      "name": "Stripe",
+      "item": [
+        {
+          "name": "Create Membership PaymentIntent (POST /api/stripe/membership)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body && body.payment && body.payment.id) { pm.environment.set('paymentId', body.payment.id); }",
+                  "if (body && body.intent_id) { pm.environment.set('intentId', body.intent_id); }",
+                  "// also expose client_secret for manual frontend testing (optional)",
+                  "if (body && body.client_secret) { pm.environment.set('clientSecret', body.client_secret); }",
+                  "if (body && body.payment && body.payment.invoice_token) { pm.environment.set('invoiceToken', body.payment.invoice_token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"year\": 2026\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/stripe/membership",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "stripe", "membership"]
+            }
+          },
+          "description": "Create or get membership invoice and return Stripe client_secret. Authenticate first."
+        },
+        {
+          "name": "Get Membership Payment (GET /api/stripe/membership/:id)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/stripe/membership/{{paymentId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "stripe", "membership", "{{paymentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Membership Status by Token (GET /api/stripe/membership/status/:token)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/stripe/membership/status/{{invoiceToken}}",
+              "host": ["{{baseURL}}"],
+              "path": [
+                "api",
+                "stripe",
+                "membership",
+                "status",
+                "{{invoiceToken}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Event PaymentIntent (POST /api/stripe/event/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body && body.payment && body.payment.id) { pm.environment.set('paymentId', body.payment.id); }",
+                  "if (body && body.intent_id) { pm.environment.set('intentId', body.intent_id); }",
+                  "if (body && body.client_secret) { pm.environment.set('clientSecret', body.client_secret); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": {
+              "raw": "{{baseURL}}/api/stripe/event/{{eventId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "stripe", "event", "{{eventId}}"]
+            }
+          },
+          "description": "Create or get event payment for the authenticated user and return Stripe client_secret. Authenticate first."
+        },
+        {
+          "name": "Get Event Payment (GET /api/stripe/event/:id)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/stripe/event/{{eventId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "stripe", "event", "{{eventId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Event Status by Token (GET /api/stripe/event/status/:token)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseURL}}/api/stripe/event/status/{{invoiceToken}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "stripe", "event", "status", "{{invoiceToken}}"]
+            }
+          }
+        }
+      ],
+      "variables": [
+        { "key": "baseURL", "value": "http://localhost:4000" },
+        { "key": "userId", "value": "2" },
+        { "key": "lodgeId", "value": "1" },
+        { "key": "eventId", "value": "1" },
+        { "key": "estId", "value": "1" },
+        { "key": "mailId", "value": "1" },
+        { "key": "paymentId", "value": "1" },
+        { "key": "invoiceToken", "value": "" }
+      ]
     }
-  ],
-  "variables": [
-    { "key": "baseURL", "value": "http://localhost:4000" },
-    { "key": "userId", "value": "2" },
-    { "key": "lodgeId", "value": "1" },
-    { "key": "eventId", "value": "1" },
-    { "key": "estId", "value": "1" },
-    { "key": "mailId", "value": "1" }
   ]
 }

@@ -18,10 +18,21 @@ import postsRouter from "./routes/posts";
 import eventsRouter from "./routes/events";
 import establishmentsRouter from "./routes/establishments";
 import mailsRouter from "./routes/mails";
+import swishRouter from "./routes/swish";
+import stripeRouter from "./routes/stripe";
+import { webhookHandler } from "./controllers/stripeController";
 
 dotenv.config();
 
 const app = express();
+
+// Mount Stripe webhook before any body parsing middleware so we get the raw body
+// required for signature verification.
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  webhookHandler
+);
 
 // Initialize Sentry if configured
 if (process.env.SENTRY_DSN) {
@@ -68,16 +79,35 @@ app.use("/api/lodges", lodgesRouter);
 app.use("/api/posts", postsRouter);
 // Events routes
 app.use("/api/events", eventsRouter);
-// Establishments
+// Establishments routes
 app.use("/api/establishments", establishmentsRouter);
-
-// Mails
+// Mails routes
 app.use("/api/mails", mailsRouter);
+// Swish Payments
+app.use("/api/swish", swishRouter);
+// Stripe Payments
+app.use("/api/stripe", stripeRouter);
 
 // root health check
 app.get("/", (_req, res) => res.send("Backend is running"));
 
 import errorHandler from "./middleware/errorHandler";
 app.use(errorHandler);
+
+// Process-level error handlers for visibility during development/ops
+process.on("uncaughtException", (err) => {
+  try {
+    Sentry.captureException(err as Error);
+  } catch {}
+  logger.fatal({ msg: "uncaughtException", err });
+  // depending on your deploy strategy you might want to exit
+});
+
+process.on("unhandledRejection", (reason) => {
+  try {
+    Sentry.captureException(reason as Error);
+  } catch {}
+  logger.error({ msg: "unhandledRejection", reason });
+});
 
 export default app;

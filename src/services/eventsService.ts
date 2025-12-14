@@ -131,6 +131,46 @@ export async function linkLodgeToEvent(
       "INSERT IGNORE INTO lodges_events (lid, eid) VALUES (?, ?)",
       [lodgeId, eventId]
     );
+    // Create event payment rows for all users in this lodge (idempotent)
+    // Fetch event price
+    const [evRows] = await conn.execute(
+      "SELECT price FROM events WHERE id = ? LIMIT 1",
+      [eventId]
+    );
+    const evArr = evRows as unknown as Array<Record<string, unknown>>;
+    const price =
+      Array.isArray(evArr) && evArr.length > 0
+        ? Number(evArr[0].price ?? 0)
+        : 0;
+
+    // If event is free (price <= 0) skip creating payment rows
+    if (!Number.isFinite(price) || price <= 0) {
+      await conn.commit();
+      conn.release();
+      return;
+    }
+
+    // Fetch users in the lodge
+    const [userRows] = await conn.execute(
+      "SELECT uid FROM users_lodges WHERE lid = ?",
+      [lodgeId]
+    );
+    const users = userRows as unknown as Array<Record<string, unknown>>;
+    if (Array.isArray(users) && users.length > 0) {
+      const values = users
+        .map((u) => {
+          const uid = typeof u.uid === "number" ? u.uid : Number(u.uid);
+          if (!Number.isFinite(uid)) return null;
+          return [uid, eventId, price, "Pending"];
+        })
+        .filter((v) => v !== null) as Array<Array<unknown>>;
+      if (values.length > 0) {
+        await conn.query(
+          "INSERT IGNORE INTO event_payments (uid, eid, amount, status) VALUES ?",
+          [values]
+        );
+      }
+    }
     await conn.commit();
   } catch (err) {
     try {
@@ -147,10 +187,61 @@ export async function unlinkLodgeFromEvent(
   eventId: number,
   lodgeId: number
 ): Promise<void> {
-  await pool.execute("DELETE FROM lodges_events WHERE lid = ? AND eid = ?", [
-    lodgeId,
-    eventId,
-  ]);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Find users in the lodge that would no longer be invited to the event
+    // after this lodge is unlinked (i.e. they are not members of any other
+    // lodge that is linked to the same event).
+    const [rows] = await conn.execute(
+      `
+      SELECT ul.uid
+      FROM users_lodges ul
+      WHERE ul.lid = ?
+        AND NOT EXISTS (
+          SELECT 1
+          FROM lodges_events le
+          JOIN users_lodges ul2 ON ul2.lid = le.lid
+          WHERE le.eid = ? AND ul2.uid = ul.uid AND le.lid != ?
+        )
+    `,
+      [lodgeId, eventId, lodgeId]
+    );
+    const arr = rows as unknown as Array<Record<string, unknown>>;
+    const uids = Array.isArray(arr)
+      ? arr
+          .map((r) => (typeof r.uid === "number" ? r.uid : Number(r.uid)))
+          .filter((x) => Number.isFinite(x))
+      : [];
+
+    // Delete only Pending payments for those users for this event
+    if (uids.length > 0) {
+      const placeholders = uids.map(() => "?").join(",");
+      const params: Array<unknown> = [eventId, ...uids];
+      await conn.execute(
+        `DELETE FROM event_payments WHERE eid = ? AND status = 'Pending' AND uid IN (${placeholders})`,
+        params
+      );
+    }
+
+    // Finally remove the lodge->event mapping
+    await conn.execute("DELETE FROM lodges_events WHERE lid = ? AND eid = ?", [
+      lodgeId,
+      eventId,
+    ]);
+
+    await conn.commit();
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      // ignore
+    }
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 export async function linkEstablishmentToEvent(
