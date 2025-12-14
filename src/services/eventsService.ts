@@ -12,10 +12,22 @@ export type EventRecord = {
   endDate: string;
 };
 
-export async function listEvents(): Promise<EventRecord[]> {
-  const [rows] = await pool.execute(
-    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events ORDER BY startDate DESC"
-  );
+export async function listEvents(
+  limit?: number,
+  offset?: number
+): Promise<EventRecord[]> {
+  const params: Array<unknown> = [];
+  let sql =
+    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events ORDER BY startDate DESC";
+  if (typeof limit === "number") {
+    sql += " LIMIT ?";
+    params.push(limit);
+    if (typeof offset === "number") {
+      sql += " OFFSET ?";
+      params.push(offset);
+    }
+  }
+  const [rows] = await pool.execute(sql, params);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr
@@ -278,7 +290,9 @@ export async function unlinkEstablishmentFromEvent(
 }
 
 export async function listEventsForUser(
-  userId: number
+  userId: number,
+  limit?: number,
+  offset?: number
 ): Promise<EventRecord[]> {
   // List events visible to the user based on lodge membership
   const sql = `
@@ -289,7 +303,17 @@ export async function listEventsForUser(
     WHERE ul.uid = ?
     ORDER BY e.startDate ASC
   `;
-  const [rows] = await pool.execute(sql, [userId]);
+  const params: Array<unknown> = [userId];
+  let finalSql = sql;
+  if (typeof limit === "number") {
+    finalSql += " LIMIT ?";
+    params.push(limit);
+    if (typeof offset === "number") {
+      finalSql += " OFFSET ?";
+      params.push(offset);
+    }
+  }
+  const [rows] = await pool.execute(finalSql, params);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr

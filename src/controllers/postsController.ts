@@ -13,13 +13,24 @@ export async function listPostsHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const rows = await postsService.listPosts();
+  const query = _req.query as Record<string, unknown>;
+  const rawLimit = Number(query.limit ?? 20);
+  const rawOffset = Number(query.offset ?? 0);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(1, rawLimit), 100)
+    : 20;
+  const offset =
+    Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
+  const rows = await postsService.listPosts(limit, offset);
   // Resolve public URLs for pictures if present
   const withUrls = await Promise.all(
     rows.map(async (r) => ({
-      ...r,
+      id: r.id,
+      title: r.title,
       // Use a shared post placeholder when no picture is set
       pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
+      // avoid returning large description in list responses
+      description: r.description ? String(r.description).slice(0, 200) : "",
     }))
   );
   res.status(200).json({ posts: withUrls });
@@ -115,7 +126,7 @@ export async function updatePostHandler(
     if (newKey) {
       try {
         await deleteProfilePicture(newKey);
-      } catch  {
+      } catch {
         // ignore
       }
     }

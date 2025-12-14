@@ -7,10 +7,22 @@ export type EstablishmentRecord = {
   description: string | null;
 };
 
-export async function listEstablishments(): Promise<EstablishmentRecord[]> {
-  const [rows] = await pool.execute(
-    "SELECT id, name, description FROM establishments ORDER BY name ASC"
-  );
+export async function listEstablishments(
+  limit?: number,
+  offset?: number
+): Promise<EstablishmentRecord[]> {
+  const params: Array<unknown> = [];
+  let sql =
+    "SELECT id, name, description FROM establishments ORDER BY name ASC";
+  if (typeof limit === "number") {
+    sql += " LIMIT ?";
+    params.push(limit);
+    if (typeof offset === "number") {
+      sql += " OFFSET ?";
+      params.push(offset);
+    }
+  }
+  const [rows] = await pool.execute(sql, params);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr

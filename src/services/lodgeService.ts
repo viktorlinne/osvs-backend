@@ -7,10 +7,21 @@ export interface LodgeRecord {
   description: string | null;
 }
 
-export async function listLodges(): Promise<LodgeRecord[]> {
-  const [rows] = await pool.execute(
-    "SELECT id, name, description FROM lodges ORDER BY id ASC"
-  );
+export async function listLodges(
+  limit?: number,
+  offset?: number
+): Promise<LodgeRecord[]> {
+  const params: Array<unknown> = [];
+  let sql = "SELECT id, name, description FROM lodges ORDER BY id ASC";
+  if (typeof limit === "number") {
+    sql += " LIMIT ?";
+    params.push(limit);
+    if (typeof offset === "number") {
+      sql += " OFFSET ?";
+      params.push(offset);
+    }
+  }
+  const [rows] = await pool.execute(sql, params);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr

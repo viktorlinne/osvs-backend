@@ -9,8 +9,23 @@ export async function listEventsHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const rows = await eventsService.listEvents();
-  return res.status(200).json({ events: rows });
+  const query = _req.query as Record<string, unknown>;
+  const rawLimit = Number(query.limit ?? 20);
+  const rawOffset = Number(query.offset ?? 0);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(1, rawLimit), 100)
+    : 20;
+  const offset =
+    Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
+  const rows = await eventsService.listEvents(limit, offset);
+  const dto = rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    startDate: r.startDate,
+    endDate: r.endDate,
+    price: r.price,
+  }));
+  return res.status(200).json({ events: dto });
 }
 
 export async function getEventHandler(
@@ -150,8 +165,23 @@ export async function listForUserHandler(
 ) {
   const uid = req.user?.userId;
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
-  const rows = await eventsService.listEventsForUser(uid);
-  return res.status(200).json({ events: rows });
+  const query = req.query as Record<string, unknown>;
+  const rawLimit = Number(query.limit ?? 20);
+  const rawOffset = Number(query.offset ?? 0);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(1, rawLimit), 100)
+    : 20;
+  const offset =
+    Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
+  const rows = await eventsService.listEventsForUser(uid, limit, offset);
+  const dto = rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    startDate: r.startDate,
+    endDate: r.endDate,
+    price: r.price,
+  }));
+  return res.status(200).json({ events: dto });
 }
 
 export async function rsvpHandler(

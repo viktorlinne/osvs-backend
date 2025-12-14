@@ -9,10 +9,22 @@ export type PostRecord = {
   picture: string | null;
 };
 
-export async function listPosts(): Promise<PostRecord[]> {
-  const [rows] = await pool.execute(
-    "SELECT id, title, description, picture FROM posts ORDER BY id DESC"
-  );
+export async function listPosts(
+  limit?: number,
+  offset?: number
+): Promise<PostRecord[]> {
+  const params: Array<unknown> = [];
+  let sql =
+    "SELECT id, title, description, picture FROM posts ORDER BY id DESC";
+  if (typeof limit === "number") {
+    sql += " LIMIT ?";
+    params.push(limit);
+    if (typeof offset === "number") {
+      sql += " OFFSET ?";
+      params.push(offset);
+    }
+  }
+  const [rows] = await pool.execute(sql, params);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr

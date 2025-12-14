@@ -2,6 +2,7 @@ import express from "express";
 import { randomUUID } from "crypto";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import compression from "compression";
 import dotenv from "dotenv";
 import pinoHttp from "pino-http";
 import logger from "./utils/logger";
@@ -46,6 +47,8 @@ if (process.env.SENTRY_DSN) {
 }
 
 app.use(cors());
+// Response compression (P0 performance win)
+app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
 
