@@ -9,7 +9,6 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "start": "node dist/index.js",
     "migrate": "ts-node src/db/migrate.ts",
-    "migrate:add": "ts-node src/db/migrate_additions.ts",
     "cleanup:tokens": "ts-node src/scripts/cleanup_tokens.ts",
     "cron:tokens": "ts-node src/scripts/cron_runner.ts",
     "lint": "eslint src --ext .ts",

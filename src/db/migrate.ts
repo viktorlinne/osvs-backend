@@ -10,10 +10,11 @@ dotenv.config();
  * Locate schema.sql in either source tree (dev) or compiled dist (prod).
  */
 function findSchemaPath(): string {
+  const cwd = process.cwd();
   const candidates = [
-    path.resolve("src/db/schema.sql"),
-    path.resolve(__dirname, "../db/schema.sql"),
-    path.resolve(__dirname, "schema.sql"),
+    path.resolve(cwd, "src/db/schema.sql"),
+    path.resolve(cwd, "dist/db/schema.sql"),
+    path.resolve(cwd, "src/db/schema.sql"),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;

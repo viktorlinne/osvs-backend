@@ -1,8 +1,6 @@
 import express from "express";
 import usersController from "../controllers/usersController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "../validators/params";
 import authMiddleware from "../middleware/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
 import { validateBody } from "../middleware/validate";

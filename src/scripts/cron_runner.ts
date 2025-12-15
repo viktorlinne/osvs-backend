@@ -18,8 +18,7 @@ async function waitForDbReady(retries = 30, ms = 1000) {
       return;
     } catch (err) {
       logger.warn({ err, attempt: i + 1 }, "DB not ready yet, retrying...");
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, ms));
+      await new Promise((r) => globalThis.setTimeout(r, ms));
     }
   }
   throw new Error("DB did not become ready in time");
