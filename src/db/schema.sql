@@ -28,6 +28,7 @@ CREATE TABLE `lodges` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(256) NOT NULL,
   `description` varchar(256) NOT NULL,
+  `address` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -302,13 +303,13 @@ ON DUPLICATE KEY UPDATE
   `notes` = VALUES(`notes`);
 
 -- Lodges seed (ensure some lodges exist for local/dev testing)
-INSERT INTO `lodges` (`id`, `name`, `description`) VALUES
-  (1, 'Stamlogen', 'Första Logen'),
-  (2, 'Stella Polaris', 'Andra Logen'),
-  (3, 'Regulus', 'Tredje Logen'),
-  (4, 'Orion', 'Fjärde Logen'),
-  (5, 'Capella', 'Femte Logen')
-ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
+INSERT INTO `lodges` (`id`, `name`, `description`, `address`) VALUES
+  (1, 'Stamlogen', 'Första Logen', 'Storgatan 5'),
+  (2, 'Stella Polaris', 'Andra Logen', 'Nordvägen 2'),
+  (3, 'Regulus', 'Tredje Logen', 'Testvägen 3'),
+  (4, 'Orion', 'Fjärde Logen', 'Stadsgatan 4'),
+  (5, 'Capella', 'Femte Logen', 'Hamngatan 6')
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`), `address` = VALUES(`address`);
 
 -- Establishments seed (ensure some establishments exist for local/dev testing)
 INSERT INTO `establishments` (`id`, `name`, `description`, `address`) VALUES

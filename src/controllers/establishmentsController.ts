@@ -37,15 +37,19 @@ export async function createEstablishmentHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { name, description } = req.body as {
+  const { name, description, address } = req.body as {
     name?: string;
     description?: string | null;
+    address?: string;
   };
   if (!name || name.trim().length === 0)
     return res.status(400).json({ error: "Missing name" });
+  if (!address || address.trim().length === 0)
+    return res.status(400).json({ error: "Missing address" });
   const id = await estService.createEstablishment({
     name: name.trim(),
     description: description ?? null,
+    address: address?.trim() ?? "",
   });
   return res.status(201).json({ success: true, id });
 }
@@ -61,6 +65,7 @@ export async function updateEstablishmentHandler(
   const payload = req.body as Partial<{
     name?: string;
     description?: string | null;
+    address?: string;
   }>;
   await estService.updateEstablishment(id, payload);
   return res.status(200).json({ success: true });

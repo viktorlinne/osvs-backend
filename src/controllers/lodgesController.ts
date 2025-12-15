@@ -24,13 +24,20 @@ export async function createLodgeHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { name, description } = req.body as {
+  const { name, description, address } = req.body as {
     name?: string;
     description?: string;
+    address?: string;
   };
   if (!name || typeof name !== "string" || name.trim().length === 0)
     return res.status(400).json({ error: "Missing or invalid name" });
-  const id = await lodgeService.createLodge(name.trim(), description ?? null);
+  if (!address || typeof address !== "string" || address.trim().length === 0)
+    return res.status(400).json({ error: "Missing or invalid address" });
+  const id = await lodgeService.createLodge(
+    name.trim(),
+    description ?? null,
+    address.trim()
+  );
   return res.status(201).json({ success: true, id });
 }
 
@@ -42,11 +49,17 @@ export async function updateLodgeHandler(
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
     return res.status(400).json({ error: "Invalid lodge id" });
-  const { name, description } = req.body as {
+  const { name, description, address } = req.body as {
     name?: string;
     description?: string;
+    address?: string;
   };
-  await lodgeService.updateLodge(id, name, description ?? null);
+  await lodgeService.updateLodge(
+    id,
+    name,
+    description ?? null,
+    typeof address === "undefined" ? undefined : address ?? null
+  );
   return res.status(200).json({ success: true });
 }
 

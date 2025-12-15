@@ -35,9 +35,15 @@ export async function findById(id: number) {
 export async function insertEstablishment(payload: {
   name: string;
   description?: string | null;
+  address: string;
 }) {
-  const sql = "INSERT INTO establishments (name, description) VALUES (?, ?)";
-  const params = [payload.name, payload.description ?? null];
+  const sql =
+    "INSERT INTO establishments (name, description, address) VALUES (?, ?, ?)";
+  const params = [
+    payload.name,
+    payload.description ?? null,
+    payload.address ?? null,
+  ];
   const [result] = (await pool.execute<ResultSetHeader>(
     sql,
     params
@@ -58,6 +64,10 @@ export async function updateEstablishmentRecord(
   if (typeof payload.description !== "undefined") {
     sets.push("description = ?");
     params.push(payload.description ?? null);
+  }
+  if (typeof payload.address !== "undefined") {
+    sets.push("address = ?");
+    params.push(payload.address ?? null);
   }
   if (sets.length === 0) return;
   params.push(id);

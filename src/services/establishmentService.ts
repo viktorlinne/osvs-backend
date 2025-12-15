@@ -37,13 +37,18 @@ export async function getEstablishmentById(
 export async function createEstablishment(payload: {
   name: string;
   description?: string | null;
+  address: string;
 }): Promise<number> {
   return await estRepo.insertEstablishment(payload);
 }
 
 export async function updateEstablishment(
   id: number,
-  payload: Partial<{ name: string; description?: string | null }>
+  payload: Partial<{
+    name: string;
+    description?: string | null;
+    address?: string;
+  }>
 ): Promise<void> {
   await estRepo.updateEstablishmentRecord(
     id,

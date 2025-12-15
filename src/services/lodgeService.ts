@@ -5,6 +5,7 @@ export interface LodgeRecord {
   id: number;
   name: string;
   description: string | null;
+  address: string | null;
 }
 
 export async function listLodges(
@@ -20,17 +21,19 @@ export async function findLodgeById(id: number): Promise<LodgeRecord | null> {
 
 export async function createLodge(
   name: string,
-  description?: string | null
+  description?: string | null,
+  address?: string | null
 ): Promise<number> {
-  return await lodgeRepo.insertLodge(name, description);
+  return await lodgeRepo.insertLodge(name, description, address);
 }
 
 export async function updateLodge(
   id: number,
   name?: string,
-  description?: string | null
+  description?: string | null,
+  address?: string | null
 ): Promise<void> {
-  await lodgeRepo.updateLodgeRecord(id, name, description);
+  await lodgeRepo.updateLodgeRecord(id, name, description, address);
 }
 
 export async function getUserLodge(
