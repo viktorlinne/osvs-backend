@@ -155,10 +155,12 @@ CREATE TABLE `lodges_events` (
   KEY `fk_lodges_events_event` (`eid`),
   CONSTRAINT `fk_lodges_events_lodge` FOREIGN KEY (`lid`)
     REFERENCES `lodges` (`id`)
-    ON UPDATE CASCADE,
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
   CONSTRAINT `fk_lodges_events_event` FOREIGN KEY (`eid`)
     REFERENCES `events` (`id`)
     ON UPDATE CASCADE
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Establishments ↔ Events (link events to establishments)
@@ -449,7 +451,8 @@ CREATE TABLE `event_payments` (
   KEY `fk_event_payments_event` (`eid`),
   CONSTRAINT `fk_event_payments_event` FOREIGN KEY (`eid`)
     REFERENCES `events` (`id`)
-    ON UPDATE CASCADE,
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
   CONSTRAINT `fk_event_payments_user` FOREIGN KEY (`uid`)
     REFERENCES `users` (`id`)
     ON UPDATE CASCADE
