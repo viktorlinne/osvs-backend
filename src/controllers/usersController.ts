@@ -263,13 +263,24 @@ export async function setRolesHandler(
         .status(400)
         .json({ error: "roleIds must be an array of numbers" });
 
-    const numericIds = roleIds
-      .map((r) => Number(r))
-      .filter((n) => Number.isFinite(n));
+    const numericIds = roleIds.map((r) => Number(r));
 
-    await import("../services/userService").then(({ setUserRoles }) =>
-      setUserRoles(targetId, numericIds)
-    );
+    if (
+      numericIds.length === 0 ||
+      numericIds.some((n) => !Number.isFinite(n) || !Number.isInteger(n))
+    ) {
+      return res
+        .status(400)
+        .json({ error: "roleIds must contain at least one integer id" });
+    }
+
+    try {
+      const { setUserRoles } = await import("../services/userService");
+      await setUserRoles(targetId, numericIds as number[]);
+    } catch (err) {
+      logger.error("Failed to set roles (service)", err);
+      return res.status(500).json({ error: "Failed to set roles" });
+    }
 
     return res.status(200).json({ success: true });
   } catch (err) {

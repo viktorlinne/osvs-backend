@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "4bcf7730-e7a7-4bce-b990-48a099b68b12",
-		"name": "osvs (organized)",
+		"name": "osvs",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "41680732"
 	},
@@ -80,34 +80,6 @@
 					"response": []
 				},
 				{
-					"name": "Forgot Password",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"alice@example.com\"\n}"
-						},
-						"url": {
-							"raw": "{{baseURL}}/api/auth/forgot-password",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"forgot-password"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Reset Password",
 					"request": {
 						"method": "POST",
@@ -168,6 +140,53 @@
 								"api",
 								"auth",
 								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Request Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"alice@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseURL}}/api/auth/forgot-password",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Revoke All Sessions",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseURL}}/api/auth/revoke-all",
+							"host": [
+								"{{baseURL}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"revoke-all"
 							]
 						}
 					},
@@ -1071,58 +1090,6 @@
 								"api",
 								"mails",
 								"inbox"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Misc",
-			"item": [
-				{
-					"name": "Revoke All Sessions",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{baseURL}}/api/auth/revoke-all",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"revoke-all"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Request Reset Password",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"alice@example.com\"\n}"
-						},
-						"url": {
-							"raw": "{{baseURL}}/api/auth/forgot-password",
-							"host": [
-								"{{baseURL}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"forgot-password"
 							]
 						}
 					},

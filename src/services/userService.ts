@@ -173,7 +173,31 @@ export async function setUserRoles(
     }
     await conn.commit();
   } catch (err) {
-    await conn.rollback();
+    try {
+      await conn.rollback();
+    } catch (rbErr) {
+      logger.error("Rollback failed after setUserRoles error", rbErr);
+    }
+
+    const dbErr = err as {
+      message?: string;
+      code?: string;
+      errno?: number;
+      sqlMessage?: string;
+      sqlState?: string;
+      sql?: string;
+    };
+    logger.error("setUserRoles DB error", {
+      userId,
+      roleIds,
+      message: dbErr?.message,
+      code: dbErr?.code,
+      errno: dbErr?.errno,
+      sqlMessage: dbErr?.sqlMessage,
+      sqlState: dbErr?.sqlState,
+      sql: dbErr?.sql,
+    });
+
     throw err;
   } finally {
     conn.release();

@@ -108,7 +108,15 @@ export async function insertUserRolesBulk(
   conn?: PoolConnection
 ) {
   if (!Array.isArray(values) || values.length === 0) return;
-  await exec("INSERT INTO users_roles (uid, rid) VALUES ?", [values], conn);
+
+  // Build a parameterized multi-row insert: (?,?),(?,?),...
+  const placeholders = values.map(() => "(?,?)").join(",");
+  const flatParams: number[] = [];
+  for (const pair of values) {
+    flatParams.push(pair[0], pair[1]);
+  }
+  const sql = `INSERT INTO users_roles (uid, rid) VALUES ${placeholders}`;
+  await exec(sql, flatParams, conn);
 }
 
 export async function updateUserProfile(

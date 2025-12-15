@@ -29,13 +29,11 @@ router.put(
 );
 
 // Update current user's profile picture
-router.put(
-  "/:id",
+router.post(
+  "/me/picture",
   authMiddleware,
-  requireRole(UserRole.Admin),
-  validateBody(updateUserSchema),
-  validateParams(idParamSchema),
-  wrapAsync(usersController.updateUserHandler)
+  uploadProfilePicture,
+  wrapAsync(usersController.updatePictureHandler)
 );
 // Admin: update another user's profile (partial)
 router.put(
