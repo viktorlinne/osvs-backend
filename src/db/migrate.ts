@@ -1,15 +1,35 @@
 import fs from "fs";
+import path from "path";
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 import logger from "../utils/logger";
 
 dotenv.config();
 
+/**
+ * Locate schema.sql in either source tree (dev) or compiled dist (prod).
+ */
+function findSchemaPath(): string {
+  const candidates = [
+    path.resolve("src/db/schema.sql"),
+    path.resolve(__dirname, "../db/schema.sql"),
+    path.resolve(__dirname, "schema.sql"),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  throw new Error(`schema.sql not found. Tried: ${candidates.join(", ")}`);
+}
+
 async function migrate() {
   let conn;
   try {
-    const sql = fs.readFileSync("src/db/schema.sql", "utf8");
-    logger.info("Running migration using dedicated connection...");
+    const schemaPath = findSchemaPath();
+    const sql = fs.readFileSync(schemaPath, "utf8");
+    logger.info(
+      { schemaPath },
+      "Running migration using dedicated connection..."
+    );
 
     conn = await mysql.createConnection({
       host: process.env.DB_HOST ?? "localhost",
@@ -52,6 +72,10 @@ async function migrate() {
     logger.info("Migration completed: all tables created successfully!");
   } catch (err) {
     logger.error("Migration failed:", err);
+    // Print stack to stdout/stderr for container logs visibility
+    // (some environments stringify objects silently)
+    // eslint-disable-next-line no-console
+    console.error(err && (err as Error).stack ? (err as Error).stack : err);
   } finally {
     if (conn) await conn.end();
     process.exit();

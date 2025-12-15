@@ -6,6 +6,24 @@ import {
 import { CRON_INTERVAL_MS } from "../config/constants";
 import { query } from "../utils/query";
 import * as paymentsService from "../services";
+import db from "../config/db";
+
+/** Wait for DB to be reachable before running cron tasks. */
+async function waitForDbReady(retries = 30, ms = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      // simple query to confirm connection
+      await db.query("SELECT 1");
+      logger.info("DB connection OK. Server time:", new Date().toISOString());
+      return;
+    } catch (err) {
+      logger.warn({ err, attempt: i + 1 }, "DB not ready yet, retrying...");
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, ms));
+    }
+  }
+  throw new Error("DB did not become ready in time");
+}
 
 async function createAnniversaryInvoices() {
   try {
@@ -50,10 +68,16 @@ async function runCleanup() {
   }
 }
 
-// Run immediately on start
-runCleanup();
-// Also run anniversary invoice creation immediately on start
-createAnniversaryInvoices();
+// Run immediately on start after DB is ready
+(async function startCron() {
+  try {
+    await waitForDbReady();
+    await runCleanup();
+    await createAnniversaryInvoices();
+  } catch (err) {
+    logger.error("Cron startup aborted because DB never became ready:", err);
+  }
+})();
 
 // Schedule to run using configurable interval (defaults to 24 hours)
 globalThis.setInterval(() => {

@@ -3,10 +3,20 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const dbPasswordRaw = process.env.DB_PASS ?? "";
+// For local Docker Compose runs where the MySQL container may have root password set
+// via compose defaults, allow falling back to 'root' when connecting to service 'db'.
+const resolvedPassword =
+  dbPasswordRaw !== ""
+    ? dbPasswordRaw
+    : process.env.DB_HOST === "db"
+    ? "root"
+    : "";
+
 const pool: Pool = mysql.createPool({
   host: process.env.DB_HOST ?? "localhost",
   user: process.env.DB_USER ?? "root",
-  password: process.env.DB_PASS ?? "",
+  password: resolvedPassword,
   database: process.env.DB_NAME ?? "osvs",
   waitForConnections: true,
   connectionLimit: 10,
