@@ -1,6 +1,92 @@
 import pool from "../config/db";
-import type { ResultSetHeader } from "mysql2";
+import { randomBytes } from "crypto";
 import { toDbRsvp, fromDbRsvp, RsvpStatus } from "../utils/rsvp";
+import * as eventsRepo from "../repositories/events.repo";
+
+export type EventPaymentRecord = {
+  id: number;
+  uid: number;
+  eid: number;
+  amount: number;
+  status: string;
+  provider?: string | null;
+  provider_ref?: string | null;
+  currency?: string | null;
+  invoice_token?: string | null;
+  expiresAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export async function getEventPrice(eventId: number): Promise<number> {
+  return await eventsRepo.selectEventPrice(eventId);
+}
+
+export async function findOrCreateEventPaymentForUser(
+  uid: number,
+  eventId: number,
+  amount?: number,
+  currency?: string | null
+): Promise<EventPaymentRecord | null> {
+  // Try to find existing
+  const existing = await eventsRepo.findEventPaymentByUidEid(uid, eventId);
+  if (existing) return existing as unknown as EventPaymentRecord;
+
+  // determine amount
+  const price =
+    typeof amount === "number"
+      ? amount
+      : await eventsRepo.selectEventPrice(eventId);
+  if (!Number.isFinite(price) || price <= 0) return null;
+
+  const token = randomBytes(16).toString("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const row = await eventsRepo.insertEventPayment({
+    uid,
+    eid: eventId,
+    amount: price,
+    invoice_token: token,
+    expiresAt,
+    currency,
+  });
+  return row as unknown as EventPaymentRecord;
+}
+
+export async function getEventPaymentById(
+  id: number
+): Promise<EventPaymentRecord | null> {
+  const row = await eventsRepo.findEventPaymentById(id);
+  return row as unknown as EventPaymentRecord | null;
+}
+
+export async function getEventPaymentByToken(
+  token: string
+): Promise<EventPaymentRecord | null> {
+  const row = await eventsRepo.findEventPaymentByToken(token);
+  return row as unknown as EventPaymentRecord | null;
+}
+
+export async function updateEventPaymentsByProviderRef(
+  provider: string,
+  providerRef: string,
+  status: string,
+  metadata: Record<string, unknown> | null = null
+): Promise<void> {
+  let invoiceToken: string | null = null;
+  if (
+    metadata &&
+    typeof (metadata as Record<string, unknown>).invoice_token === "string"
+  ) {
+    invoiceToken = (metadata as Record<string, unknown>)
+      .invoice_token as string;
+  }
+  await eventsRepo.updateEventPaymentsByProviderRef(
+    provider,
+    providerRef,
+    status,
+    invoiceToken ?? null
+  );
+}
 
 export type EventRecord = {
   id: number;
@@ -16,18 +102,7 @@ export async function listEvents(
   limit?: number,
   offset?: number
 ): Promise<EventRecord[]> {
-  const params: Array<unknown> = [];
-  let sql =
-    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events ORDER BY startDate DESC";
-  if (typeof limit === "number") {
-    sql += " LIMIT ?";
-    params.push(limit);
-    if (typeof offset === "number") {
-      sql += " OFFSET ?";
-      params.push(offset);
-    }
-  }
-  const [rows] = await pool.execute(sql, params);
+  const rows = await eventsRepo.listEvents(limit, offset);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr
@@ -44,13 +119,8 @@ export async function listEvents(
 }
 
 export async function getEventById(id: number): Promise<EventRecord | null> {
-  const [rows] = await pool.execute(
-    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events WHERE id = ? LIMIT 1",
-    [id]
-  );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0) return null;
-  const r = arr[0];
+  const r = await eventsRepo.findEventById(id);
+  if (!r) return null;
   return {
     id: Number(r.id),
     title: String(r.title ?? ""),
@@ -70,18 +140,7 @@ export async function createEvent(payload: {
   startDate: string;
   endDate: string;
 }): Promise<number> {
-  const sql =
-    "INSERT INTO events (title, description, lodgeMeeting, price, startDate, endDate) VALUES (?, ?, ?, ?, ?, ?)";
-  const params = [
-    payload.title,
-    payload.description,
-    payload.lodgeMeeting ? 1 : 0,
-    payload.price ?? 0,
-    payload.startDate,
-    payload.endDate,
-  ];
-  const [result] = await pool.execute<ResultSetHeader>(sql, params);
-  return result && typeof result.insertId === "number" ? result.insertId : 0;
+  return await eventsRepo.insertEvent(payload);
 }
 
 export async function updateEvent(
@@ -95,40 +154,11 @@ export async function updateEvent(
     endDate: string;
   }>
 ): Promise<void> {
-  const sets: string[] = [];
-  const params: Array<unknown> = [];
-  if (payload.title !== undefined) {
-    sets.push("title = ?");
-    params.push(payload.title);
-  }
-  if (payload.description !== undefined) {
-    sets.push("description = ?");
-    params.push(payload.description);
-  }
-  if (payload.lodgeMeeting !== undefined) {
-    sets.push("lodgeMeeting = ?");
-    params.push(payload.lodgeMeeting ? 1 : 0);
-  }
-  if (payload.price !== undefined) {
-    sets.push("price = ?");
-    params.push(payload.price);
-  }
-  if (payload.startDate !== undefined) {
-    sets.push("startDate = ?");
-    params.push(payload.startDate);
-  }
-  if (payload.endDate !== undefined) {
-    sets.push("endDate = ?");
-    params.push(payload.endDate);
-  }
-  if (sets.length === 0) return;
-  params.push(id);
-  const sql = `UPDATE events SET ${sets.join(", ")} WHERE id = ?`;
-  await pool.execute(sql, params);
+  await eventsRepo.updateEventRecord(id, payload as Record<string, unknown>);
 }
 
 export async function deleteEvent(id: number): Promise<void> {
-  await pool.execute("DELETE FROM events WHERE id = ?", [id]);
+  await eventsRepo.deleteEvent(id);
 }
 
 // Link/unlink lodges and establishments to events. Implemented as simple INSERT/DELETE
@@ -139,21 +169,10 @@ export async function linkLodgeToEvent(
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    await conn.execute(
-      "INSERT IGNORE INTO lodges_events (lid, eid) VALUES (?, ?)",
-      [lodgeId, eventId]
-    );
+    await eventsRepo.insertLodgeEvent(eventId, lodgeId, conn);
     // Create event payment rows for all users in this lodge (idempotent)
     // Fetch event price
-    const [evRows] = await conn.execute(
-      "SELECT price FROM events WHERE id = ? LIMIT 1",
-      [eventId]
-    );
-    const evArr = evRows as unknown as Array<Record<string, unknown>>;
-    const price =
-      Array.isArray(evArr) && evArr.length > 0
-        ? Number(evArr[0].price ?? 0)
-        : 0;
+    const price = await eventsRepo.selectEventPrice(eventId, conn);
 
     // If event is free (price <= 0) skip creating payment rows
     if (!Number.isFinite(price) || price <= 0) {
@@ -163,11 +182,7 @@ export async function linkLodgeToEvent(
     }
 
     // Fetch users in the lodge
-    const [userRows] = await conn.execute(
-      "SELECT uid FROM users_lodges WHERE lid = ?",
-      [lodgeId]
-    );
-    const users = userRows as unknown as Array<Record<string, unknown>>;
+    const users = await eventsRepo.findUsersInLodge(lodgeId, conn);
     if (Array.isArray(users) && users.length > 0) {
       const values = users
         .map((u) => {
@@ -177,10 +192,7 @@ export async function linkLodgeToEvent(
         })
         .filter((v) => v !== null) as Array<Array<unknown>>;
       if (values.length > 0) {
-        await conn.query(
-          "INSERT IGNORE INTO event_payments (uid, eid, amount, status) VALUES ?",
-          [values]
-        );
+        await eventsRepo.bulkInsertEventPayments(values, conn);
       }
     }
     await conn.commit();
@@ -202,23 +214,10 @@ export async function unlinkLodgeFromEvent(
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-
-    // Find users in the lodge that would no longer be invited to the event
-    // after this lodge is unlinked (i.e. they are not members of any other
-    // lodge that is linked to the same event).
-    const [rows] = await conn.execute(
-      `
-      SELECT ul.uid
-      FROM users_lodges ul
-      WHERE ul.lid = ?
-        AND NOT EXISTS (
-          SELECT 1
-          FROM lodges_events le
-          JOIN users_lodges ul2 ON ul2.lid = le.lid
-          WHERE le.eid = ? AND ul2.uid = ul.uid AND le.lid != ?
-        )
-    `,
-      [lodgeId, eventId, lodgeId]
+    const rows = await eventsRepo.selectUsersToRemoveOnUnlink(
+      lodgeId,
+      eventId,
+      conn
     );
     const arr = rows as unknown as Array<Record<string, unknown>>;
     const uids = Array.isArray(arr)
@@ -227,21 +226,11 @@ export async function unlinkLodgeFromEvent(
           .filter((x) => Number.isFinite(x))
       : [];
 
-    // Delete only Pending payments for those users for this event
     if (uids.length > 0) {
-      const placeholders = uids.map(() => "?").join(",");
-      const params: Array<unknown> = [eventId, ...uids];
-      await conn.execute(
-        `DELETE FROM event_payments WHERE eid = ? AND status = 'Pending' AND uid IN (${placeholders})`,
-        params
-      );
+      await eventsRepo.deletePendingEventPaymentsForUids(eventId, uids, conn);
     }
 
-    // Finally remove the lodge->event mapping
-    await conn.execute("DELETE FROM lodges_events WHERE lid = ? AND eid = ?", [
-      lodgeId,
-      eventId,
-    ]);
+    await eventsRepo.deleteLodgeEvent(lodgeId, eventId, conn);
 
     await conn.commit();
   } catch (err) {
@@ -263,10 +252,7 @@ export async function linkEstablishmentToEvent(
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    await conn.execute(
-      "INSERT IGNORE INTO establishments_events (esid, eid) VALUES (?, ?)",
-      [esId, eventId]
-    );
+    await eventsRepo.insertEstablishmentEvent(eventId, esId, conn);
     await conn.commit();
   } catch (err) {
     try {
@@ -283,10 +269,7 @@ export async function unlinkEstablishmentFromEvent(
   eventId: number,
   esId: number
 ): Promise<void> {
-  await pool.execute(
-    "DELETE FROM establishments_events WHERE esid = ? AND eid = ?",
-    [esId, eventId]
-  );
+  await eventsRepo.deleteEstablishmentEvent(eventId, esId);
 }
 
 export async function listEventsForUser(
@@ -295,25 +278,7 @@ export async function listEventsForUser(
   offset?: number
 ): Promise<EventRecord[]> {
   // List events visible to the user based on lodge membership
-  const sql = `
-    SELECT DISTINCT e.id, e.title, e.description, e.lodgeMeeting, e.price, e.startDate, e.endDate
-    FROM events e
-    JOIN lodges_events le ON le.eid = e.id
-    JOIN users_lodges ul ON ul.lid = le.lid
-    WHERE ul.uid = ?
-    ORDER BY e.startDate ASC
-  `;
-  const params: Array<unknown> = [userId];
-  let finalSql = sql;
-  if (typeof limit === "number") {
-    finalSql += " LIMIT ?";
-    params.push(limit);
-    if (typeof offset === "number") {
-      finalSql += " OFFSET ?";
-      params.push(offset);
-    }
-  }
-  const [rows] = await pool.execute(finalSql, params);
+  const rows = await eventsRepo.listEventsForUser(userId, limit, offset);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr
@@ -333,14 +298,7 @@ export async function isUserInvitedToEvent(
   userId: number,
   eventId: number
 ): Promise<boolean> {
-  const sql = `
-    SELECT 1 FROM lodges_events le
-    JOIN users_lodges ul ON ul.lid = le.lid
-    WHERE le.eid = ? AND ul.uid = ? LIMIT 1
-  `;
-  const [rows] = await pool.execute(sql, [eventId, userId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  return Array.isArray(arr) && arr.length > 0;
+  return await eventsRepo.isUserInvitedToEvent(eventId, userId);
 }
 
 export async function setUserRsvp(
@@ -349,22 +307,17 @@ export async function setUserRsvp(
   rsvp: RsvpStatus
 ): Promise<void> {
   const rsvpValue = toDbRsvp(rsvp);
-  const sql =
-    "INSERT INTO events_attendances (uid, eid, rsvp) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rsvp = VALUES(rsvp)";
-  await pool.execute(sql, [userId, eventId, rsvpValue]);
+  await eventsRepo.upsertUserRsvp(userId, eventId, rsvpValue);
 }
 
 export async function getUserRsvp(
   userId: number,
   eventId: number
 ): Promise<RsvpStatus | null> {
-  const [rows] = await pool.execute(
-    "SELECT rsvp FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
-    [userId, eventId]
-  );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0) return null;
-  return fromDbRsvp(arr[0].rsvp);
+  const val = await eventsRepo.getUserRsvpFromDb(userId, eventId);
+  return val === null || typeof val === "undefined"
+    ? null
+    : fromDbRsvp(val as number);
 }
 
 export default {

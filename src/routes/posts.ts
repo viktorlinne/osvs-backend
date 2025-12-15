@@ -7,13 +7,13 @@ import {
 } from "../controllers/postsController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "./schemas/params";
+import { idParamSchema } from "../validators/params";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
 import { validateBody } from "../middleware/validate";
-import { createPostSchema, updatePostSchema } from "./schemas/posts";
+import { createPostSchema, updatePostSchema } from "../validators/posts";
 
 const router = express.Router();
 

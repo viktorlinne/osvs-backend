@@ -5,8 +5,7 @@ import type { AuthenticatedRequest, JWTPayload } from "../types/auth";
 import { isValidRole } from "../types/auth";
 import logger from "../utils/logger";
 import type { Logger } from "pino";
-import { isJtiRevoked } from "../services/tokenService";
-import { findById } from "../services/userService";
+import { isJtiRevoked, findById } from "../services";
 import { getAccessTokenFromReq } from "../utils/authTokens";
 
 export async function authMiddleware(

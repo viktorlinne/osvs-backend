@@ -1,23 +1,21 @@
 import type { Request, Response, NextFunction } from "express";
 import type { RequestWithBody, RequestWithCookies } from "../types/requests";
-import sessionService from "../services/sessionService";
-import { REFRESH_COOKIE } from "../config/constants";
-import logger from "../utils/logger";
 import {
+  sessionService,
   findByEmail,
   updatePassword,
   revokeAllSessions,
   createUser,
   findById,
   getUserRoles,
-} from "../services/userService";
-import {
   createPasswordResetToken,
   findPasswordResetToken,
   consumePasswordResetToken,
-} from "../services/passwordResetService";
-import { sendPasswordReset } from "../services/brevoService";
-import { hashPassword } from "../services/authService";
+  sendPasswordReset,
+  hashPassword,
+} from "../services";
+import { REFRESH_COOKIE } from "../config/constants";
+import logger from "../utils/logger";
 import { clearAuthCookies } from "../utils/authTokens";
 import crypto from "crypto";
 import { getPublicUrl } from "../utils/fileUpload";

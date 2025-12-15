@@ -8,7 +8,7 @@ import {
 } from "../controllers/swishController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema, tokenParamSchema } from "./schemas/params";
+import { idParamSchema, tokenParamSchema } from "../validators/params";
 
 const router = express.Router();
 

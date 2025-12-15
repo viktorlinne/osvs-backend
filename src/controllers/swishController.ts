@@ -1,6 +1,6 @@
 import { NextFunction, Response, Request } from "express";
 import { UserRole, type AuthenticatedRequest } from "../types/auth";
-import * as paymentsService from "../services/membershipPaymentsService";
+import * as paymentsService from "../services";
 
 export async function createMembershipHandler(
   req: AuthenticatedRequest,
@@ -36,7 +36,7 @@ export async function getPaymentHandler(
   if (!payment) return res.status(404).json({ error: "Not found" });
 
   // allow owner or admin
-    if (payment.uid !== uid && !req.user?.roles?.includes(UserRole.Admin))
+  if (payment.uid !== uid && !req.user?.roles?.includes(UserRole.Admin))
     return res.status(403).json({ error: "Forbidden" });
 
   return res.status(200).json({ payment });

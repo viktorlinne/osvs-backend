@@ -4,7 +4,7 @@ import pool from "../config/db";
 import {
   cleanupExpiredRevocations,
   cleanupExpiredRefreshTokens,
-} from "../services/tokenService";
+} from "../services";
 
 dotenv.config();
 

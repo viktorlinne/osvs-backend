@@ -2,7 +2,7 @@ import express from "express";
 import usersController from "../controllers/usersController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "./schemas/params";
+import { idParamSchema } from "../validators/params";
 import authMiddleware from "../middleware/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
 import { validateBody } from "../middleware/validate";
@@ -10,8 +10,8 @@ import {
   addAchievementSchema,
   setRolesSchema,
   setLodgeSchema,
-} from "./schemas/users";
-import { updateUserSchema } from "./schemas/users";
+} from "../validators/users";
+import { updateUserSchema } from "../validators/users";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 

@@ -1,0 +1,116 @@
+import pool from "../config/db";
+import type { ResultSetHeader } from "mysql2";
+import type { PoolConnection } from "mysql2/promise";
+
+export interface LodgeRecord {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
+export async function listLodges(
+  limit?: number,
+  offset?: number
+): Promise<LodgeRecord[]> {
+  const params: Array<unknown> = [];
+  let sql = "SELECT id, name, description FROM lodges ORDER BY id ASC";
+  if (typeof limit === "number") {
+    sql += " LIMIT ?";
+    params.push(limit);
+    if (typeof offset === "number") {
+      sql += " OFFSET ?";
+      params.push(offset);
+    }
+  }
+  const [rows] = await pool.execute(sql, params);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r) => ({
+      id: Number(r.id),
+      name: String(r.name ?? ""),
+      description: r.description == null ? null : String(r.description),
+    }))
+    .filter((r) => Number.isFinite(r.id));
+}
+
+export async function findLodgeById(id: number) {
+  const [rows] = await pool.execute(
+    "SELECT id, name, description FROM lodges WHERE id = ? LIMIT 1",
+    [id]
+  );
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const r = arr[0];
+  return {
+    id: Number(r.id),
+    name: String(r.name ?? ""),
+    description: r.description == null ? null : String(r.description),
+  };
+}
+
+export async function insertLodge(name: string, description?: string | null) {
+  const sql = "INSERT INTO lodges (name, description) VALUES (?, ?)";
+  const params = [name, description ?? null];
+  const [result] = (await pool.execute<ResultSetHeader>(
+    sql,
+    params
+  )) as unknown as [ResultSetHeader, unknown];
+  return result && typeof result.insertId === "number" ? result.insertId : 0;
+}
+
+export async function updateLodgeRecord(
+  id: number,
+  name?: string,
+  description?: string | null
+) {
+  const sql =
+    "UPDATE lodges SET name = COALESCE(?, name), description = ? WHERE id = ?";
+  await pool.execute(sql, [name ?? null, description ?? null, id]);
+}
+
+export async function getUserLodge(userId: number) {
+  const sql = `
+    SELECT l.id, l.name, l.description
+    FROM lodges l
+    JOIN users_lodges ul ON ul.lid = l.id
+    WHERE ul.uid = ?
+    LIMIT 1
+  `;
+  const [rows] = await pool.execute(sql, [userId]);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const r = arr[0];
+  return {
+    id: Number(r.id),
+    name: String(r.name ?? ""),
+    description: r.description == null ? null : String(r.description),
+  };
+}
+
+export async function deleteUserLodges(userId: number, conn?: PoolConnection) {
+  const executor = conn ? conn.query.bind(conn) : pool.query.bind(pool);
+  await executor("DELETE FROM users_lodges WHERE uid = ?", [userId]);
+}
+
+export async function insertUserLodge(
+  userId: number,
+  lodgeId: number,
+  conn?: PoolConnection
+) {
+  const executor = conn ? conn.query.bind(conn) : pool.query.bind(pool);
+  await executor("INSERT INTO users_lodges (uid, lid) VALUES (?, ?)", [
+    userId,
+    lodgeId,
+  ]);
+}
+
+export default {
+  listLodges,
+  findLodgeById,
+  insertLodge,
+  updateLodgeRecord,
+  getUserLodge,
+  deleteUserLodges,
+  insertUserLodge,
+};

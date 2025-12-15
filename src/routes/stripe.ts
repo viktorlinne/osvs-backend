@@ -12,7 +12,11 @@ import {
 } from "../controllers/stripeController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { eventIdParamSchema, idParamSchema, tokenParamSchema } from "./schemas/params";
+import {
+  eventIdParamSchema,
+  idParamSchema,
+  tokenParamSchema,
+} from "../validators/params";
 
 const router = express.Router();
 

@@ -1,7 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import logger from "../utils/logger";
-import * as eventsService from "../services/eventsService";
+import * as eventsService from "../services";
 import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
 

@@ -3,14 +3,14 @@ import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 import { validateBody, validateParams } from "../middleware/validate";
-import { createMailSchema } from "./schemas/mails";
+import { createMailSchema } from "../validators/mails";
 import {
   createMailHandler,
   sendMailHandler,
   inboxHandler,
 } from "../controllers/mailsController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { idParamSchema } from "./schemas/params";
+import { idParamSchema } from "../validators/params";
 
 const router = express.Router();
 

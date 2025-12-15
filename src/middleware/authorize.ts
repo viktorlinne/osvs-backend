@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import type { AuthenticatedRequest, UserRole } from "../types/auth";
-import { getUserRoles } from "../services/userService";
+import { getUserRoles } from "../services";
 import logger from "../utils/logger";
 
 /**

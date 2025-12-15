@@ -6,7 +6,7 @@ import {
   loginSchema,
   forgotSchema,
   resetSchema,
-} from "./schemas/auth";
+} from "../validators/auth";
 import authMiddleware from "../middleware/auth";
 import * as authController from "../controllers/authController";
 import { wrapAsync } from "../middleware/asyncHandler";

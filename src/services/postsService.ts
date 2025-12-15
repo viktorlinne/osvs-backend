@@ -1,6 +1,6 @@
 import pool from "../config/db";
-import type { ResultSetHeader } from "mysql2";
 import { deleteProfilePicture } from "../utils/fileUpload";
+import * as postsRepo from "../repositories/posts.repo";
 
 export type PostRecord = {
   id: number;
@@ -13,28 +13,7 @@ export async function listPosts(
   limit?: number,
   offset?: number
 ): Promise<PostRecord[]> {
-  const params: Array<unknown> = [];
-  let sql =
-    "SELECT id, title, description, picture FROM posts ORDER BY id DESC";
-  if (typeof limit === "number") {
-    sql += " LIMIT ?";
-    params.push(limit);
-    if (typeof offset === "number") {
-      sql += " OFFSET ?";
-      params.push(offset);
-    }
-  }
-  const [rows] = await pool.execute(sql, params);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((r) => ({
-      id: Number(r.id),
-      title: String(r.title ?? ""),
-      description: String(r.description ?? ""),
-      picture: r.picture == null ? null : String(r.picture),
-    }))
-    .filter((p) => Number.isFinite(p.id));
+  return await postsRepo.listPosts(limit, offset);
 }
 
 export async function createPost(
@@ -42,26 +21,11 @@ export async function createPost(
   description: string,
   pictureKey?: string | null
 ): Promise<number> {
-  const sql =
-    "INSERT INTO posts (title, description, picture) VALUES (?, ?, ?)";
-  const params = [title, description, pictureKey ?? null];
-  const [result] = await pool.execute<ResultSetHeader>(sql, params);
-  return result && typeof result.insertId === "number" ? result.insertId : 0;
+  return await postsRepo.insertPost(title, description, pictureKey);
 }
 
 export async function getPostById(postId: number): Promise<PostRecord | null> {
-  const sql =
-    "SELECT id, title, description, picture FROM posts WHERE id = ? LIMIT 1";
-  const [rows] = await pool.execute(sql, [postId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0) return null;
-  const r = arr[0];
-  return {
-    id: Number(r.id),
-    title: String(r.title ?? ""),
-    description: String(r.description ?? ""),
-    picture: r.picture == null ? null : String(r.picture),
-  };
+  return await postsRepo.findPostById(postId);
 }
 
 export async function updatePostAtomic(
@@ -73,44 +37,12 @@ export async function updatePostAtomic(
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-
-    // Read current picture
-    const [rows] = await conn.execute(
-      "SELECT picture FROM posts WHERE id = ? LIMIT 1",
-      [postId]
-    );
-    const arr = rows as unknown as Array<{ picture?: unknown }>;
-    const oldKey =
-      Array.isArray(arr) && arr.length > 0 && typeof arr[0].picture === "string"
-        ? (arr[0].picture as string)
-        : null;
-
-    // Build update query dynamically
-    const sets: string[] = [];
-    const params: Array<unknown> = [];
-    if (title !== null) {
-      sets.push("title = ?");
-      params.push(title);
-    }
-    if (description !== null) {
-      sets.push("description = ?");
-      params.push(description);
-    }
-    if (newPictureKey !== null) {
-      sets.push("picture = ?");
-      params.push(newPictureKey);
-    }
-
-    if (sets.length > 0) {
-      const sql = `UPDATE posts SET ${sets.join(", ")} WHERE id = ?`;
-      params.push(postId);
-      await conn.execute(sql, params);
-    }
+    const oldKey = await postsRepo.selectPostPicture(postId, conn);
+    await postsRepo.updatePost(postId, title, description, newPictureKey, conn);
 
     await conn.commit();
     conn.release();
 
-    // After successful commit, delete old picture if replaced
     if (newPictureKey !== null && oldKey && oldKey !== newPictureKey) {
       try {
         await deleteProfilePicture(oldKey);

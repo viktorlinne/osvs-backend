@@ -38,17 +38,28 @@ export async function delPattern(pattern: string): Promise<void> {
     // Support different redis client return shapes and avoid spread typing issues
     let cursor: string | number = 0;
     do {
-      const raw: any = await (redis as any).scan(cursor, {
-        MATCH: pattern,
-        COUNT: 100,
-      });
+      type RedisScanner = {
+        scan: (
+          c: string | number,
+          opts: { MATCH?: string; COUNT?: number }
+        ) => Promise<unknown>;
+      };
+      const raw: unknown = await (redis as unknown as RedisScanner).scan(
+        cursor,
+        {
+          MATCH: pattern,
+          COUNT: 100,
+        }
+      );
       let keys: string[] = [];
       if (Array.isArray(raw)) {
-        cursor = raw[0];
-        keys = raw[1] ?? [];
+        const arr = raw as unknown[];
+        cursor = (arr[0] ?? 0) as string | number;
+        keys = (arr[1] as string[]) ?? [];
       } else if (raw && typeof raw === "object") {
-        cursor = raw.cursor ?? raw[0] ?? 0;
-        keys = raw.keys ?? raw[1] ?? [];
+        const obj = raw as Record<string, unknown>;
+        cursor = (obj.cursor ?? (obj[0] as unknown) ?? 0) as string | number;
+        keys = (obj.keys as string[]) ?? (obj[1] as string[]) ?? [];
       } else {
         break;
       }

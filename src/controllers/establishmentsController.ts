@@ -1,6 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import * as estService from "../services/establishmentService";
+import * as estService from "../services";
 
 export async function listEstablishmentsHandler(
   _req: AuthenticatedRequest,

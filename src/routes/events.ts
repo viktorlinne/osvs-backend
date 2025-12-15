@@ -18,7 +18,7 @@ import {
 } from "../controllers/eventsController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "./schemas/params";
+import { idParamSchema } from "../validators/params";
 import { validateBody } from "../middleware/validate";
 import {
   createEventSchema,
@@ -26,7 +26,7 @@ import {
   linkLodgeSchema,
   linkEstablishmentSchema,
   rsvpSchema,
-} from "./schemas/events";
+} from "../validators/events";
 
 const router = express.Router();
 

@@ -42,15 +42,23 @@ async function sendViaBrevo(
   });
   if (!sibModule)
     throw new Error("Brevo SDK not available; install sib-api-v3-sdk");
+  type SibApiClient = {
+    authentications: Record<string, { apiKey?: string }>;
+  };
+  type SibModuleShape = {
+    ApiClient: { instance: SibApiClient };
+    TransactionalEmailsApi: new () => {
+      sendTransacEmail: (payload: unknown) => Promise<unknown>;
+    };
+    SendSmtpEmail: new (opts: unknown) => unknown;
+  };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const SibApiV3Sdk: any = sibModule;
-  const defaultClient = SibApiV3Sdk.ApiClient.instance as any;
+  const SibApiV3Sdk = sibModule as unknown as SibModuleShape;
+  const defaultClient = SibApiV3Sdk.ApiClient.instance;
   defaultClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sendSmtpEmail: any = new SibApiV3Sdk.SendSmtpEmail({
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail({
     sender: { email: sender.email, name: sender.name || undefined },
     to: [{ email: to }],
     subject,

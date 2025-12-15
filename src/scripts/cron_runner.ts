@@ -2,10 +2,10 @@ import logger from "../utils/logger";
 import {
   cleanupExpiredRevocations,
   cleanupExpiredRefreshTokens,
-} from "../services/tokenService";
+} from "../services";
 import { CRON_INTERVAL_MS } from "../config/constants";
 import { query } from "../utils/query";
-import * as paymentsService from "../services/membershipPaymentsService";
+import * as paymentsService from "../services";
 
 async function createAnniversaryInvoices() {
   try {

@@ -1,7 +1,5 @@
-import pool from "../config/db";
-import { query } from "../utils/query";
 import { randomBytes } from "crypto";
-import type { ResultSetHeader } from "mysql2";
+import { membershipRepo } from "../repositories";
 
 export interface MembershipPayment {
   id: number;
@@ -14,7 +12,7 @@ export interface MembershipPayment {
   currency?: string | null;
   invoice_token?: string | null;
   expiresAt?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown> | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -34,44 +32,28 @@ export async function createMembershipPayment(
   const provider = opts.provider ?? null;
   const invoice_token = randomBytes(16).toString("hex");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-  const sql = `INSERT INTO membership_payments
-  (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt)
-  VALUES (?, ?, ?, 'Pending', ?, ?, ?, NOW(), NOW())`;
-
-  const [res] = await pool.execute<ResultSetHeader>(sql, [
+  const insertId = await membershipRepo.insertMembershipPayment({
     uid,
     amount,
     year,
     provider,
     invoice_token,
     expiresAt,
-  ]);
-  const insertId = (res.insertId ?? 0) as number;
-
-  const rows = await query<MembershipPayment>(
-    "SELECT * FROM membership_payments WHERE id = ?",
-    [insertId]
-  );
-  return rows[0] ?? null;
+  });
+  const row = await membershipRepo.findById(insertId);
+  return (row as unknown as MembershipPayment) ?? null;
 }
 
 export async function getById(id: number): Promise<MembershipPayment | null> {
-  const rows = await query<MembershipPayment>(
-    "SELECT * FROM membership_payments WHERE id = ?",
-    [id]
-  );
-  return rows[0] ?? null;
+  const row = await membershipRepo.findById(id);
+  return (row as unknown as MembershipPayment) ?? null;
 }
 
 export async function getByToken(
   token: string
 ): Promise<MembershipPayment | null> {
-  const rows = await query<MembershipPayment>(
-    "SELECT * FROM membership_payments WHERE invoice_token = ?",
-    [token]
-  );
-  return rows[0] ?? null;
+  const row = await membershipRepo.findByToken(token);
+  return (row as unknown as MembershipPayment) ?? null;
 }
 
 export async function updateByProviderRef(
@@ -90,18 +72,15 @@ export async function updateByProviderRef(
     metadata &&
     typeof (metadata as Record<string, unknown>).invoice_token === "string"
   ) {
-    invoiceToken = (metadata as Record<string, any>).invoice_token as string;
+    invoiceToken = (metadata as Record<string, unknown>)
+      .invoice_token as string;
   }
-  await pool.execute(
-    "UPDATE membership_payments SET status = ?, provider = ?, provider_ref = ?, metadata = ? WHERE invoice_token = ? OR provider_ref = ?",
-    [
-      status,
-      provider,
-      providerRef,
-      metadataStr,
-      invoiceToken ?? null,
-      providerRef,
-    ]
+  await membershipRepo.updateByProviderRef(
+    provider,
+    providerRef,
+    status,
+    metadataStr,
+    invoiceToken ?? null
   );
 }
 
@@ -111,11 +90,10 @@ export async function createMembershipPaymentIfMissing(
   amount?: number
 ): Promise<MembershipPayment | null> {
   // Check if an invoice for this user and year already exists
-  const existing = await query<MembershipPayment>(
-    "SELECT * FROM membership_payments WHERE uid = ? AND year = ? LIMIT 1",
-    [uid, year]
-  );
-  if (existing.length > 0) return existing[0] ?? null;
+  const rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
+  if (Array.isArray(rows) && rows.length > 0) {
+    return (rows[0] as unknown as MembershipPayment) ?? null;
+  }
 
   // Create a new invoice
   return await createMembershipPayment({ uid, year, amount });
@@ -130,11 +108,7 @@ export async function createMembershipPaymentsIfMissingBulk(
   const amt = typeof amount === "number" ? amount : 600;
 
   // Find which users already have invoices for this year
-  const placeholders = uids.map(() => "?").join(",");
-  const existingRows = await query<{ uid: number }>(
-    `SELECT uid FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
-    [year, ...uids]
-  );
+  const existingRows = await membershipRepo.findExistingForUsers(year, uids);
   const existingSet = new Set(existingRows.map((r) => Number(r.uid)));
 
   // Prepare values for missing users
@@ -150,28 +124,16 @@ export async function createMembershipPaymentsIfMissingBulk(
   }
 
   if (values.length === 0) {
-    // nothing to create
-    return await query<MembershipPayment>(
-      `SELECT * FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
-      [year, ...uids]
-    );
+    // nothing to create — return existing payments for these users
+    const rows = await membershipRepo.findPaymentsForUsers(year, uids);
+    return rows as unknown as MembershipPayment[];
   }
 
-  try {
-    await pool.query(
-      `INSERT IGNORE INTO membership_payments (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt) VALUES ?`,
-      [values]
-    );
-  } catch (err) {
-    // ignore errors from bulk insert — we'll try to return whatever exists
-  }
+  await membershipRepo.bulkInsertIfMissing(values);
 
   // Return all payments for these users/year
-  const rows = await query<MembershipPayment>(
-    `SELECT * FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
-    [year, ...uids]
-  );
-  return rows;
+  const rows = await membershipRepo.findPaymentsForUsers(year, uids);
+  return rows as unknown as MembershipPayment[];
 }
 
 export default {
@@ -179,4 +141,6 @@ export default {
   getById,
   getByToken,
   updateByProviderRef,
+  createMembershipPaymentIfMissing,
+  createMembershipPaymentsIfMissingBulk,
 };

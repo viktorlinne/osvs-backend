@@ -12,9 +12,9 @@ import {
   getUserRoles,
   updateUserProfile,
   findById as findUserById,
-} from "../services/userService";
+} from "../services";
 import { toPublicUser } from "../utils/serialize";
-import { getUserLodge, setUserLodge } from "../services/lodgeService";
+import { getUserLodge, setUserLodge } from "../services";
 import logger from "../utils/logger";
 
 export async function updatePictureHandler(

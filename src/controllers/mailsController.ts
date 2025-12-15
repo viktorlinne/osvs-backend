@@ -1,6 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import * as mailsService from "../services/mailsService";
+import * as mailsService from "../services";
 
 export async function createMailHandler(
   req: AuthenticatedRequest,

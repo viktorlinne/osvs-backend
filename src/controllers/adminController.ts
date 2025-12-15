@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import {
   cleanupExpiredRevocations,
   cleanupExpiredRefreshTokens,
-} from "../services/tokenService";
-import { listRoles } from "../services/userService";
+  listRoles,
+} from "../services";
 
 export async function cleanupTokens(
   _req: Request,

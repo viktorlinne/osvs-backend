@@ -1,5 +1,4 @@
 import pool from "../config/db";
-import type { ResultSetHeader } from "mysql2";
 import type { UserRecord, CreateUserInput, PublicUser } from "../types/user";
 import { UserRole } from "../types/auth";
 import { toPublicUser } from "../utils/serialize";
@@ -8,6 +7,7 @@ import { ValidationError, ConflictError } from "../utils/errors";
 import logger from "../utils/logger";
 import { revokeAllRefreshTokensForUser } from "./tokenService";
 import * as paymentsService from "./membershipPaymentsService";
+import * as userRepo from "../repositories/user.repo";
 
 // Type guard to ensure DB result is a valid UserRecord
 export function isValidUserRecord(value: unknown): value is UserRecord {
@@ -50,23 +50,15 @@ export function trimUserInput(input: CreateUserInput): CreateUserInput {
 export async function findByEmail(
   email: string
 ): Promise<UserRecord | undefined> {
-  const [rows] = await pool.execute(
-    "SELECT * FROM users WHERE email = ? LIMIT 1",
-    [email]
-  );
-  if (!Array.isArray(rows) || rows.length === 0) return undefined;
-  const user = rows[0];
-  return isValidUserRecord(user) ? user : undefined;
+  const row = await userRepo.findByEmail(email);
+  if (!row) return undefined;
+  return isValidUserRecord(row) ? (row as UserRecord) : undefined;
 }
 
 export async function findById(id: number): Promise<UserRecord | undefined> {
-  const [rows] = await pool.execute(
-    "SELECT * FROM users WHERE id = ? LIMIT 1",
-    [id]
-  );
-  if (!Array.isArray(rows) || rows.length === 0) return undefined;
-  const user = rows[0];
-  return isValidUserRecord(user) ? user : undefined;
+  const row = await userRepo.findById(id);
+  if (!row) return undefined;
+  return isValidUserRecord(row) ? (row as UserRecord) : undefined;
 }
 
 export async function updateUserProfile(
@@ -82,73 +74,27 @@ export async function updateUserProfile(
     zipcode?: string;
   }>
 ): Promise<void> {
-  // Build set clause dynamically
-  const fields: string[] = [];
-  const params: Array<string | null> = [];
-
-  if (typeof data.firstname === "string") {
-    fields.push("firstname = ?");
-    params.push(data.firstname.trim());
-  }
-  if (typeof data.lastname === "string") {
-    fields.push("lastname = ?");
-    params.push(data.lastname.trim());
-  }
+  // normalize date if provided
   if (typeof data.dateOfBirth === "string") {
-    // normalizeToSqlDate will validate/throw if invalid
-    params.push(normalizeToSqlDate(data.dateOfBirth));
-    fields.push("dateOfBirth = ?");
+    data.dateOfBirth = normalizeToSqlDate(data.dateOfBirth);
   }
-  if (typeof data.official !== "undefined") {
-    fields.push("official = ?");
-    params.push(data.official ?? null);
-  }
-  if (typeof data.mobile !== "undefined") {
-    fields.push("mobile = ?");
-    params.push(data.mobile ?? null);
-  }
-  if (typeof data.city !== "undefined") {
-    fields.push("city = ?");
-    params.push(data.city ?? null);
-  }
-  if (typeof data.address !== "undefined") {
-    fields.push("address = ?");
-    params.push(data.address ?? null);
-  }
-  if (typeof data.zipcode !== "undefined") {
-    fields.push("zipcode = ?");
-    params.push(data.zipcode ?? null);
-  }
-
-  if (fields.length === 0) return;
-
-  const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
-  params.push(String(userId));
-  await pool.execute(sql, params);
+  await userRepo.updateUserProfile(userId, data);
 }
 
 export async function getUserRoles(userId: number): Promise<UserRole[]> {
-  const sql =
-    "SELECT r.role FROM roles r JOIN users_roles ur ON ur.rid = r.id WHERE ur.uid = ?";
-  const execRows = await pool.execute(sql, [userId]);
-  const rows = execRows[0] as unknown as Array<{ role?: unknown }>;
-  if (!Array.isArray(rows)) return [];
-  return rows
-    .map((r) => r?.role)
-    .filter(
-      (role): role is UserRole =>
-        typeof role === "string" &&
-        Object.values(UserRole).includes(role as UserRole)
-    );
+  const rows = await userRepo.getUserRoles(userId);
+  return rows.filter(
+    (role): role is UserRole =>
+      typeof role === "string" &&
+      Object.values(UserRole).includes(role as UserRole)
+  ) as UserRole[];
 }
 
 export async function updatePassword(
   userId: number,
   passwordHash: string
 ): Promise<void> {
-  const sql = "UPDATE users SET passwordHash = ? WHERE id = ?";
-  const params = [passwordHash, userId];
-  await pool.execute(sql, params);
+  await userRepo.updatePassword(userId, passwordHash);
 }
 
 /**
@@ -159,32 +105,14 @@ export async function updatePicture(
   userId: number,
   pictureKey: string | null
 ): Promise<string | null> {
-  // Read current picture key first
-  const [rows] = await pool.execute(
-    "SELECT picture FROM users WHERE id = ? LIMIT 1",
-    [userId]
-  );
-  const currentRows = rows as unknown as Array<{ picture?: unknown }>;
-  const oldKey =
-    Array.isArray(currentRows) &&
-    currentRows.length > 0 &&
-    typeof currentRows[0].picture === "string"
-      ? (currentRows[0].picture as string)
-      : null;
-
-  const sql = "UPDATE users SET picture = ? WHERE id = ?";
-  const params = [pictureKey, userId];
-  await pool.execute(sql, params);
-
-  return oldKey;
+  return await userRepo.updatePicture(userId, pictureKey);
 }
 
 export async function setUserRevokedAt(
   userId: number,
   when: Date
 ): Promise<void> {
-  const sql = "UPDATE users SET revokedAt = ? WHERE id = ?";
-  await pool.execute(sql, [when, userId]);
+  await userRepo.setUserRevokedAt(userId, when);
 }
 
 /**
@@ -210,17 +138,7 @@ export async function setUserAchievement(
   achievementId: number,
   awardedAt?: Date
 ): Promise<number> {
-  const when = awardedAt ? awardedAt : new Date();
-  const sql =
-    "INSERT INTO users_achievements (uid, aid, awardedAt) VALUES (?, ?, ?)";
-  const [result] = await pool.execute<ResultSetHeader>(sql, [
-    userId,
-    achievementId,
-    when,
-  ]);
-  const insertId =
-    result && typeof result.insertId === "number" ? result.insertId : 0;
-  return insertId;
+  return await userRepo.setUserAchievement(userId, achievementId, awardedAt);
 }
 
 export async function getUserAchievements(userId: number): Promise<
@@ -231,37 +149,13 @@ export async function getUserAchievements(userId: number): Promise<
     title: string;
   }>
 > {
-  const sql = `
-    SELECT ua.id, ua.aid, ua.awardedAt, a.title
-    FROM users_achievements ua
-    JOIN achievements a ON a.id = ua.aid
-    WHERE ua.uid = ?
-    ORDER BY ua.awardedAt DESC, ua.id DESC
-  `;
-  const [rows] = await pool.execute(sql, [userId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((r) => ({
-      id: Number(r.id),
-      aid: Number(r.aid),
-      awardedAt: r.awardedAt ? String(r.awardedAt) : "",
-      title: String(r.title ?? ""),
-    }))
-    .filter((it) => Number.isFinite(it.id) && Number.isFinite(it.aid));
+  return await userRepo.getUserAchievements(userId);
 }
 
 export async function listRoles(): Promise<
   Array<{ id: number; role: string }>
 > {
-  const [rows] = await pool.execute(
-    "SELECT id, role FROM roles ORDER BY id ASC"
-  );
-  const arr = rows as unknown as Array<{ id?: number; role?: unknown }>;
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((r) => ({ id: Number(r.id), role: String(r.role ?? "") }))
-    .filter((r) => Number.isFinite(r.id));
+  return await userRepo.listRoles();
 }
 
 export async function setUserRoles(
@@ -272,10 +166,10 @@ export async function setUserRoles(
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    await conn.query("DELETE FROM users_roles WHERE uid = ?", [userId]);
+    await userRepo.deleteUserRoles(userId, conn);
     if (Array.isArray(roleIds) && roleIds.length > 0) {
-      const values = roleIds.map((rid) => [userId, rid]);
-      await conn.query("INSERT INTO users_roles (uid, rid) VALUES ?", [values]);
+      const values = roleIds.map((rid) => [userId, rid] as [number, number]);
+      await userRepo.insertUserRolesBulk(values, conn);
     }
     await conn.commit();
   } catch (err) {
@@ -340,57 +234,45 @@ export async function createUser(
     throw new ValidationError(["email"]);
   }
 
-  const sql = `INSERT INTO users
-    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, official, mobile, city, address, zipcode)
-    VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const sqlDate = (() => {
+    try {
+      return normalizeToSqlDate(dateOfBirth);
+    } catch (e) {
+      logger.error(e);
+      throw new ValidationError(["dateOfBirth"]);
+    }
+  })();
 
-  const params = [
-    username,
-    email,
-    passwordHash,
-    picture ?? null,
-    firstname,
-    lastname,
-    (() => {
-      try {
-        return normalizeToSqlDate(dateOfBirth);
-      } catch (e) {
-        logger.error(e);
-        throw new ValidationError(["dateOfBirth"]);
-      }
-    })(),
-    official,
-    mobile,
-    city,
-    address,
-    zipcode,
-  ];
-
-  // Use a transaction when assigning roles and optional lodge to ensure
-  // we don't create a user without the required lodge assignment.
   const conn = await pool.getConnection();
   let insertId: number | undefined;
   try {
     await conn.beginTransaction();
-    logger.debug("createUser params:", params);
-    const exec = await conn.execute<ResultSetHeader>(sql, params);
-    const result = exec[0] as ResultSetHeader;
-    insertId =
-      result && typeof result.insertId === "number"
-        ? result.insertId
-        : undefined;
+
+    insertId = await userRepo.insertUser(
+      {
+        username,
+        email,
+        passwordHash,
+        picture: picture ?? null,
+        firstname,
+        lastname,
+        dateOfBirth: sqlDate,
+        official,
+        mobile,
+        city,
+        address,
+        zipcode,
+      },
+      conn
+    );
 
     if (!insertId) {
       await conn.rollback();
       return undefined;
     }
 
-    // Ensure new users get the Member role by default (if the role exists)
     try {
-      await conn.execute(
-        "INSERT INTO users_roles (uid, rid) SELECT ?, id FROM roles WHERE role = 'Member' LIMIT 1",
-        [insertId]
-      );
+      await userRepo.assignDefaultRoleToUser(insertId, conn);
     } catch (err) {
       logger.warn(
         { err, userId: insertId },
@@ -400,23 +282,14 @@ export async function createUser(
       throw err;
     }
 
-    // If a lodgeId is provided we must validate it exists and assign it.
     if (typeof lodgeId !== "undefined" && lodgeId !== null) {
-      const [rows] = await conn.execute(
-        "SELECT id FROM lodges WHERE id = ? LIMIT 1",
-        [lodgeId]
-      );
-      const arr = rows as unknown as Array<Record<string, unknown>>;
-      if (!Array.isArray(arr) || arr.length === 0) {
+      const exists = await userRepo.lodgeExists(Number(lodgeId), conn);
+      if (!exists) {
         await conn.rollback();
         throw new ValidationError(["lodgeId"]);
       }
-
       try {
-        await conn.execute(
-          "INSERT INTO users_lodges (uid, lid) VALUES (?, ?)",
-          [insertId, lodgeId]
-        );
+        await userRepo.assignUserToLodge(insertId, Number(lodgeId), conn);
       } catch (err) {
         logger.warn(
           { err, userId: insertId, lodgeId },
@@ -446,11 +319,10 @@ export async function createUser(
       sql: dbErr?.sql,
     });
 
-    // If we started a transaction ensure it's rolled back and connection released
     try {
       await conn.rollback();
     } catch {
-      // Ignore rollback errors
+      /* ignore */
     }
     conn.release();
 
@@ -471,15 +343,14 @@ export async function createUser(
     }
     throw err;
   }
-  // If we successfully committed earlier, release connection and fetch user
+
   try {
     conn.release();
   } catch {
-    // Ignore release errors
+    /* ignore */
   }
 
   if (!insertId) return undefined;
-  // Create a membership payment invoice for the new user (current year)
   try {
     await paymentsService.createMembershipPayment({
       uid: insertId,
@@ -490,8 +361,8 @@ export async function createUser(
       { err, userId: insertId },
       "Failed to create membership invoice for new user"
     );
-    // Do not fail user registration if invoice creation fails; continue.
   }
+
   const user = await findById(insertId);
   if (!user) return undefined;
   return toPublicUser(user);

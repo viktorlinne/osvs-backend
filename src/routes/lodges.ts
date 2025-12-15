@@ -6,12 +6,12 @@ import {
 } from "../controllers/lodgesController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "./schemas/params";
+import { idParamSchema } from "../validators/params";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
 import { validateBody } from "../middleware/validate";
-import { createLodgeSchema, updateLodgeSchema } from "./schemas/lodges";
+import { createLodgeSchema, updateLodgeSchema } from "../validators/lodges";
 
 const router = express.Router();
 

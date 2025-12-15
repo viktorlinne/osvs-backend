@@ -12,15 +12,13 @@ import {
   unlinkLodgeHandler,
 } from "../controllers/establishmentsController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "./schemas/params";
-import { validateBody } from "../middleware/validate";
+import { validateParams, validateBody } from "../middleware/validate";
+import { idParamSchema } from "../validators/params";
 import {
   createEstablishmentSchema,
   updateEstablishmentSchema,
   linkLodgeSchema,
-} from "./schemas/establishments";
-
+} from "../validators/establishments";
 const router = express.Router();
 
 // List/get

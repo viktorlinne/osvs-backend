@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import stripeService from "../services/stripeService";
-import * as membershipPaymentsService from "../services/membershipPaymentsService";
-import pool from "../config/db";
+import { stripeService } from "../services";
+import * as membershipPaymentsService from "../services";
+import * as eventsService from "../services";
 import { Stripe } from "stripe";
-import { randomBytes } from "crypto";
 
 // Create membership invoice and return client_secret for Stripe.js
 export async function createMembershipHandler(
@@ -82,44 +81,20 @@ export async function createEventPaymentHandler(
     return res.status(400).json({ error: "Invalid event id" });
 
   // Fetch event price
-  const [evRows] = await pool.execute(
-    "SELECT price FROM events WHERE id = ? LIMIT 1",
-    [eventId]
+  // Fetch event price first
+  const price = await eventsService.getEventPrice(eventId);
+  // Ensure an event payment row exists (service handles price checks and insertion)
+  const paymentRow = await eventsService.findOrCreateEventPaymentForUser(
+    uid,
+    eventId
   );
-  const evArr = evRows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(evArr) || evArr.length === 0)
-    return res.status(404).json({ error: "Event not found" });
-  const price = Number(evArr[0].price ?? 0);
-  if (!Number.isFinite(price) || price <= 0)
-    return res
-      .status(400)
-      .json({ error: "Event is free or has invalid price" });
-
-  // Ensure an event payment row exists for this user/event
-  const existingRows = await pool.execute(
-    "SELECT * FROM event_payments WHERE uid = ? AND eid = ? LIMIT 1",
-    [uid, eventId]
-  );
-  const existingArr = (existingRows as any)[0] as Array<
-    Record<string, unknown>
-  >;
-  let paymentRow: Record<string, unknown> | null = null;
-  if (Array.isArray(existingArr) && existingArr.length > 0) {
-    paymentRow = existingArr[0];
-  } else {
-    const token = randomBytes(16).toString("hex");
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    const [insRes] = await pool.execute(
-      "INSERT INTO event_payments (uid, eid, amount, status, invoice_token, expiresAt, createdAt, updatedAt) VALUES (?, ?, ?, 'Pending', ?, ?, NOW(), NOW())",
-      [uid, eventId, price, token, expiresAt]
-    );
-    const insertId = (insRes as any).insertId ?? 0;
-    const rows = await pool.execute(
-      "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
-      [insertId]
-    );
-    const arr = (rows as any)[0] as Array<Record<string, unknown>>;
-    paymentRow = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+  if (paymentRow === null) {
+    // Either event not found / free, or creation failed
+    if (!Number.isFinite(price) || price <= 0)
+      return res
+        .status(400)
+        .json({ error: "Event is free or has invalid price" });
+    return res.status(500).json({ error: "Failed to create payment" });
   }
 
   if (!paymentRow)
@@ -154,27 +129,17 @@ export async function getEventPaymentHandler(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
     return res.status(400).json({ error: "Invalid id" });
-  const [rows] = await pool.execute(
-    "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
-    [id]
-  );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0)
-    return res.status(404).json({ error: "Not found" });
-  return res.json(arr[0]);
+  const payment = await eventsService.getEventPaymentById(id);
+  if (!payment) return res.status(404).json({ error: "Not found" });
+  return res.json(payment);
 }
 
 export async function getEventByTokenHandler(req: Request, res: Response) {
   const token = String(req.params.token ?? "");
   if (!token) return res.status(400).json({ error: "Missing token" });
-  const [rows] = await pool.execute(
-    "SELECT * FROM event_payments WHERE invoice_token = ? LIMIT 1",
-    [token]
-  );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0)
-    return res.status(404).json({ error: "Not found" });
-  return res.json(arr[0]);
+  const payment = await eventsService.getEventPaymentByToken(token);
+  if (!payment) return res.status(404).json({ error: "Not found" });
+  return res.json(payment);
 }
 
 // Webhook handler for Stripe events
@@ -210,10 +175,11 @@ export async function webhookHandler(req: Request, res: Response) {
         );
       } else if (metadata.type === "event") {
         // Update matching event_payments row(s)
-        const invoiceToken = metadata.invoice_token as string | undefined;
-        const [_rows] = await pool.execute(
-          "UPDATE event_payments SET status = 'Paid', provider = ?, provider_ref = ? WHERE invoice_token = ? OR provider_ref = ?",
-          ["stripe", providerRef, invoiceToken ?? null, providerRef]
+        await eventsService.updateEventPaymentsByProviderRef(
+          "stripe",
+          providerRef,
+          "Paid",
+          metadata as Record<string, unknown> | null
         );
       }
     } else if (event.type === "payment_intent.payment_failed") {
@@ -228,9 +194,11 @@ export async function webhookHandler(req: Request, res: Response) {
           metadata
         );
       } else if (metadata.type === "event") {
-        const [_rows] = await pool.execute(
-          "UPDATE event_payments SET status = 'Failed', provider = ?, provider_ref = ? WHERE invoice_token = ? OR provider_ref = ?",
-          ["stripe", providerRef, metadata.invoice_token ?? null, providerRef]
+        await eventsService.updateEventPaymentsByProviderRef(
+          "stripe",
+          providerRef,
+          "Failed",
+          metadata as Record<string, unknown> | null
         );
       }
     }

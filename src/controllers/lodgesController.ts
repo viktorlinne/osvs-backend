@@ -1,6 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import * as lodgeService from "../services/lodgeService";
+import * as lodgeService from "../services";
 
 export async function listLodgesHandler(
   _req: AuthenticatedRequest,

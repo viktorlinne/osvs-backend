@@ -1,7 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import * as postsService from "../services/postsService";
+import * as postsService from "../services";
 import {
   uploadToStorage,
   getPublicUrl,
