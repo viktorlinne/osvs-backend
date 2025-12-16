@@ -48,10 +48,19 @@ if (process.env.SENTRY_DSN) {
   app.use(Sentry.Handlers.requestHandler());
 }
 
-app.use(cors());
-// Response compression (P0 performance win)
+// Configure CORS to allow the frontend origin and support credentials (cookies).
+const FRONTEND_ORIGIN = process.env.FRONTEND_URL || "http://localhost:5173";
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
+// Response compression 
 app.use(compression());
-// Request timing middleware (P1)
+// Request timing middleware 
 app.use(requestTiming);
 app.use(express.json());
 app.use(cookieParser());
