@@ -62,7 +62,7 @@ export async function authMiddleware(
                 msg: "Token issued before user-wide revoke",
                 userId: userIdCandidate,
               });
-              return res.status(401).json({ error: "Token revoked" });
+              return res.status(401).json({ error: "Inloggning utgången" });
             }
           }
         }
