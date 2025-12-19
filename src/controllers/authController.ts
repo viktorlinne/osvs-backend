@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction, Express } from "express";
 import type { RequestWithBody, RequestWithCookies } from "../types/requests";
 import {
   sessionService,
@@ -8,6 +8,7 @@ import {
   createUser,
   findById,
   getUserRoles,
+  getUserAchievements,
   createPasswordResetToken,
   findPasswordResetToken,
   consumePasswordResetToken,
@@ -22,6 +23,7 @@ import { getPublicUrl } from "../utils/fileUpload";
 import { toPublicUser } from "../utils/serialize";
 import type { AuthenticatedRequest } from "../types/auth";
 import { PASSWORD_RESET_TOKEN_MS } from "../config/constants";
+import { uploadToStorage, deleteProfilePicture } from "../utils/fileUpload";
 
 export async function login(
   req: RequestWithBody<{ email?: string; password?: string }>,
@@ -33,7 +35,8 @@ export async function login(
     return res.status(400).json({ error: "email and password required" });
 
   const out = await sessionService.loginWithEmail(email, password, res);
-  if (!out) return res.status(401).json({ error: "Invalid credentials" });
+  if (!out)
+    return res.status(401).json({ error: "Felaktiga inloggningsuppgifter" });
   return res.json(out);
 }
 
@@ -136,9 +139,11 @@ export async function register(
         city?: string;
         address?: string;
         zipcode?: string;
+        notes?: string | null;
+        lodgeId?: string | number | null;
       }
     | undefined
-  >,
+  > & { file?: Express.Multer.File },
   res: Response,
   _next: NextFunction
 ): Promise<Response | void> {
@@ -154,6 +159,7 @@ export async function register(
     city,
     address,
     zipcode,
+    notes,
   } = req.body ?? {};
   const lodgeId = (req.body as Record<string, unknown>)["lodgeId"];
 
@@ -186,12 +192,29 @@ export async function register(
     numericLodgeId = undefined;
   }
 
+  // Require a profile picture file (frontend enforces this, backend must too)
+  if (!req.file) {
+    return res.status(400).json({ error: "Profile picture is required" });
+  }
+
   const hash = await hashPassword(password as string);
 
-  // Registration uses a placeholder profile image by default; picture
-  // uploads are handled by a separate endpoint. Leave `picture` null
-  // here so frontend uses the placeholder from `public/uploads/profiles`.
-  const pictureKey = null;
+  // If frontend sent a picture in the multipart request, upload it first
+  let pictureKey: string | null = null;
+  const file = req.file;
+  if (file) {
+    const newKey = await uploadToStorage(file, {
+      folder: "profiles",
+      prefix: "profile_",
+      size: { width: 200, height: 200 },
+    });
+    if (!newKey) {
+      return res
+        .status(500)
+        .json({ error: "Failed to upload profile picture" });
+    }
+    pictureKey = newKey;
+  }
 
   let user;
   try {
@@ -209,13 +232,21 @@ export async function register(
         address: address as string,
         zipcode: zipcode as string,
         picture: pictureKey,
+        notes: (notes as string) ?? null,
       },
       numericLodgeId
     );
   } catch (err) {
     // If we uploaded a picture but user creation failed, clean it up
     if (pictureKey) {
-      // No uploaded picture to cleanup during registration path
+      try {
+        await deleteProfilePicture(pictureKey);
+      } catch (delErr) {
+        logger.error(
+          "Failed to cleanup uploaded picture after registration error",
+          delErr
+        );
+      }
     }
     throw err;
   }
@@ -235,11 +266,12 @@ export async function me(
   const user = await findById(req.user.userId);
   if (!user) return res.status(404).json({ error: "User not found" });
   const roles = user.id ? await getUserRoles(user.id) : [];
+  const achievements = user.id ? await getUserAchievements(user.id) : [];
   const publicUser = toPublicUser(user);
   const pictureUrl = publicUser.picture
     ? await getPublicUrl(publicUser.picture)
     : null;
-  return res.json({ user: { ...publicUser, pictureUrl }, roles });
+  return res.json({ user: { ...publicUser, pictureUrl }, roles, achievements });
 }
 
 export async function revokeAll(

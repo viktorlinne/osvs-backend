@@ -48,21 +48,21 @@ CREATE TABLE `users` (
   `email` varchar(256) NOT NULL,
   `passwordHash` varchar(512) NOT NULL,
   `createdAt` date NOT NULL,
-  `picture` varchar(256) DEFAULT NULL,
+  `picture` varchar(256) NOT NULL,
   `archive` enum('Deceased','Retired','Removed') DEFAULT NULL,
   `firstname` varchar(256) NOT NULL,
   `lastname` varchar(256) NOT NULL,
   `dateOfBirth` date NOT NULL,
-  `official` varchar(256) NOT NULL,
+  `official` varchar(256) DEFAULT NULL,
   `revokedAt` datetime DEFAULT NULL,
   `mobile` varchar(256) NOT NULL,
   `homeNumber` varchar(256) DEFAULT NULL,
   `city` varchar(256) NOT NULL,
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(256) NOT NULL,
+  `notes` text DEFAULT NULL,
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_username` (`username`),
-  `notes` text DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -237,7 +237,7 @@ INSERT INTO `users` (
     'alice@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
     CURRENT_DATE(),
-    NULL,
+    "profiles/picturePlaceholder.png",
     'Alice',
     'Example',
     '1985-06-15',
@@ -255,7 +255,7 @@ INSERT INTO `users` (
     'bob@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$rDHqFYtGQFkrtQB+z/qo1A$qMOLscJ+esVBDhUfeg3wN6IxI0bqllCMR80jRLmJBkE",
     CURRENT_DATE(),
-    NULL,
+    "profiles/picturePlaceholder.png",
     'Bob',
     'Tester',
     '1990-01-01',
@@ -274,7 +274,7 @@ INSERT INTO `users` (
     'viktor.linne@gmail.com',
     "$argon2id$v=19$m=65536,t=3,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAA",
     CURRENT_DATE(),
-    NULL,
+    "profiles/picturePlaceholder.png",
     'Viktor',
     'Linné',
     '2002-01-18',
@@ -328,6 +328,7 @@ INSERT INTO `users_roles` (`uid`, `rid`) VALUES
 -- Ensure a sample achievement exists for Bob (single, replace any existing for that user/achievement)
 DELETE FROM `users_achievements` WHERE `uid` = 2 AND `aid` = 1;
 INSERT INTO `users_achievements` (`uid`, `aid`, `awardedAt`) VALUES
+  (1, 1, '2025-12-01 10:00:00'),
   (2, 1, '2025-12-01 10:00:00');
 
 -- Ensure seeded users have predictable lodge assignments (replace existing assignments)

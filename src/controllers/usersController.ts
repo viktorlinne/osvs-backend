@@ -11,11 +11,14 @@ import {
   getUserAchievements,
   getUserRoles,
   updateUserProfile,
+  listPublicUsers,
+  getPublicUserById,
   findById as findUserById,
 } from "../services";
 import { toPublicUser } from "../utils/serialize";
 import { getUserLodge, setUserLodge } from "../services";
 import logger from "../utils/logger";
+import { PROFILE_PLACEHOLDER } from "../config/constants";
 
 export async function updatePictureHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
@@ -29,7 +32,11 @@ export async function updatePictureHandler(
     const file = req.file;
     if (!file) return res.status(400).json({ error: "No file uploaded" });
 
-    const newKey = await uploadToStorage(file);
+    const newKey = await uploadToStorage(file, {
+      folder: "profiles",
+      prefix: "profile_",
+      size: { width: 200, height: 200 },
+    });
     if (!newKey)
       return res.status(500).json({ error: "Failed to upload file" });
 
@@ -81,7 +88,11 @@ export async function updateOtherPictureHandler(
     const file = req.file;
     if (!file) return res.status(400).json({ error: "No file uploaded" });
 
-    const newKey = await uploadToStorage(file);
+    const newKey = await uploadToStorage(file, {
+      folder: "profiles",
+      prefix: "profile_",
+      size: { width: 200, height: 200 },
+    });
     if (!newKey)
       return res.status(500).json({ error: "Failed to upload file" });
 
@@ -245,6 +256,55 @@ export async function getAchievementsHandler(
   }
 }
 
+export async function listUsersHandler(
+  _req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction
+) {
+  try {
+    const q = _req.query as Record<string, unknown>;
+    const limit = Number(q.limit ?? 100);
+    const offset = Number(q.offset ?? 0);
+    const rows = await listPublicUsers(
+      Number.isFinite(limit) ? limit : 100,
+      Number.isFinite(offset) ? offset : 0
+    );
+    // Resolve public picture URLs
+    const withUrls = await Promise.all(
+      rows.map(async (r) => ({
+        ...r,
+        pictureUrl: await getPublicUrl(r.picture ?? PROFILE_PLACEHOLDER),
+      }))
+    );
+    return res.status(200).json({ users: withUrls });
+  } catch (err) {
+    logger.error("Failed to list users", err);
+    return res.status(500).json({ error: "Failed to list users" });
+  }
+}
+
+export async function getPublicUserHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction
+) {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isFinite(userId))
+      return res.status(400).json({ error: "Invalid user id" });
+    const user = await getPublicUserById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
+    const achievements = await getUserAchievements(userId);
+    return res
+      .status(200)
+      .json({ user: { ...user, pictureUrl }, achievements });
+  } catch (err) {
+    logger.error("Failed to get public user", err);
+    return res.status(500).json({ error: "Failed to get user" });
+  }
+}
+
 export async function setRolesHandler(
   req: AuthenticatedRequest,
   res: Response
@@ -372,4 +432,6 @@ export default {
   getLodgeHandler,
   setLodgeHandler,
   updateUserHandler,
+  listUsersHandler,
+  getPublicUserHandler,
 };

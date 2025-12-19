@@ -32,6 +32,7 @@ export type CreateUserInput = {
   address: string;
   zipcode: string;
   picture?: string | null;
+  notes?: string | null;
 };
 
 export type PublicUser = Omit<UserRecord, "passwordHash">;

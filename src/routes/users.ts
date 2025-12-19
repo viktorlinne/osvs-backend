@@ -33,16 +33,26 @@ router.post(
   uploadProfilePicture,
   wrapAsync(usersController.updatePictureHandler)
 );
-// Admin: update another user's profile (partial)
+
+// List public users (authenticated)
+router.get("/", authMiddleware, wrapAsync(usersController.listUsersHandler));
+
+router.get(
+  "/:id",
+  authMiddleware,
+  wrapAsync(usersController.getPublicUserHandler)
+);
+
+// Update another user's profile
 router.put(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole(UserRole.Admin, UserRole.Editor),
   validateBody(updateUserSchema),
   wrapAsync(usersController.updateUserHandler)
 );
 
-// Update another user's profile picture (editor/admin only)
+// Update another user's profile picture
 router.post(
   "/:id/picture",
   authMiddleware,
@@ -51,7 +61,7 @@ router.post(
   wrapAsync(usersController.updateOtherPictureHandler)
 );
 
-// Award an achievement to a user (admin/editor only)
+// Award an achievement to a user
 router.post(
   "/:id/achievements",
   authMiddleware,
@@ -60,19 +70,18 @@ router.post(
   wrapAsync(usersController.addAchievementHandler)
 );
 
-// Get a user's achievement history (admin/editor only)
+// Get a user's achievement history
 router.get(
   "/:id/achievements",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
   wrapAsync(usersController.getAchievementsHandler)
 );
 
-// Get a user's roles (admin only)
+// Get a user's roles
 router.get(
   "/:id/roles",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole(UserRole.Admin, UserRole.Editor),
   wrapAsync(usersController.getRolesHandler)
 );
 
@@ -85,19 +94,18 @@ router.post(
   wrapAsync(usersController.setRolesHandler)
 );
 
-// Get a user's lodge (admin only)
+// Get a user's lodge
 router.get(
   "/:id/lodges",
   authMiddleware,
-  requireRole(UserRole.Admin),
   wrapAsync(usersController.getLodgeHandler)
 );
 
-// Set (replace) a user's lodge (admin only). Send `{ "lodgeId": <id> }` or `{ "lodgeId": null }` to remove.
+// Atomic post a user's lodge. Send `{ "lodgeId": <id> }` or `{ "lodgeId": null }` to remove.
 router.post(
   "/:id/lodges",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole(UserRole.Admin, UserRole.Editor),
   validateBody(setLodgeSchema),
   wrapAsync(usersController.setLodgeHandler)
 );

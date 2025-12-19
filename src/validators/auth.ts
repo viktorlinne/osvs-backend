@@ -12,6 +12,7 @@ export const registerSchema = z.object({
   city: z.string().min(1),
   address: z.string().min(1),
   zipcode: z.string().min(1),
+  notes: z.string().optional().nullable(),
   lodgeId: z.coerce.number().int().positive(),
 });
 

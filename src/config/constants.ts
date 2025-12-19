@@ -15,6 +15,9 @@ export const REFRESH_TOKEN_DEFAULT_DAYS = REFRESH_DAYS;
 // Upload limits
 export const PROFILE_PICTURE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
+// Public placeholder key stored under public/uploads
+export const PROFILE_PLACEHOLDER = "profiles/picturePlaceholder.png";
+
 // Password reset token lifetime (1 hour)
 export const PASSWORD_RESET_TOKEN_MS = 60 * 60 * 1000;
 

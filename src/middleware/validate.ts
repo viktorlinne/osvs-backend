@@ -4,6 +4,18 @@ import { ValidationError } from "../utils/errors";
 
 export function validateBody<T>(schema: ZodSchema<T>): RequestHandler {
   return (req, _res, next) => {
+    // DEV-DEBUG: log incoming body keys to help diagnose multipart issues
+    try {
+      const keys =
+        req.body && typeof req.body === "object" ? Object.keys(req.body) : [];
+      // avoid logging sensitive values like password
+      if (keys.length > 0) {
+        // eslint-disable-next-line no-console
+        console.debug("validateBody: incoming body keys:", keys);
+      }
+    } catch {
+      /* ignore logging errors */
+    }
     const result = schema.safeParse(req.body);
     if (!result.success) {
       const missing = result.error.errors.map((e) =>

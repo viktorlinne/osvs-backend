@@ -35,6 +35,7 @@ export const updateUserSchema = z.object({
       message: "dateOfBirth must be a valid date string",
     }),
   official: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
   mobile: z.string().optional(),
   city: z.string().optional(),
   address: z.string().optional(),

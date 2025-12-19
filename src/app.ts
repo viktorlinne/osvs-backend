@@ -8,6 +8,8 @@ import pinoHttp from "pino-http";
 import logger from "./utils/logger";
 import requestId from "./middleware/requestId";
 import requestTiming from "./middleware/requestTiming";
+import scrubResponseJson from "./middleware/scrubResponse";
+import scrubRequestBody from "./middleware/scrubRequest";
 import * as Sentry from "@sentry/node";
 import { Integrations } from "@sentry/tracing";
 import errorHandler from "./middleware/errorHandler";
@@ -23,6 +25,7 @@ import establishmentsRouter from "./routes/establishments";
 import mailsRouter from "./routes/mails";
 import swishRouter from "./routes/swish";
 import stripeRouter from "./routes/stripe";
+import achievementsRouter from "./routes/achievements";
 import { webhookHandler } from "./controllers/stripeController";
 
 dotenv.config();
@@ -64,6 +67,12 @@ app.use(requestTiming);
 app.use(express.json());
 app.use(cookieParser());
 
+// Scrub sensitive fields from JSON responses
+app.use(scrubResponseJson);
+
+// Redact sensitive fields from incoming request bodies (for logs)
+app.use(scrubRequestBody);
+
 app.use(
   pinoHttp({
     logger,
@@ -73,6 +82,23 @@ app.use(
         (req.headers["x-request-id"] || req.headers["x-requestid"]);
       const headerStr = Array.isArray(header) ? header[0] : header;
       return (headerStr as string) || randomUUID();
+    },
+    serializers: {
+      req: (req: express.Request) => {
+        try {
+          // prefer redacted copy attached by scrubRequestBody
+          const host = req as unknown as Record<string, unknown>;
+          const body = (host["redactedBody"] ?? host["body"]) as unknown;
+          return {
+            method: req.method,
+            url: req.url,
+            headers: req.headers,
+            body,
+          };
+        } catch {
+          return { method: req.method, url: req.url };
+        }
+      },
     },
   })
 );
@@ -97,6 +123,8 @@ app.use("/api/posts", postsRouter);
 app.use("/api/events", eventsRouter);
 // Establishments routes
 app.use("/api/establishments", establishmentsRouter);
+// Achievements list
+app.use("/api/achievements", achievementsRouter);
 // Mails routes
 app.use("/api/mails", mailsRouter);
 // Swish Payments

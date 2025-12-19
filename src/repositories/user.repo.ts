@@ -15,6 +15,7 @@ export interface CreateUserParams {
   city?: string | null;
   address?: string | null;
   zipcode?: string | null;
+  notes?: string | null;
 }
 
 async function exec(
@@ -45,8 +46,8 @@ export async function insertUser(
   conn?: PoolConnection
 ): Promise<number | undefined> {
   const sql = `INSERT INTO users
-    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, official, mobile, city, address, zipcode)
-    VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, official, mobile, city, address, zipcode, notes)
+    VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const execParams = [
     params.username,
@@ -61,6 +62,7 @@ export async function insertUser(
     params.city ?? null,
     params.address ?? null,
     params.zipcode ?? null,
+    params.notes ?? null,
   ];
 
   const result = (
@@ -130,6 +132,7 @@ export async function updateUserProfile(
     city?: string;
     address?: string;
     zipcode?: string;
+    notes?: string | null;
   }>
 ) {
   const fields: string[] = [];
@@ -166,6 +169,10 @@ export async function updateUserProfile(
   if (typeof data.zipcode !== "undefined") {
     fields.push("zipcode = ?");
     params.push(data.zipcode ?? null);
+  }
+  if (typeof data.notes !== "undefined") {
+    fields.push("notes = ?");
+    params.push(data.notes ?? null);
   }
 
   if (fields.length === 0) return;
@@ -248,6 +255,17 @@ export async function getUserAchievements(userId: number) {
     .filter((it) => Number.isFinite(it.id) && Number.isFinite(it.aid));
 }
 
+export async function listAchievements() {
+  const [rows] = await exec(
+    "SELECT id, title FROM achievements ORDER BY id ASC"
+  );
+  const arr = rows as unknown as Array<{ id?: number; title?: unknown }>;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
+    .filter((r) => Number.isFinite(r.id));
+}
+
 export async function listRoles() {
   const [rows] = await exec("SELECT id, role FROM roles ORDER BY id ASC");
   const arr = rows as unknown as Array<{ id?: number; role?: unknown }>;
@@ -255,6 +273,23 @@ export async function listRoles() {
   return arr
     .map((r) => ({ id: Number(r.id), role: String(r.role ?? "") }))
     .filter((r) => Number.isFinite(r.id));
+}
+
+export async function listUsers(limit = 100, offset = 0) {
+  const sql = `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, official, mobile, homeNumber, city, address, zipcode, notes
+    FROM users ORDER BY id DESC LIMIT ? OFFSET ?`;
+  const [rows] = await exec(sql, [limit, offset]);
+  return rows as unknown as Array<Record<string, unknown>>;
+}
+
+export async function getUserPublicById(id: number) {
+  const [rows] = await exec(
+    `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, official, mobile, homeNumber, city, address, zipcode, notes
+     FROM users WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  return arr.length > 0 ? arr[0] : undefined;
 }
 
 export default {
@@ -266,4 +301,7 @@ export default {
   assignUserToLodge,
   deleteUserRoles,
   insertUserRolesBulk,
+  listUsers,
+  getUserPublicById,
+  listAchievements,
 };

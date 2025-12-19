@@ -12,6 +12,7 @@ import * as authController from "../controllers/authController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { requireRole } from "../middleware/authorize";
 import { UserRole } from "../types/auth";
+import { uploadProfilePicture } from "../utils/fileUpload";
 
 const router = Router();
 
@@ -21,7 +22,7 @@ const loginLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many login attempts, please try again later." },
+  message: { error: "För många inloggningsförsök, försök igen senare." },
 });
 
 // Limit registration attempts to prevent abuse
@@ -31,7 +32,7 @@ const registerLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    error: "Too many accounts created from this IP, please try later.",
+    error: "För många konton skapade från denna IP, försök igen senare.",
   },
 });
 
@@ -41,9 +42,10 @@ const registerLimiter = rateLimit({
 router.post(
   "/register",
   registerLimiter,
-  validateBody(registerSchema),
   authMiddleware,
   requireRole(UserRole.Admin, UserRole.Editor),
+  uploadProfilePicture,
+  validateBody(registerSchema),
   wrapAsync(authController.register)
 );
 

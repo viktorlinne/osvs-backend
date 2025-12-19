@@ -18,32 +18,62 @@ export function isValidUserRecord(value: unknown): value is UserRecord {
     typeof record.username === "string" &&
     typeof record.email === "string" &&
     typeof record.passwordHash === "string" &&
+    typeof record.createdAt === "string" &&
+    // revokedAt may be string, Date, null or undefined
+    (typeof record.revokedAt === "undefined" ||
+      typeof record.revokedAt === "string" ||
+      record.revokedAt instanceof Date ||
+      record.revokedAt === null) &&
+    // picture is optional nullable string
+    (typeof record.picture === "undefined" ||
+      typeof record.picture === "string" ||
+      record.picture === null) &&
+    // archive is optional and can be one of specific values or null
+    (typeof record.archive === "undefined" ||
+      record.archive === null ||
+      record.archive === "Deceased" ||
+      record.archive === "Retired" ||
+      record.archive === "Removed") &&
     typeof record.firstname === "string" &&
     typeof record.lastname === "string" &&
     (typeof record.dateOfBirth === "string" ||
       record.dateOfBirth instanceof Date) &&
+    typeof record.official === "string" &&
     typeof record.mobile === "string" &&
+    // homeNumber optional
+    (typeof record.homeNumber === "undefined" ||
+      typeof record.homeNumber === "string" ||
+      record.homeNumber === null) &&
     typeof record.city === "string" &&
     typeof record.address === "string" &&
-    typeof record.zipcode === "string"
+    typeof record.zipcode === "string" &&
+    // notes optional
+    (typeof record.notes === "undefined" ||
+      typeof record.notes === "string" ||
+      record.notes === null)
   );
 }
 
 // Helper to trim all string fields in input
 export function trimUserInput(input: CreateUserInput): CreateUserInput {
-  const trim = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const trimIfString = (v: unknown) =>
+    typeof v === "string" ? v.trim() : undefined;
+  const trimRequired = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   return {
     ...input,
-    username: trim(input.username),
-    email: trim(input.email),
-    firstname: trim(input.firstname),
-    lastname: trim(input.lastname),
-    dateOfBirth: trim(input.dateOfBirth),
-    official: trim(input.official),
-    mobile: trim(input.mobile),
-    city: trim(input.city),
-    address: trim(input.address),
-    zipcode: trim(input.zipcode),
+    username: trimRequired(input.username),
+    email: trimRequired(input.email),
+    firstname: trimRequired(input.firstname),
+    lastname: trimRequired(input.lastname),
+    dateOfBirth: trimRequired(input.dateOfBirth),
+    // `official` is optional: preserve undefined/null rather than forcing empty string
+    official: trimIfString(input.official) as string | undefined,
+    // `notes` is optional: preserve undefined/null rather than forcing empty string
+    notes: trimIfString(input.notes) as string | undefined,
+    mobile: trimRequired(input.mobile),
+    city: trimRequired(input.city),
+    address: trimRequired(input.address),
+    zipcode: trimRequired(input.zipcode),
   } as CreateUserInput;
 }
 
@@ -72,6 +102,7 @@ export async function updateUserProfile(
     city?: string;
     address?: string;
     zipcode?: string;
+    notes?: string | null;
   }>
 ): Promise<void> {
   // normalize date if provided
@@ -152,10 +183,31 @@ export async function getUserAchievements(userId: number): Promise<
   return await userRepo.getUserAchievements(userId);
 }
 
+export async function listAchievements(): Promise<
+  Array<{ id: number; title: string }>
+> {
+  return await userRepo.listAchievements();
+}
+
 export async function listRoles(): Promise<
   Array<{ id: number; role: string }>
 > {
   return await userRepo.listRoles();
+}
+
+export async function listPublicUsers(limit = 100, offset = 0) {
+  const rows = await userRepo.listUsers(limit, offset);
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter(isValidUserRecord)
+    .map((r) => toPublicUser(r))
+    .filter(Boolean) as PublicUser[];
+}
+
+export async function getPublicUserById(id: number) {
+  const row = await userRepo.getUserPublicById(id);
+  if (!row) return undefined;
+  return isValidUserRecord(row) ? toPublicUser(row) : undefined;
 }
 
 export async function setUserRoles(
@@ -232,7 +284,7 @@ export async function createUser(
     "firstname",
     "lastname",
     "dateOfBirth",
-    "official",
+    // `official` is optional and therefore not included here
     "mobile",
     "city",
     "address",
@@ -386,6 +438,17 @@ export async function createUser(
       "Failed to create membership invoice for new user"
     );
   }
+
+  // Award default achievement (id 1) asynchronously so registration can't hang.
+  // Fire-and-forget: log warning on failure but don't block the response.
+  userRepo
+    .setUserAchievement(insertId, 1)
+    .catch((err) =>
+      logger.warn(
+        { err, userId: insertId },
+        "Failed to award default achievement"
+      )
+    );
 
   const user = await findById(insertId);
   if (!user) return undefined;
