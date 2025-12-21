@@ -17,8 +17,10 @@ export function isValidUserRecord(value: unknown): value is UserRecord {
     typeof record.id === "number" &&
     typeof record.username === "string" &&
     typeof record.email === "string" &&
-    typeof record.passwordHash === "string" &&
-    typeof record.createdAt === "string" &&
+    (typeof record.passwordHash === "undefined" ||
+      typeof record.passwordHash === "string") &&
+    (typeof record.createdAt === "string" ||
+      record.createdAt instanceof Date) &&
     // revokedAt may be string, Date, null or undefined
     (typeof record.revokedAt === "undefined" ||
       typeof record.revokedAt === "string" ||
