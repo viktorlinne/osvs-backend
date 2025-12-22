@@ -240,6 +240,14 @@ export async function listEventsForUser(
   return rows as unknown as Array<Record<string, unknown>>;
 }
 
+export async function selectLodgesForEvent(eventId: number) {
+  const [rows] = await pool.execute(
+    `SELECT l.id, l.name FROM lodges l JOIN lodges_events le ON le.lid = l.id WHERE le.eid = ? ORDER BY l.name`,
+    [eventId]
+  );
+  return rows as unknown as Array<Record<string, unknown>>;
+}
+
 export async function isUserInvitedToEvent(eventId: number, userId: number) {
   const sql = `
     SELECT 1 FROM lodges_events le

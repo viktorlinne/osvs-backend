@@ -290,6 +290,17 @@ export async function listEventsForUser(
     .filter((e) => Number.isFinite(e.id));
 }
 
+export async function listLodgesForEvent(
+  eventId: number
+): Promise<Array<{ id: number; name: string }>> {
+  const rows = await eventsRepo.selectLodgesForEvent(eventId);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r) => ({ id: Number(r.id), name: String(r.name ?? "") }))
+    .filter((l) => Number.isFinite(l.id));
+}
+
 export async function isUserInvitedToEvent(
   userId: number,
   eventId: number

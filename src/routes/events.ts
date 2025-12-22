@@ -13,6 +13,7 @@ import {
   linkEstablishmentHandler,
   unlinkEstablishmentHandler,
   listForUserHandler,
+  listEventLodgesHandler,
   rsvpHandler,
   getUserRsvpHandler,
 } from "../controllers/eventsController";
@@ -42,6 +43,14 @@ router.get(
   authMiddleware,
   validateParams(idParamSchema),
   wrapAsync(getEventHandler)
+);
+
+// Get lodges linked to an event
+router.get(
+  "/:id/lodges",
+  authMiddleware,
+  validateParams(idParamSchema),
+  wrapAsync(listEventLodgesHandler)
 );
 
 // Create (Admin/Editor)
