@@ -1,13 +1,7 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
 import type { PoolConnection } from "mysql2/promise";
-
-export interface LodgeRecord {
-  id: number;
-  name: string;
-  description: string | null;
-  address: string | null;
-}
+import type { Lodge as LodgeRecord } from "@osvs/types";
 
 export async function listLodges(
   limit?: number,
@@ -30,10 +24,10 @@ export async function listLodges(
     .map((r) => ({
       id: Number(r.id),
       name: String(r.name ?? ""),
-      description: r.description == null ? null : String(r.description),
-      address: r.address == null ? null : String(r.address),
+      description: r.description == null ? undefined : String(r.description),
+      address: r.address == null ? undefined : String(r.address),
     }))
-    .filter((r) => Number.isFinite(r.id));
+    .filter((r) => Number.isFinite(r.id)) as LodgeRecord[];
 }
 
 export async function findLodgeById(id: number) {
@@ -47,8 +41,8 @@ export async function findLodgeById(id: number) {
   return {
     id: Number(r.id),
     name: String(r.name ?? ""),
-    description: r.description == null ? null : String(r.description),
-    address: r.address == null ? null : String(r.address),
+    description: r.description == null ? undefined : String(r.description),
+    address: r.address == null ? undefined : String(r.address),
   };
 }
 
@@ -98,8 +92,8 @@ export async function getUserLodge(userId: number) {
   return {
     id: Number(r.id),
     name: String(r.name ?? ""),
-    description: r.description == null ? null : String(r.description),
-    address: r.address == null ? null : String(r.address),
+    description: r.description == null ? undefined : String(r.description),
+    address: r.address == null ? undefined : String(r.address),
   };
 }
 

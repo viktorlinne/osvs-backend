@@ -1,12 +1,9 @@
 import { sendMail } from "./brevoService";
 import * as mailsRepo from "../repositories/mails.repo";
-
-export type MailRecord = {
-  id: number;
-  lid: number;
-  title: string;
-  content: string;
-};
+import type {
+  mails as MailRecord,
+  users_mails as UsersMailRecord,
+} from "@osvs/types";
 
 export async function createMail(payload: {
   lid: number;
@@ -79,14 +76,20 @@ export async function sendMailToLodge(
 export async function listInboxForUser(uid: number) {
   const rows = await mailsRepo.listInboxForUser(uid);
   const arr = rows as unknown as Array<Record<string, unknown>>;
-  return arr.map((r) => ({
-    id: Number(r.id),
-    title: String(r.title ?? ""),
-    content: String(r.content ?? ""),
-    sentAt: String(r.sentAt ?? ""),
-    isRead: Number(r.isRead) === 1,
-    delivered: Number(r.delivered) === 1,
-  }));
+  return arr
+    .map((r) => ({
+      uid: Number(uid),
+      mid: Number(r.id),
+      sentAt: String(r.sentAt ?? ""),
+      isRead: Number(r.isRead) === 1,
+      delivered: Number(r.delivered) === 1,
+      mails: {
+        id: Number(r.id),
+        title: String(r.title ?? ""),
+        content: String(r.content ?? ""),
+      },
+    }))
+    .filter((m) => Number.isFinite(m.mid)) as UsersMailRecord[];
 }
 
 export default { createMail, getMailById, sendMailToLodge, listInboxForUser };

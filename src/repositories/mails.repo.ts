@@ -1,12 +1,6 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
-
-export type MailRecord = {
-  id: number;
-  lid: number;
-  title: string;
-  content: string;
-};
+import type { mails as MailRecord } from "@osvs/types";
 
 export async function insertMail(payload: {
   lid: number;
@@ -35,6 +29,7 @@ export async function findMailById(id: number): Promise<MailRecord | null> {
     lid: Number(r.lid),
     title: String(r.title ?? ""),
     content: String(r.content ?? ""),
+    users_mails: [],
   };
 }
 

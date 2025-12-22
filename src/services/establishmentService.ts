@@ -17,7 +17,7 @@ export async function listEstablishments(
     .map((r) => ({
       id: Number(r.id),
       name: String(r.name ?? ""),
-      description: r.description == null ? null : String(r.description),
+      description: r.description == null ? "" : String(r.description),
     }))
     .filter((r) => Number.isFinite(r.id));
 }
@@ -30,7 +30,7 @@ export async function getEstablishmentById(
   return {
     id: Number(r.id),
     name: String(r.name ?? ""),
-    description: r.description == null ? null : String(r.description),
+    description: r.description == null ? "" : String(r.description),
   };
 }
 

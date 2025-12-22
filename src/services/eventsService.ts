@@ -2,21 +2,10 @@ import pool from "../config/db";
 import { randomBytes } from "crypto";
 import { toDbRsvp, fromDbRsvp, RsvpStatus } from "../utils/rsvp";
 import * as eventsRepo from "../repositories/events.repo";
-
-export type EventPaymentRecord = {
-  id: number;
-  uid: number;
-  eid: number;
-  amount: number;
-  status: string;
-  provider?: string | null;
-  provider_ref?: string | null;
-  currency?: string | null;
-  invoice_token?: string | null;
-  expiresAt?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-};
+import type {
+  event_payments as EventPaymentRecord,
+  events as EventRecord,
+} from "@osvs/types";
 
 export async function getEventPrice(eventId: number): Promise<number> {
   return await eventsRepo.selectEventPrice(eventId);
@@ -88,15 +77,7 @@ export async function updateEventPaymentsByProviderRef(
   );
 }
 
-export type EventRecord = {
-  id: number;
-  title: string;
-  description: string;
-  lodgeMeeting: number | null;
-  price: number;
-  startDate: string;
-  endDate: string;
-};
+// Use canonical `EventRecord` from `@osvs/types` (see import above)
 
 export async function listEvents(
   limit?: number,
@@ -110,7 +91,12 @@ export async function listEvents(
       id: Number(r.id),
       title: String(r.title ?? ""),
       description: String(r.description ?? ""),
-      lodgeMeeting: r.lodgeMeeting == null ? null : Number(r.lodgeMeeting),
+      lodgeMeeting:
+        r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
+      establishments_events: [],
+      event_payments: [],
+      events_attendances: [],
+      lodges_events: [],
       price: Number(r.price ?? 0),
       startDate: String(r.startDate ?? ""),
       endDate: String(r.endDate ?? ""),
@@ -125,7 +111,12 @@ export async function getEventById(id: number): Promise<EventRecord | null> {
     id: Number(r.id),
     title: String(r.title ?? ""),
     description: String(r.description ?? ""),
-    lodgeMeeting: r.lodgeMeeting == null ? null : Number(r.lodgeMeeting),
+    lodgeMeeting:
+      r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
+    establishments_events: [],
+    event_payments: [],
+    events_attendances: [],
+    lodges_events: [],
     price: Number(r.price ?? 0),
     startDate: String(r.startDate ?? ""),
     endDate: String(r.endDate ?? ""),
@@ -286,7 +277,12 @@ export async function listEventsForUser(
       id: Number(r.id),
       title: String(r.title ?? ""),
       description: String(r.description ?? ""),
-      lodgeMeeting: r.lodgeMeeting == null ? null : Number(r.lodgeMeeting),
+      lodgeMeeting:
+        r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
+      establishments_events: [],
+      event_payments: [],
+      events_attendances: [],
+      lodges_events: [],
       price: Number(r.price ?? 0),
       startDate: String(r.startDate ?? ""),
       endDate: String(r.endDate ?? ""),

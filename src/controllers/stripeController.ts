@@ -46,7 +46,7 @@ export async function createMembershipHandler(
       year: String(payment.year),
     };
     const intent = await stripeService.createPaymentIntent({
-      amount: payment.amount,
+      amount: Number(payment.amount ?? 0),
       currency: payment.currency ?? "SEK",
       metadata,
     });

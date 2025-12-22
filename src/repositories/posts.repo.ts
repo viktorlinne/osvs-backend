@@ -1,12 +1,6 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
-
-export type PostRecord = {
-  id: number;
-  title: string;
-  description: string;
-  picture: string | null;
-};
+import type { posts as PostRecord } from "@osvs/types";
 
 export async function listPosts(
   limit?: number,
@@ -33,7 +27,7 @@ export async function listPosts(
       description: String(r.description ?? ""),
       picture: r.picture == null ? null : String(r.picture),
     }))
-    .filter((p) => Number.isFinite(p.id));
+    .filter((p) => Number.isFinite(p.id)) as PostRecord[];
 }
 
 export async function insertPost(

@@ -5,6 +5,7 @@ import type {
   PublicUser,
   UserRole,
 } from "@osvs/types";
+import type { Achievement, Role } from "@osvs/types";
 import { UserRoleValues } from "@osvs/types";
 // UserRoleValues runtime array from shared types
 import { toPublicUser } from "../utils/serialize";
@@ -179,27 +180,36 @@ export async function setUserAchievement(
   return await userRepo.setUserAchievement(userId, achievementId, awardedAt);
 }
 
-export async function getUserAchievements(userId: number): Promise<
-  Array<{
-    id: number;
-    aid: number;
-    awardedAt: string;
-    title: string;
-  }>
-> {
-  return await userRepo.getUserAchievements(userId);
+export async function getUserAchievements(
+  userId: number
+): Promise<Achievement[]> {
+  const rows = await userRepo.getUserAchievements(userId);
+  // map to canonical Achievement type
+  return rows
+    .map((r) => ({
+      id: Number(r.id),
+      aid: Number(r.aid),
+      awardedAt: r.awardedAt ? String(r.awardedAt) : "",
+      title: String(r.title ?? ""),
+    }))
+    .filter(
+      (it) => Number.isFinite(it.id) && Number.isFinite(it.aid)
+    ) as Achievement[];
 }
 
-export async function listAchievements(): Promise<
-  Array<{ id: number; title: string }>
-> {
-  return await userRepo.listAchievements();
+export async function listAchievements(): Promise<Achievement[]> {
+  const rows = await userRepo.listAchievements();
+  return rows
+    .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
+    .filter((r) => Number.isFinite(r.id)) as Achievement[];
 }
 
-export async function listRoles(): Promise<
-  Array<{ id: number; role: string }>
-> {
-  return await userRepo.listRoles();
+export async function listRoles(): Promise<Role[]> {
+  const rows = await userRepo.listRoles();
+  // Normalize `role` field from DB to `name` used in shared types
+  return rows
+    .map((r) => ({ id: Number(r.id), name: String((r as any).role ?? "") }))
+    .filter((r) => Number.isFinite(r.id)) as Role[];
 }
 
 export async function listPublicUsers(limit = 100, offset = 0) {
