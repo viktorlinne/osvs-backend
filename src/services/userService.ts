@@ -212,8 +212,12 @@ export async function listRoles(): Promise<Role[]> {
     .filter((r) => Number.isFinite(r.id)) as Role[];
 }
 
-export async function listPublicUsers(limit = 100, offset = 0) {
-  const rows = await userRepo.listUsers(limit, offset);
+export async function listPublicUsers(
+  limit = 100,
+  offset = 0,
+  filters?: { name?: string; achievementId?: number; lodgeId?: number }
+) {
+  const rows = await userRepo.listUsers(limit, offset, filters);
   if (!Array.isArray(rows)) return [];
   return rows
     .filter(isValidUserRecord)

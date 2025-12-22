@@ -275,10 +275,41 @@ export async function listRoles() {
     .filter((r) => Number.isFinite(r.id));
 }
 
-export async function listUsers(limit = 100, offset = 0) {
-  const sql = `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, official, mobile, homeNumber, city, address, zipcode, notes
-    FROM users ORDER BY id DESC LIMIT ? OFFSET ?`;
-  const [rows] = await exec(sql, [limit, offset]);
+export async function listUsers(
+  limit = 100,
+  offset = 0,
+  filters?: { name?: string; achievementId?: number; lodgeId?: number }
+) {
+  // Build dynamic SQL with optional filters
+  const where: string[] = [];
+  const params: Array<string | number | null> = [];
+
+  if (filters?.name) {
+    where.push("(u.firstname LIKE ? OR u.lastname LIKE ?)");
+    const term = `%${filters.name}%`;
+    params.push(term, term);
+  }
+
+  if (typeof filters?.achievementId === "number") {
+    where.push(
+      "EXISTS (SELECT 1 FROM users_achievements ua WHERE ua.uid = u.id AND ua.aid = ?)"
+    );
+    params.push(filters.achievementId);
+  }
+
+  if (typeof filters?.lodgeId === "number") {
+    where.push(
+      "EXISTS (SELECT 1 FROM users_lodges ul WHERE ul.uid = u.id AND ul.lid = ?)"
+    );
+    params.push(filters.lodgeId);
+  }
+
+  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+  const sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.official, u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes
+    FROM users u ${whereSql} ORDER BY u.id DESC LIMIT ? OFFSET ?`;
+
+  params.push(limit, offset);
+  const [rows] = await exec(sql, params);
   return rows as unknown as Array<Record<string, unknown>>;
 }
 
