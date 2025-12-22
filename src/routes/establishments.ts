@@ -1,7 +1,7 @@
 import express from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "../types/auth";
+import { UserRole } from "@osvs/types";
 import {
   listEstablishmentsHandler,
   getEstablishmentHandler,
@@ -34,21 +34,21 @@ router.get(
 router.post(
   "/",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateBody(createEstablishmentSchema),
   wrapAsync(createEstablishmentHandler)
 );
 router.put(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateBody(updateEstablishmentSchema),
   wrapAsync(updateEstablishmentHandler)
 );
 router.delete(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   wrapAsync(deleteEstablishmentHandler)
 );
 
@@ -56,14 +56,14 @@ router.delete(
 router.post(
   "/:id/lodges",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateBody(linkLodgeSchema),
   wrapAsync(linkLodgeHandler)
 );
 router.delete(
   "/:id/lodges",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateBody(linkLodgeSchema),
   wrapAsync(unlinkLodgeHandler)
 );

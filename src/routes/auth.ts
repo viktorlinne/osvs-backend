@@ -11,7 +11,7 @@ import authMiddleware from "../middleware/auth";
 import * as authController from "../controllers/authController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "../types/auth";
+import { UserRole } from "@osvs/types";
 import { uploadProfilePicture } from "../utils/fileUpload";
 
 const router = Router();
@@ -43,7 +43,7 @@ router.post(
   "/register",
   registerLimiter,
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   uploadProfilePicture,
   validateBody(registerSchema),
   wrapAsync(authController.register)

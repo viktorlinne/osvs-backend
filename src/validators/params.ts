@@ -1,10 +1,7 @@
 import { z } from "zod";
 
 export const idParamSchema = z.object({
-  id: z.preprocess((v) => {
-    if (typeof v === "string") return Number(v);
-    return v;
-  }, z.number().int().positive()),
+  id: z.coerce.number().int().positive(),
 });
 
 export const tokenParamSchema = z.object({
@@ -12,8 +9,5 @@ export const tokenParamSchema = z.object({
 });
 
 export const eventIdParamSchema = z.object({
-  eventId: z.preprocess((v) => {
-    if (typeof v === "string") return Number(v);
-    return v;
-  }, z.number().int().positive()),
+  eventId: z.coerce.number().int().positive(),
 });

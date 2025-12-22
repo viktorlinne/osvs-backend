@@ -1,0 +1,291 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model achievements {
+  id                 Int                  @id @default(autoincrement())
+  title              achievements_title
+  users_achievements users_achievements[]
+}
+
+model establishments {
+  id                    Int                     @id @default(autoincrement())
+  name                  String                  @db.VarChar(256)
+  description           String                  @db.VarChar(256)
+  address               String                  @db.VarChar(256)
+  establishments_events establishments_events[]
+  lodges_establishments lodges_establishments[]
+}
+
+model establishments_events {
+  esid           Int
+  eid            Int
+  establishments establishments @relation(fields: [esid], references: [id], onDelete: Cascade, map: "fk_establishments_events_establishment")
+  events         events         @relation(fields: [eid], references: [id], onDelete: Cascade, map: "fk_establishments_events_event")
+
+  @@id([esid, eid])
+  @@index([eid], map: "fk_establishments_events_event")
+}
+
+model event_payments {
+  id            Int                   @id @default(autoincrement())
+  uid           Int
+  eid           Int
+  amount        Decimal               @default(0.00) @db.Decimal(10, 2)
+  status        event_payments_status @default(Pending)
+  provider      String?               @db.VarChar(64)
+  provider_ref  String?               @db.VarChar(256)
+  currency      String                @default("SEK") @db.VarChar(3)
+  invoice_token String?               @db.VarChar(128)
+  expiresAt     DateTime?             @db.DateTime(0)
+  metadata      String?               @db.LongText
+  createdAt     DateTime              @default(now()) @db.DateTime(0)
+  updatedAt     DateTime              @default(now()) @db.DateTime(0)
+  events        events                @relation(fields: [eid], references: [id], onDelete: Cascade, map: "fk_event_payments_event")
+  users         users                 @relation(fields: [uid], references: [id], map: "fk_event_payments_user")
+
+  @@unique([uid, eid], map: "uq_event_payments_uid_eid")
+  @@index([eid], map: "fk_event_payments_event")
+  @@index([uid], map: "fk_event_payments_user")
+}
+
+model events {
+  id                    Int                     @id @default(autoincrement())
+  title                 String                  @db.VarChar(256)
+  description           String                  @db.Text
+  lodgeMeeting          Boolean?
+  price                 Decimal                 @db.Decimal(10, 2)
+  startDate             DateTime                @db.DateTime(0)
+  endDate               DateTime                @db.DateTime(0)
+  establishments_events establishments_events[]
+  event_payments        event_payments[]
+  events_attendances    events_attendances[]
+  lodges_events         lodges_events[]
+}
+
+model events_attendances {
+  uid    Int
+  eid    Int
+  rsvp   Boolean @default(false)
+  events events  @relation(fields: [eid], references: [id], onDelete: Cascade, map: "fk_events_attendances_event")
+  users  users   @relation(fields: [uid], references: [id], onDelete: Cascade, map: "fk_events_attendances_user")
+
+  @@id([uid, eid])
+  @@index([eid], map: "fk_events_attendances_event")
+}
+
+model lodges {
+  id                    Int                     @id @default(autoincrement())
+  name                  String                  @db.VarChar(256)
+  description           String                  @db.VarChar(256)
+  address               String?                 @db.VarChar(256)
+  lodges_establishments lodges_establishments[]
+  lodges_events         lodges_events[]
+  mails                 mails[]
+  users_lodges          users_lodges[]
+}
+
+model lodges_establishments {
+  lid            Int
+  esid           Int
+  establishments establishments @relation(fields: [esid], references: [id], onDelete: Cascade, map: "fk_lodges_establishments_establishment")
+  lodges         lodges         @relation(fields: [lid], references: [id], map: "fk_lodges_establishments_lodge")
+
+  @@id([lid, esid])
+  @@index([esid], map: "fk_lodges_establishments_establishment")
+}
+
+model lodges_events {
+  lid    Int
+  eid    Int
+  events events @relation(fields: [eid], references: [id], onDelete: Cascade, map: "fk_lodges_events_event")
+  lodges lodges @relation(fields: [lid], references: [id], onDelete: Cascade, map: "fk_lodges_events_lodge")
+
+  @@id([lid, eid])
+  @@index([eid], map: "fk_lodges_events_event")
+}
+
+model mails {
+  id          Int           @id @default(autoincrement())
+  lid         Int
+  title       String        @db.VarChar(256)
+  content     String        @db.Text
+  lodges      lodges        @relation(fields: [lid], references: [id], map: "fk_mails_lodge")
+  users_mails users_mails[]
+
+  @@index([lid], map: "fk_mails_lodge")
+}
+
+model membership_payments {
+  id            Int                        @id @default(autoincrement())
+  uid           Int
+  amount        Decimal                    @default(600.00) @db.Decimal(10, 2)
+  year          Int
+  status        membership_payments_status @default(Pending)
+  provider      String?                    @db.VarChar(64)
+  provider_ref  String?                    @db.VarChar(256)
+  currency      String                     @default("SEK") @db.VarChar(3)
+  invoice_token String?                    @db.VarChar(128)
+  expiresAt     DateTime?                  @db.DateTime(0)
+  metadata      String?                    @db.LongText
+  createdAt     DateTime                   @default(now()) @db.DateTime(0)
+  updatedAt     DateTime                   @default(now()) @db.DateTime(0)
+  users         users                      @relation(fields: [uid], references: [id], map: "fk_membership_payments_user")
+
+  @@unique([uid, year], map: "uq_membership_uid_year")
+  @@index([uid], map: "fk_membership_payments_user")
+}
+
+model password_resets {
+  token_hash String   @id @db.VarChar(128)
+  uid        Int
+  expiresAt  DateTime @db.DateTime(0)
+  createdAt  DateTime @default(now()) @db.DateTime(0)
+  users      users    @relation(fields: [uid], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_password_reset_user")
+
+  @@index([uid], map: "fk_password_reset_user")
+}
+
+model posts {
+  id          Int     @id @default(autoincrement())
+  title       String  @db.VarChar(256)
+  description String  @db.VarChar(256)
+  picture     String? @db.VarChar(256)
+}
+
+model refresh_tokens {
+  token_hash String    @id @db.VarChar(128)
+  uid        Int
+  expiresAt  DateTime  @db.DateTime(0)
+  createdAt  DateTime  @default(now()) @db.DateTime(0)
+  isRevoked  Boolean   @default(false)
+  replacedBy String?   @db.VarChar(128)
+  lastUsed   DateTime? @db.DateTime(0)
+  users      users     @relation(fields: [uid], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_refresh_token_user")
+
+  @@index([uid], map: "fk_refresh_token_user")
+}
+
+model revoked_tokens {
+  jti       String   @id @db.VarChar(128)
+  expiresAt DateTime @db.DateTime(0)
+}
+
+model roles {
+  id          Int           @id @default(autoincrement())
+  role        roles_role
+  users_roles users_roles[]
+}
+
+model users {
+  id                  Int                   @id @default(autoincrement())
+  username            String                @unique(map: "uq_users_username") @db.VarChar(256)
+  email               String                @unique(map: "uq_users_email") @db.VarChar(256)
+  passwordHash        String                @db.VarChar(512)
+  createdAt           DateTime              @db.Date
+  picture             String                @db.VarChar(256)
+  archive             users_archive?
+  firstname           String                @db.VarChar(256)
+  lastname            String                @db.VarChar(256)
+  dateOfBirth         DateTime              @db.Date
+  official            String?               @db.VarChar(256)
+  revokedAt           DateTime?             @db.DateTime(0)
+  mobile              String                @db.VarChar(256)
+  homeNumber          String?               @db.VarChar(256)
+  city                String                @db.VarChar(256)
+  address             String                @db.VarChar(256)
+  zipcode             String                @db.VarChar(256)
+  notes               String?               @db.Text
+  event_payments      event_payments[]
+  events_attendances  events_attendances[]
+  membership_payments membership_payments[]
+  password_resets     password_resets[]
+  refresh_tokens      refresh_tokens[]
+  users_achievements  users_achievements[]
+  users_lodges        users_lodges[]
+  users_mails         users_mails[]
+  users_roles         users_roles[]
+}
+
+model users_achievements {
+  id           Int          @id @default(autoincrement())
+  uid          Int
+  aid          Int
+  awardedAt    DateTime     @db.DateTime(0)
+  achievements achievements @relation(fields: [aid], references: [id], onDelete: Cascade, map: "fk_users_achievements_achievement")
+  users        users        @relation(fields: [uid], references: [id], onDelete: Cascade, map: "fk_users_achievements_user")
+
+  @@index([aid], map: "fk_users_achievements_achievement")
+  @@index([uid], map: "fk_users_achievements_user")
+}
+
+model users_lodges {
+  uid    Int
+  lid    Int
+  lodges lodges @relation(fields: [lid], references: [id], onDelete: Cascade, map: "fk_user_lodges_lodge_fixed")
+  users  users  @relation(fields: [uid], references: [id], map: "fk_user_lodges_user")
+
+  @@id([uid, lid])
+  @@index([lid], map: "fk_user_lodges_lodge_fixed")
+}
+
+model users_mails {
+  uid       Int
+  mid       Int
+  sentAt    DateTime @db.DateTime(0)
+  isRead    Boolean  @default(false)
+  delivered Boolean  @default(false)
+  mails     mails    @relation(fields: [mid], references: [id], onDelete: Cascade, map: "fk_users_mails_mail")
+  users     users    @relation(fields: [uid], references: [id], onDelete: Cascade, map: "fk_users_mails_user")
+
+  @@id([uid, mid])
+  @@index([mid], map: "fk_users_mails_mail")
+}
+
+model users_roles {
+  uid   Int
+  rid   Int
+  roles roles @relation(fields: [rid], references: [id], onDelete: Cascade, map: "fk_user_roles_role")
+  users users @relation(fields: [uid], references: [id], map: "fk_user_roles_user")
+
+  @@id([uid, rid])
+  @@index([rid], map: "fk_user_roles_role")
+}
+
+enum achievements_title {
+  I_a_Graden   @map("I:a Graden")
+  II_a_Graden  @map("II:a Graden")
+  III_e_Graden @map("III:e Graden")
+}
+
+enum roles_role {
+  Admin
+  Editor
+  Member
+}
+
+enum event_payments_status {
+  Pending
+  Paid
+  Failed
+  Refunded
+}
+
+enum membership_payments_status {
+  Pending
+  Paid
+  Failed
+  Refunded
+}
+
+enum users_archive {
+  Deceased
+  Retired
+  Removed
+}

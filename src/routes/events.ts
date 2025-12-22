@@ -1,7 +1,7 @@
 import express from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "../types/auth";
+import { UserRole } from "@osvs/types";
 import {
   listEventsHandler,
   getEventHandler,
@@ -48,7 +48,7 @@ router.get(
 router.post(
   "/",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(createEventSchema),
   wrapAsync(createEventHandler)
 );
@@ -57,7 +57,7 @@ router.post(
 router.put(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(updateEventSchema),
   validateParams(idParamSchema),
   wrapAsync(updateEventHandler)
@@ -67,7 +67,7 @@ router.put(
 router.delete(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateParams(idParamSchema),
   wrapAsync(deleteEventHandler)
 );
@@ -76,7 +76,7 @@ router.delete(
 router.post(
   "/:id/lodges",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(linkLodgeSchema),
   validateParams(idParamSchema),
   wrapAsync(linkLodgeHandler)
@@ -84,7 +84,7 @@ router.post(
 router.delete(
   "/:id/lodges",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(linkLodgeSchema),
   validateParams(idParamSchema),
   wrapAsync(unlinkLodgeHandler)
@@ -94,7 +94,7 @@ router.delete(
 router.post(
   "/:id/establishments",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(linkEstablishmentSchema),
   validateParams(idParamSchema),
   wrapAsync(linkEstablishmentHandler)
@@ -102,7 +102,7 @@ router.post(
 router.delete(
   "/:id/establishments",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(linkEstablishmentSchema),
   validateParams(idParamSchema),
   wrapAsync(unlinkEstablishmentHandler)

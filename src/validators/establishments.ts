@@ -1,16 +1,15 @@
 import { z } from "zod";
+import { establishmentsSchema } from "@osvs/types";
 
-export const createEstablishmentSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional().nullable(),
-  address: z.string().min(1),
-});
+export const createEstablishmentSchema = establishmentsSchema
+  .omit({ id: true })
+  .extend({
+    name: z.string().min(1),
+    address: z.string().min(1),
+    description: z.string().optional().nullable(),
+  });
 
-export const updateEstablishmentSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional().nullable(),
-  address: z.string().min(1),
-});
+export const updateEstablishmentSchema = createEstablishmentSchema.partial();
 
 export const linkLodgeSchema = z.object({
   lodgeId: z.coerce.number().int().positive(),

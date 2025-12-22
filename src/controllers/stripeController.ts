@@ -4,6 +4,11 @@ import { stripeService } from "../services";
 import * as membershipPaymentsService from "../services";
 import * as eventsService from "../services";
 import { Stripe } from "stripe";
+import {
+  createMembershipSchema,
+  createEventPaymentBodySchema,
+  webhookRawBodySchema,
+} from "../validators/stripe";
 
 // Create membership invoice and return client_secret for Stripe.js
 export async function createMembershipHandler(
@@ -13,7 +18,11 @@ export async function createMembershipHandler(
   try {
     const user = req.user;
     const uid: number = user?.userId as number;
-    const { year, amount } = req.body as { year: number; amount?: number };
+    const parsed = createMembershipSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors });
+    }
+    const { year, amount } = parsed.data as { year: number; amount?: number };
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
     if (typeof year !== "number")
       return res.status(400).json({ error: "Missing year" });
@@ -76,6 +85,10 @@ export async function createEventPaymentHandler(
   const user = req.user;
   const uid = Number(user?.userId ?? 0);
   const eventId = Number(req.params.eventId ?? 0);
+  const parsed = createEventPaymentBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.errors });
+  }
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
   if (!Number.isFinite(eventId) || eventId <= 0)
     return res.status(400).json({ error: "Invalid event id" });
@@ -160,6 +173,8 @@ export async function webhookHandler(req: Request, res: Response) {
       sig ?? "",
       webhookSecret
     );
+    // minimal validation of constructed event
+    webhookRawBodySchema.safeParse(event);
 
     // Handle relevant event types
     if (event.type === "payment_intent.succeeded") {

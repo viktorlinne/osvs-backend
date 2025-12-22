@@ -10,7 +10,7 @@ import { validateParams } from "../middleware/validate";
 import { idParamSchema } from "../validators/params";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "../types/auth";
+import { UserRole } from "@osvs/types";
 import { uploadProfilePicture } from "../utils/fileUpload";
 import { validateBody } from "../middleware/validate";
 import { createPostSchema, updatePostSchema } from "../validators/posts";
@@ -32,7 +32,7 @@ router.get(
 router.post(
   "/",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   uploadProfilePicture,
   validateBody(createPostSchema),
   wrapAsync(createPostHandler)
@@ -42,7 +42,7 @@ router.post(
 router.put(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   uploadProfilePicture,
   validateBody(updatePostSchema),
   wrapAsync(updatePostHandler)

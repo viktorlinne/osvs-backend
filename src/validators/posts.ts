@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { PostSchema } from "@osvs/types";
 
-export const createPostSchema = z.object({
+// Base schema derived from canonical PostSchema (DB shape)
+const BasePost = PostSchema.omit({ id: true });
+
+export const createPostSchema = BasePost.extend({
   title: z.string().min(1),
-  description: z.string().min(1),
+  description: z.string().optional(),
 });
 
-export const updatePostSchema = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
-});
+export const updatePostSchema = createPostSchema.partial();

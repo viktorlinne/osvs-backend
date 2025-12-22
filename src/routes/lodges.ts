@@ -9,7 +9,7 @@ import { validateParams } from "../middleware/validate";
 import { idParamSchema } from "../validators/params";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "../types/auth";
+import { UserRole } from "@osvs/types";
 import { validateBody } from "../middleware/validate";
 import { createLodgeSchema, updateLodgeSchema } from "../validators/lodges";
 
@@ -22,7 +22,7 @@ router.get("/", authMiddleware, wrapAsync(listLodgesHandler));
 router.post(
   "/",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateBody(createLodgeSchema),
   wrapAsync(createLodgeHandler)
 );
@@ -31,7 +31,7 @@ router.post(
 router.put(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateBody(updateLodgeSchema),
   validateParams(idParamSchema),
   wrapAsync(updateLodgeHandler)

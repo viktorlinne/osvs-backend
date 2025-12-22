@@ -1,7 +1,7 @@
 import { Router } from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "../types/auth";
+import { UserRole } from "@osvs/types";
 import adminController from "../controllers/adminController";
 import { wrapAsync } from "../middleware/asyncHandler";
 
@@ -11,7 +11,7 @@ const router = Router();
 router.post(
   "/cleanup-tokens",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   wrapAsync(adminController.cleanupTokens)
 );
 
@@ -19,7 +19,7 @@ router.post(
 router.get(
   "/roles",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   wrapAsync(adminController.getRoles)
 );
 

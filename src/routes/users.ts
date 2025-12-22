@@ -11,7 +11,7 @@ import {
 } from "../validators/users";
 import { updateUserSchema } from "../validators/users";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "../types/auth";
+import { UserRole } from "@osvs/types";
 
 const router = express.Router();
 
@@ -47,7 +47,7 @@ router.get(
 router.put(
   "/:id",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(updateUserSchema),
   wrapAsync(usersController.updateUserHandler)
 );
@@ -56,7 +56,7 @@ router.put(
 router.post(
   "/:id/picture",
   authMiddleware,
-  requireRole(UserRole.Editor, UserRole.Admin),
+  requireRole("Editor", "Admin"),
   uploadProfilePicture,
   wrapAsync(usersController.updateOtherPictureHandler)
 );
@@ -65,7 +65,7 @@ router.post(
 router.post(
   "/:id/achievements",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(addAchievementSchema),
   wrapAsync(usersController.addAchievementHandler)
 );
@@ -81,7 +81,7 @@ router.get(
 router.get(
   "/:id/roles",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   wrapAsync(usersController.getRolesHandler)
 );
 
@@ -89,7 +89,7 @@ router.get(
 router.post(
   "/:id/roles",
   authMiddleware,
-  requireRole(UserRole.Admin),
+  requireRole("Admin"),
   validateBody(setRolesSchema),
   wrapAsync(usersController.setRolesHandler)
 );
@@ -105,7 +105,7 @@ router.get(
 router.post(
   "/:id/lodges",
   authMiddleware,
-  requireRole(UserRole.Admin, UserRole.Editor),
+  requireRole("Admin", "Editor"),
   validateBody(setLodgeSchema),
   wrapAsync(usersController.setLodgeHandler)
 );

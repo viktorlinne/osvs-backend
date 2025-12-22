@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { eventsSchema } from "@osvs/types";
 
 const isValidDateString = (s: unknown) => {
   if (typeof s !== "string") return false;
@@ -6,40 +7,44 @@ const isValidDateString = (s: unknown) => {
   return !Number.isNaN(t);
 };
 
-export const createEventSchema = z
-  .object({
-    title: z.string().min(1),
-    description: z.string().min(1),
-    lodgeMeeting: z.boolean().optional(),
-    price: z.coerce
-      .number()
-      .optional()
-      .default(0)
-      .refine((n) => n >= 0, {
-        message: "price must be >= 0",
-      }),
-    startDate: z.string().min(1).refine(isValidDateString, {
-      message: "startDate must be a valid date string",
-    }),
-    endDate: z.string().min(1).refine(isValidDateString, {
-      message: "endDate must be a valid date string",
-    }),
-  })
-  .superRefine((data, ctx) => {
-    try {
-      const s = Date.parse(data.startDate);
-      const e = Date.parse(data.endDate);
-      if (s > e) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "startDate must be before or equal to endDate",
-          path: ["startDate", "endDate"],
-        });
-      }
-    } catch {
-      // ignore; individual field refinements will handle invalid dates
+const BaseEvent = eventsSchema.omit({
+  id: true,
+  establishments_events: true,
+  event_payments: true,
+  events_attendances: true,
+  lodges_events: true,
+});
+
+export const createEventSchema = BaseEvent.extend({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  lodgeMeeting: z.boolean().optional(),
+  price: z.coerce
+    .number()
+    .optional()
+    .default(0)
+    .refine((n) => n >= 0, { message: "price must be >= 0" }),
+  startDate: z.string().min(1).refine(isValidDateString, {
+    message: "startDate must be a valid date string",
+  }),
+  endDate: z.string().min(1).refine(isValidDateString, {
+    message: "endDate must be a valid date string",
+  }),
+}).superRefine((data, ctx) => {
+  try {
+    const s = Date.parse(data.startDate);
+    const e = Date.parse(data.endDate);
+    if (s > e) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "startDate must be before or equal to endDate",
+        path: ["startDate", "endDate"],
+      });
     }
-  });
+  } catch {
+    // individual field refinements handle invalid dates
+  }
+});
 
 export const updateEventSchema = z
   .object({
@@ -65,7 +70,7 @@ export const updateEventSchema = z
         message: "endDate must be a valid date string",
       }),
   })
-  .superRefine((data, ctx) => {
+  .superRefine((data: any, ctx: any) => {
     if (data.startDate && data.endDate) {
       try {
         const s = Date.parse(data.startDate as string);

@@ -1,6 +1,12 @@
 import pool from "../config/db";
-import type { UserRecord, CreateUserInput, PublicUser } from "../types/user";
-import { UserRole } from "../types/auth";
+import type {
+  UserRecord,
+  CreateUserInput,
+  PublicUser,
+  UserRole,
+} from "@osvs/types";
+import { UserRoleValues } from "@osvs/types";
+// UserRoleValues runtime array from shared types
 import { toPublicUser } from "../utils/serialize";
 import { normalizeToSqlDate } from "../utils/dates";
 import { ValidationError, ConflictError } from "../utils/errors";
@@ -118,8 +124,7 @@ export async function getUserRoles(userId: number): Promise<UserRole[]> {
   const rows = await userRepo.getUserRoles(userId);
   return rows.filter(
     (role): role is UserRole =>
-      typeof role === "string" &&
-      Object.values(UserRole).includes(role as UserRole)
+      typeof role === "string" && UserRoleValues.includes(role as UserRole)
   ) as UserRole[];
 }
 
