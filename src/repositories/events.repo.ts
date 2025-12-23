@@ -242,7 +242,7 @@ export async function listEventsForUser(
 
 export async function selectLodgesForEvent(eventId: number) {
   const [rows] = await pool.execute(
-    `SELECT l.id, l.name FROM lodges l JOIN lodges_events le ON le.lid = l.id WHERE le.eid = ? ORDER BY l.name`,
+    "SELECT l.id, l.name FROM lodges l JOIN lodges_events le ON le.lid = l.id WHERE le.eid = ? ORDER BY l.name",
     [eventId]
   );
   return rows as unknown as Array<Record<string, unknown>>;
@@ -267,6 +267,36 @@ export async function upsertUserRsvp(
   const sql =
     "INSERT INTO events_attendances (uid, eid, rsvp) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rsvp = VALUES(rsvp)";
   await pool.execute(sql, [userId, eventId, rsvpValue]);
+}
+
+export async function countInvitedUsersForEvent(eventId: number) {
+  const sql = `
+    SELECT COUNT(DISTINCT ul.uid) AS cnt
+    FROM lodges_events le
+    JOIN users_lodges ul ON ul.lid = le.lid
+    WHERE le.eid = ?
+  `;
+  const [rows] = await pool.execute(sql, [eventId]);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr) || arr.length === 0) return 0;
+  return Number(arr[0].cnt ?? 0);
+}
+
+export async function countRsvpStatsForEvent(eventId: number) {
+  const sql = `
+    SELECT
+      COUNT(rsvp) AS answered,
+      SUM(CASE WHEN rsvp = 1 THEN 1 ELSE 0 END) AS going
+    FROM events_attendances
+    WHERE eid = ?
+  `;
+  const [rows] = await pool.execute(sql, [eventId]);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr) || arr.length === 0) return { answered: 0, going: 0 };
+  return {
+    answered: Number(arr[0].answered ?? 0),
+    going: Number(arr[0].going ?? 0),
+  };
 }
 
 export async function getUserRsvpFromDb(userId: number, eventId: number) {

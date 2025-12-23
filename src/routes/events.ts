@@ -1,7 +1,6 @@
 import express from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "@osvs/types";
 import {
   listEventsHandler,
   getEventHandler,
@@ -14,6 +13,7 @@ import {
   unlinkEstablishmentHandler,
   listForUserHandler,
   listEventLodgesHandler,
+  getEventStatsHandler,
   rsvpHandler,
   getUserRsvpHandler,
 } from "../controllers/eventsController";
@@ -51,6 +51,15 @@ router.get(
   authMiddleware,
   validateParams(idParamSchema),
   wrapAsync(listEventLodgesHandler)
+);
+
+// Admin-only: event statistics
+router.get(
+  "/:id/stats",
+  authMiddleware,
+  requireRole("Admin"),
+  validateParams(idParamSchema),
+  wrapAsync(getEventStatsHandler)
 );
 
 // Create (Admin/Editor)

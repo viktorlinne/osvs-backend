@@ -327,6 +327,14 @@ export async function getUserRsvp(
     : fromDbRsvp(val as number);
 }
 
+export async function getEventStats(
+  eventId: number
+): Promise<{ invited: number; answered: number; going: number }> {
+  const invited = await eventsRepo.countInvitedUsersForEvent(eventId);
+  const rsvpCounts = await eventsRepo.countRsvpStatsForEvent(eventId);
+  return { invited, answered: rsvpCounts.answered, going: rsvpCounts.going };
+}
+
 export default {
   listEvents,
   getEventById,
@@ -341,4 +349,5 @@ export default {
   isUserInvitedToEvent,
   setUserRsvp,
   getUserRsvp,
+  getEventStats,
 };

@@ -210,6 +210,18 @@ export async function listEventLodgesHandler(
   return res.status(200).json({ lodges });
 }
 
+export async function getEventStatsHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction
+) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id))
+    return res.status(400).json({ error: "Invalid id" });
+  const stats = await eventsService.getEventStats(id);
+  return res.status(200).json({ stats });
+}
+
 export async function rsvpHandler(
   req: AuthenticatedRequest,
   res: Response,
