@@ -25,7 +25,8 @@ export async function getLodgeHandler(
   _next: NextFunction
 ) {
   const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid lodge id" });
+  if (!Number.isFinite(id))
+    return res.status(400).json({ error: "Invalid lodge id" });
   const lodge = await lodgeService.findLodgeById(id);
   if (!lodge) return res.status(404).json({ error: "Not found" });
   return res.status(200).json({ lodge });
