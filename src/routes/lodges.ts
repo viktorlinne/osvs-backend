@@ -1,6 +1,7 @@
 import express from "express";
 import {
   listLodgesHandler,
+  getLodgeHandler,
   createLodgeHandler,
   updateLodgeHandler,
 } from "../controllers/lodgesController";
@@ -17,6 +18,14 @@ const router = express.Router();
 
 // Authenticated: list lodges
 router.get("/", authMiddleware, wrapAsync(listLodgesHandler));
+
+// Get single lodge
+router.get(
+  "/:id",
+  authMiddleware,
+  validateParams(idParamSchema),
+  wrapAsync(getLodgeHandler)
+);
 
 // Admin: create lodge
 router.post(

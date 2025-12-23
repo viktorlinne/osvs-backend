@@ -19,6 +19,18 @@ export async function listLodgesHandler(
   return res.status(200).json({ lodges: rows });
 }
 
+export async function getLodgeHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction
+) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid lodge id" });
+  const lodge = await lodgeService.findLodgeById(id);
+  if (!lodge) return res.status(404).json({ error: "Not found" });
+  return res.status(200).json({ lodge });
+}
+
 export async function createLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
