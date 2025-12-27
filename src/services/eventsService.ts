@@ -77,6 +77,19 @@ export async function updateEventPaymentsByProviderRef(
   );
 }
 
+export async function associateProviderRefForPayment(
+  paymentId: number,
+  provider: string,
+  providerRef: string
+): Promise<void> {
+  if (!Number.isFinite(paymentId) || paymentId <= 0) return;
+  await eventsRepo.updateEventPaymentProviderRefById(
+    paymentId,
+    provider,
+    providerRef
+  );
+}
+
 // Use canonical `EventRecord` from `@osvs/types` (see import above)
 
 export async function listEvents(

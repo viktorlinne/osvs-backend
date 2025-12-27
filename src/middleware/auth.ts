@@ -17,7 +17,7 @@ export async function authMiddleware(
   let token: string | undefined = getAccessTokenFromReq(req);
 
   if (!token) {
-    return res.status(401).json({ error: "Missing Authorization token" });
+    return res.status(401).json({ error: "Vänligen logga in" });
   }
   try {
     const secret = process.env.JWT_SECRET ?? "dev-secret";

@@ -370,6 +370,17 @@ export async function findEventPaymentByToken(token: string) {
   return arr[0] ?? null;
 }
 
+export async function updateEventPaymentProviderRefById(
+  id: number,
+  provider: string,
+  providerRef: string
+) {
+  await pool.execute(
+    "UPDATE event_payments SET provider = ?, provider_ref = ? WHERE id = ?",
+    [provider, providerRef, id]
+  );
+}
+
 export async function updateEventPaymentsByProviderRef(
   provider: string,
   providerRef: string,

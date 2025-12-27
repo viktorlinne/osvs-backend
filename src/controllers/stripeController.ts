@@ -10,6 +10,55 @@ import {
   webhookRawBodySchema,
 } from "../validators/stripe";
 
+// Create a Checkout Session for frontend embedded checkout
+export async function createCheckoutSessionHandler(
+  req: Request,
+  res: Response
+) {
+  try {
+    const body = (req.body ?? {}) as Record<string, any>;
+    const priceId = String(
+      body.price_id ?? process.env.DEFAULT_STRIPE_PRICE_ID ?? ""
+    );
+    const quantity = Number(body.quantity ?? 1);
+    if (!priceId) return res.status(400).json({ error: "Missing price_id" });
+
+    const FRONTEND_ORIGIN = process.env.FRONTEND_URL || "http://localhost:5173";
+    const successUrl = `${FRONTEND_ORIGIN}/return?session_id={CHECKOUT_SESSION_ID}`;
+
+    const session = await stripeService.createCheckoutSession({
+      line_items: [{ price: priceId, quantity }],
+      mode: "payment",
+      success_url: successUrl,
+      cancel_url: FRONTEND_ORIGIN,
+      ui_mode: "embedded",
+    });
+
+    return res.json({
+      clientSecret: (session as any).client_secret ?? null,
+      id: session.id,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: String(err) });
+  }
+}
+
+// Retrieve session status for return page
+export async function sessionStatusHandler(req: Request, res: Response) {
+  try {
+    const sessionId = String(req.query.session_id ?? "");
+    if (!sessionId)
+      return res.status(400).json({ error: "Missing session_id" });
+    const session = await stripeService.retrieveCheckoutSession(sessionId);
+    return res.json({
+      status: (session as any).status,
+      customer_email: (session as any).customer_details?.email ?? null,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: String(err) });
+  }
+}
+
 // Create membership invoice and return client_secret for Stripe.js
 export async function createMembershipHandler(
   req: AuthenticatedRequest,
@@ -131,6 +180,24 @@ export async function createEventPaymentHandler(
     metadata,
   });
 
+  // Persist provider/provider_ref on the event payment row so webhooks can match by provider_ref
+  try {
+    if (intent && intent.id) {
+      await eventsService.associateProviderRefForPayment(
+        paymentId,
+        "stripe",
+        intent.id
+      );
+    }
+  } catch (err) {
+    // non-fatal; log and continue
+    // eslint-disable-next-line no-console
+    console.warn(
+      "Failed to persist provider_ref for event payment:",
+      String(err)
+    );
+  }
+
   return res.json({
     payment: paymentRow,
     client_secret: intent.client_secret ?? null,
@@ -226,6 +293,8 @@ export async function webhookHandler(req: Request, res: Response) {
 
 export default {
   createMembershipHandler,
+  createCheckoutSessionHandler,
+  sessionStatusHandler,
   getPaymentHandler,
   getByTokenHandler,
   webhookHandler,

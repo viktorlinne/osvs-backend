@@ -4,6 +4,8 @@ import {
   createMembershipHandler,
   getPaymentHandler,
   getByTokenHandler,
+  createCheckoutSessionHandler,
+  sessionStatusHandler,
 } from "../controllers/stripeController";
 import {
   createEventPaymentHandler,
@@ -37,6 +39,14 @@ router.get(
   validateParams(tokenParamSchema),
   wrapAsync(getByTokenHandler)
 );
+
+// Checkout session endpoints for embedded checkout
+router.post(
+  "/create-checkout-session",
+  authMiddleware,
+  wrapAsync(createCheckoutSessionHandler)
+);
+router.get("/session-status", wrapAsync(sessionStatusHandler));
 
 // Event payment endpoints
 router.post(
