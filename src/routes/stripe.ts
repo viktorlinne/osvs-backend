@@ -14,11 +14,7 @@ import {
 } from "../controllers/stripeController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import {
-  eventIdParamSchema,
-  idParamSchema,
-  tokenParamSchema,
-} from "../validators/params";
+// params validators removed
 
 const router = express.Router();
 
@@ -29,14 +25,14 @@ router.post("/membership", authMiddleware, wrapAsync(createMembershipHandler));
 router.get(
   "/membership/:id",
   authMiddleware,
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(getPaymentHandler)
 );
 
 // Get payment status by invoice token (public)
 router.get(
   "/membership/status/:token",
-  validateParams(tokenParamSchema),
+  validateParams,
   wrapAsync(getByTokenHandler)
 );
 
@@ -52,20 +48,20 @@ router.get("/session-status", wrapAsync(sessionStatusHandler));
 router.post(
   "/event/:eventId",
   authMiddleware,
-  validateParams(eventIdParamSchema),
+  validateParams,
   wrapAsync(createEventPaymentHandler)
 );
 
 router.get(
   "/event/:id",
   authMiddleware,
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(getEventPaymentHandler)
 );
 
 router.get(
   "/event/status/:token",
-  validateParams(tokenParamSchema),
+  validateParams,
   wrapAsync(getEventByTokenHandler)
 );
 

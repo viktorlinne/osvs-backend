@@ -6,14 +6,12 @@ import {
   updatePostHandler,
 } from "../controllers/postsController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "../validators/params";
+// params validation removed; controllers will handle ID parsing
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "@osvs/types";
+
 import { uploadProfilePicture } from "../utils/fileUpload";
-import { validateBody } from "../middleware/validate";
-import { createPostSchema, updatePostSchema } from "../validators/posts";
+// body validators removed; controllers expect typed DTOs
 
 const router = express.Router();
 
@@ -21,12 +19,7 @@ const router = express.Router();
 router.get("/", authMiddleware, wrapAsync(listPostsHandler));
 
 // Authenticated get post by id
-router.get(
-  "/:id",
-  authMiddleware,
-  validateParams(idParamSchema),
-  wrapAsync(getPostHandler)
-);
+router.get("/:id", authMiddleware, wrapAsync(getPostHandler));
 
 // Editor/Admin create post
 router.post(
@@ -34,7 +27,6 @@ router.post(
   authMiddleware,
   requireRole("Admin", "Editor"),
   uploadProfilePicture,
-  validateBody(createPostSchema),
   wrapAsync(createPostHandler)
 );
 
@@ -44,7 +36,6 @@ router.put(
   authMiddleware,
   requireRole("Admin", "Editor"),
   uploadProfilePicture,
-  validateBody(updatePostSchema),
   wrapAsync(updatePostHandler)
 );
 

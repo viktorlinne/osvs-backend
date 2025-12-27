@@ -1,5 +1,12 @@
 import type { NextFunction, Response, Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
+import type {
+  UpdateUserProfileBody,
+  AddAchievementBody,
+  ListUsersQuery,
+  SetRolesBody,
+  SetLodgeBody,
+} from "../types";
 import {
   uploadToStorage,
   deleteProfilePicture,
@@ -139,16 +146,7 @@ export async function updateMeHandler(
     if (!uid) return res.status(401).json({ error: "Invalid token payload" });
 
     // `validateBody` middleware ensures `req.body` matches schema
-    const payload = req.body as Partial<{
-      firstname: string;
-      lastname: string;
-      dateOfBirth: string;
-      official?: string | null;
-      mobile?: string;
-      city?: string;
-      address?: string;
-      zipcode?: string;
-    }>;
+    const payload = req.body as UpdateUserProfileBody;
 
     await updateUserProfile(uid, payload);
 
@@ -174,16 +172,7 @@ export async function updateUserHandler(
     if (!Number.isFinite(targetId))
       return res.status(400).json({ error: "Invalid target user id" });
 
-    const payload = req.body as Partial<{
-      firstname: string;
-      lastname: string;
-      dateOfBirth: string;
-      official?: string | null;
-      mobile?: string;
-      city?: string;
-      address?: string;
-      zipcode?: string;
-    }>;
+    const payload = req.body as UpdateUserProfileBody;
 
     await updateUserProfile(targetId, payload);
 
@@ -208,10 +197,7 @@ export async function addAchievementHandler(
     if (!Number.isFinite(targetId))
       return res.status(400).json({ error: "Invalid target user id" });
 
-    const { achievementId, awardedAt } = req.body as {
-      achievementId?: number;
-      awardedAt?: string | null;
-    };
+    const { achievementId, awardedAt } = req.body as AddAchievementBody;
 
     if (!achievementId || !Number.isFinite(Number(achievementId))) {
       return res
@@ -262,7 +248,7 @@ export async function listUsersHandler(
   _next: NextFunction
 ) {
   try {
-    const q = _req.query as Record<string, unknown>;
+    const q = _req.query as ListUsersQuery;
     const limit = Number(q.limit ?? 100);
     const offset = Number(q.offset ?? 0);
     const name = typeof q.name === "string" ? q.name.trim() : undefined;
@@ -328,7 +314,7 @@ export async function setRolesHandler(
     if (!Number.isFinite(targetId))
       return res.status(400).json({ error: "Invalid target user id" });
 
-    const { roleIds } = req.body as { roleIds?: number[] };
+    const { roleIds } = req.body as SetRolesBody;
     if (!Array.isArray(roleIds))
       return res
         .status(400)
@@ -412,7 +398,7 @@ export async function setLodgeHandler(
     if (!Number.isFinite(targetId))
       return res.status(400).json({ error: "Invalid target user id" });
 
-    const { lodgeId } = req.body as { lodgeId?: number | null };
+    const { lodgeId } = req.body as SetLodgeBody;
     if (typeof lodgeId === "undefined") {
       return res
         .status(400)

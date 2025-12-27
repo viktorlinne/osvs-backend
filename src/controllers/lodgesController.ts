@@ -1,5 +1,10 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
+import type {
+  ListLodgesQuery,
+  CreateLodgeBody,
+  UpdateLodgeBody,
+} from "../types";
 import * as lodgeService from "../services";
 
 export async function listLodgesHandler(
@@ -7,7 +12,7 @@ export async function listLodgesHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const query = _req.query as Record<string, unknown>;
+  const query = _req.query as ListLodgesQuery;
   const rawLimit = Number(query.limit ?? 20);
   const rawOffset = Number(query.offset ?? 0);
   const limit = Number.isFinite(rawLimit)
@@ -37,11 +42,7 @@ export async function createLodgeHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { name, description, address } = req.body as {
-    name?: string;
-    description?: string;
-    address?: string;
-  };
+  const { name, description, address } = req.body as CreateLodgeBody;
   if (!name || typeof name !== "string" || name.trim().length === 0)
     return res.status(400).json({ error: "Missing or invalid name" });
   if (!address || typeof address !== "string" || address.trim().length === 0)
@@ -62,11 +63,7 @@ export async function updateLodgeHandler(
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
     return res.status(400).json({ error: "Invalid lodge id" });
-  const { name, description, address } = req.body as {
-    name?: string;
-    description?: string;
-    address?: string;
-  };
+  const { name, description, address } = req.body as UpdateLodgeBody;
   await lodgeService.updateLodge(
     id,
     name,

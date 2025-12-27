@@ -1,6 +1,6 @@
 import pool from "../config/db";
 import * as lodgeRepo from "../repositories/lodge.repo";
-import type { Lodge as LodgeRecord } from "@osvs/types";
+import type { Lodge as LodgeRecord } from "../types";
 
 export async function listLodges(
   limit?: number,

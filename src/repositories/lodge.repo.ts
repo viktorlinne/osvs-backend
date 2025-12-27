@@ -1,7 +1,7 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
 import type { PoolConnection } from "mysql2/promise";
-import type { Lodge as LodgeRecord } from "@osvs/types";
+import type { Lodge as LodgeRecord } from "../types";
 
 export async function listLodges(
   limit?: number,

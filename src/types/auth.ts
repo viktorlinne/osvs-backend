@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { UserRole, isValidRole } from "@osvs/types";
+import { UserRole, isValidRole } from "./index";
 
 /**
  * JWT payload type

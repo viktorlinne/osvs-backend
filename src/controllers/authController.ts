@@ -22,11 +22,17 @@ import crypto from "crypto";
 import { getPublicUrl } from "../utils/fileUpload";
 import { toPublicUser } from "../utils/serialize";
 import type { AuthenticatedRequest } from "../types/auth";
+import type {
+  LoginBody,
+  ForgotPasswordBody,
+  ResetPasswordBody,
+  RegisterBody,
+} from "../types";
 import { PASSWORD_RESET_TOKEN_MS } from "../config/constants";
 import { uploadToStorage, deleteProfilePicture } from "../utils/fileUpload";
 
 export async function login(
-  req: RequestWithBody<{ email?: string; password?: string }>,
+  req: RequestWithBody<LoginBody>,
   res: Response,
   _next: NextFunction
 ): Promise<Response | void> {
@@ -64,7 +70,7 @@ export async function logout(
 }
 
 export async function forgotPassword(
-  req: RequestWithBody<{ email?: string }>,
+  req: RequestWithBody<ForgotPasswordBody>,
   res: Response,
   _next: NextFunction
 ): Promise<Response | void> {
@@ -94,7 +100,7 @@ export async function forgotPassword(
 }
 
 export async function resetPassword(
-  req: RequestWithBody<{ token?: string; password?: string }>,
+  req: RequestWithBody<ResetPasswordBody>,
   res: Response,
   _next: NextFunction
 ): Promise<Response | void> {
@@ -126,24 +132,7 @@ export async function resetPassword(
 }
 
 export async function register(
-  req: RequestWithBody<
-    | {
-        username?: string;
-        email?: string;
-        password?: string;
-        firstname?: string;
-        lastname?: string;
-        dateOfBirth?: string;
-        official?: string;
-        mobile?: string;
-        city?: string;
-        address?: string;
-        zipcode?: string;
-        notes?: string | null;
-        lodgeId?: string | number | null;
-      }
-    | undefined
-  > & { file?: Express.Multer.File },
+  req: RequestWithBody<RegisterBody> & { file?: Express.Multer.File },
   res: Response,
   _next: NextFunction
 ): Promise<Response | void> {
@@ -160,8 +149,8 @@ export async function register(
     address,
     zipcode,
     notes,
+    lodgeId,
   } = req.body ?? {};
-  const lodgeId = (req.body as Record<string, unknown>)["lodgeId"];
 
   // Validate required fields — routes normally validate, but enforce here too
   if (

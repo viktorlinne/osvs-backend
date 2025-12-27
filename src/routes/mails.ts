@@ -1,16 +1,14 @@
 import express from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "@osvs/types";
-import { validateBody, validateParams } from "../middleware/validate";
-import { createMailSchema } from "../validators/mails";
+
+// validators removed; controllers will validate request bodies/params
 import {
   createMailHandler,
   sendMailHandler,
   inboxHandler,
 } from "../controllers/mailsController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { idParamSchema } from "../validators/params";
 
 const router = express.Router();
 
@@ -19,7 +17,6 @@ router.post(
   "/",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(createMailSchema),
   wrapAsync(createMailHandler)
 );
 
@@ -28,7 +25,6 @@ router.post(
   "/:id/send",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateParams(idParamSchema),
   wrapAsync(sendMailHandler)
 );
 

@@ -2,7 +2,7 @@ import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import * as Sentry from "@sentry/node";
 import type { AuthenticatedRequest, JWTPayload } from "../types/auth";
-import { isValidRole } from "@osvs/types";
+import { isValidRole } from "../types";
 import logger from "../utils/logger";
 import type { Logger } from "pino";
 import { isJtiRevoked, findById } from "../services";
@@ -51,10 +51,7 @@ export async function authMiddleware(
       if (typeof userIdCandidate === "number") {
         const dbUser = await findById(userIdCandidate as number);
         if (dbUser && dbUser.revokedAt) {
-          const revokedAt =
-            dbUser.revokedAt instanceof Date
-              ? dbUser.revokedAt
-              : new Date(dbUser.revokedAt as string);
+          const revokedAt = new Date(dbUser.revokedAt as string);
           if (tokenIat && typeof tokenIat === "number") {
             const tokenIatMs = tokenIat * 1000;
             if (tokenIatMs <= revokedAt.getTime()) {

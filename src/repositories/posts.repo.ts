@@ -1,6 +1,6 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
-import type { posts as PostRecord } from "@osvs/types";
+import type { posts as PostRecord } from "../types";
 
 export async function listPosts(
   limit?: number,

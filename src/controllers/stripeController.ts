@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
+import type {
+  CreateCheckoutBody,
+  SessionStatusQuery,
+  CreateMembershipBody,
+} from "../types";
 import { stripeService } from "../services";
 import * as membershipPaymentsService from "../services";
 import * as eventsService from "../services";
 import { Stripe } from "stripe";
-import {
-  createMembershipSchema,
-  createEventPaymentBodySchema,
-  webhookRawBodySchema,
-} from "../validators/stripe";
 
 // Create a Checkout Session for frontend embedded checkout
 export async function createCheckoutSessionHandler(
@@ -16,7 +16,7 @@ export async function createCheckoutSessionHandler(
   res: Response
 ) {
   try {
-    const body = (req.body ?? {}) as Record<string, any>;
+    const body = (req.body ?? {}) as CreateCheckoutBody;
     const priceId = String(
       body.price_id ?? process.env.DEFAULT_STRIPE_PRICE_ID ?? ""
     );
@@ -35,7 +35,8 @@ export async function createCheckoutSessionHandler(
     });
 
     return res.json({
-      clientSecret: (session as any).client_secret ?? null,
+      clientSecret:
+        (session as unknown as Stripe.Checkout.Session).client_secret ?? null,
       id: session.id,
     });
   } catch (err) {
@@ -46,13 +47,16 @@ export async function createCheckoutSessionHandler(
 // Retrieve session status for return page
 export async function sessionStatusHandler(req: Request, res: Response) {
   try {
-    const sessionId = String(req.query.session_id ?? "");
+    const query = req.query as SessionStatusQuery;
+    const sessionId = String(query.session_id ?? "");
     if (!sessionId)
       return res.status(400).json({ error: "Missing session_id" });
     const session = await stripeService.retrieveCheckoutSession(sessionId);
     return res.json({
-      status: (session as any).status,
-      customer_email: (session as any).customer_details?.email ?? null,
+      status: (session as unknown as Stripe.Checkout.Session).status,
+      customer_email:
+        (session as unknown as Stripe.Checkout.Session).customer_details
+          ?.email ?? null,
     });
   } catch (err) {
     return res.status(500).json({ error: String(err) });
@@ -67,13 +71,11 @@ export async function createMembershipHandler(
   try {
     const user = req.user;
     const uid: number = user?.userId as number;
-    const parsed = createMembershipSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.errors });
-    }
-    const { year, amount } = parsed.data as { year: number; amount?: number };
+    const parsedBody = req.body as CreateMembershipBody;
+    const year = Number(parsedBody.year ?? NaN);
+    const amount = parsedBody.amount as number | undefined;
     if (!uid) return res.status(401).json({ error: "Unauthorized" });
-    if (typeof year !== "number")
+    if (!Number.isFinite(year))
       return res.status(400).json({ error: "Missing year" });
 
     // Ensure membership invoice exists (idempotent)
@@ -134,10 +136,6 @@ export async function createEventPaymentHandler(
   const user = req.user;
   const uid = Number(user?.userId ?? 0);
   const eventId = Number(req.params.eventId ?? 0);
-  const parsed = createEventPaymentBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.errors });
-  }
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
   if (!Number.isFinite(eventId) || eventId <= 0)
     return res.status(400).json({ error: "Invalid event id" });
@@ -241,7 +239,6 @@ export async function webhookHandler(req: Request, res: Response) {
       webhookSecret
     );
     // minimal validation of constructed event
-    webhookRawBodySchema.safeParse(event);
 
     // Handle relevant event types
     if (event.type === "payment_intent.succeeded") {

@@ -1,6 +1,6 @@
 import { NextFunction, Response, Request } from "express";
-import { UserRole } from "@osvs/types";
 import type { AuthenticatedRequest } from "../types/auth";
+import type { SwishCreateMembershipBody } from "../types";
 import * as paymentsService from "../services";
 
 export async function createMembershipHandler(
@@ -11,7 +11,7 @@ export async function createMembershipHandler(
   const uid = req.user?.userId;
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
-  const { year, amount } = req.body as { year?: number; amount?: number };
+  const { year, amount } = req.body as SwishCreateMembershipBody;
   if (!year) return res.status(400).json({ error: "Missing year" });
 
   const payment = await paymentsService.createMembershipPayment({

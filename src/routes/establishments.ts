@@ -1,7 +1,7 @@
 import express from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "@osvs/types";
+
 import {
   listEstablishmentsHandler,
   getEstablishmentHandler,
@@ -12,37 +12,24 @@ import {
   unlinkLodgeHandler,
 } from "../controllers/establishmentsController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { validateParams, validateBody } from "../middleware/validate";
-import { idParamSchema } from "../validators/params";
-import {
-  createEstablishmentSchema,
-  updateEstablishmentSchema,
-  linkLodgeSchema,
-} from "../validators/establishments";
+// validators removed; controllers will validate inputs
 const router = express.Router();
 
 // List/get
 router.get("/", authMiddleware, wrapAsync(listEstablishmentsHandler));
-router.get(
-  "/:id",
-  authMiddleware,
-  validateParams(idParamSchema),
-  wrapAsync(getEstablishmentHandler)
-);
+router.get("/:id", authMiddleware, wrapAsync(getEstablishmentHandler));
 
 // Admin CRUD
 router.post(
   "/",
   authMiddleware,
   requireRole("Admin"),
-  validateBody(createEstablishmentSchema),
   wrapAsync(createEstablishmentHandler)
 );
 router.put(
   "/:id",
   authMiddleware,
   requireRole("Admin"),
-  validateBody(updateEstablishmentSchema),
   wrapAsync(updateEstablishmentHandler)
 );
 router.delete(
@@ -57,14 +44,12 @@ router.post(
   "/:id/lodges",
   authMiddleware,
   requireRole("Admin"),
-  validateBody(linkLodgeSchema),
   wrapAsync(linkLodgeHandler)
 );
 router.delete(
   "/:id/lodges",
   authMiddleware,
   requireRole("Admin"),
-  validateBody(linkLodgeSchema),
   wrapAsync(unlinkLodgeHandler)
 );
 

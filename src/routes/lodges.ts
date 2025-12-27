@@ -7,12 +7,11 @@ import {
 } from "../controllers/lodgesController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "../validators/params";
+// params/body validators removed
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "@osvs/types";
-import { validateBody } from "../middleware/validate";
-import { createLodgeSchema, updateLodgeSchema } from "../validators/lodges";
+
+// body validators removed
 
 const router = express.Router();
 
@@ -20,19 +19,13 @@ const router = express.Router();
 router.get("/", authMiddleware, wrapAsync(listLodgesHandler));
 
 // Get single lodge
-router.get(
-  "/:id",
-  authMiddleware,
-  validateParams(idParamSchema),
-  wrapAsync(getLodgeHandler)
-);
+router.get("/:id", authMiddleware, wrapAsync(getLodgeHandler));
 
 // Admin: create lodge
 router.post(
   "/",
   authMiddleware,
   requireRole("Admin"),
-  validateBody(createLodgeSchema),
   wrapAsync(createLodgeHandler)
 );
 
@@ -41,8 +34,7 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole("Admin"),
-  validateBody(updateLodgeSchema),
-  validateParams(idParamSchema),
+  validateParams, // leave params middleware but without Zod schema
   wrapAsync(updateLodgeHandler)
 );
 

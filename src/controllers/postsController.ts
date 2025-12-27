@@ -1,6 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
+import type { ListPostsQuery, CreatePostBody, UpdatePostBody } from "../types";
 import * as postsService from "../services";
 import {
   uploadToStorage,
@@ -14,7 +15,7 @@ export async function listPostsHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const query = _req.query as Record<string, unknown>;
+  const query = _req.query as ListPostsQuery;
   const rawLimit = Number(query.limit ?? 20);
   const rawOffset = Number(query.offset ?? 0);
   const limit = Number.isFinite(rawLimit)
@@ -69,10 +70,7 @@ export async function createPostHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { title, description } = req.body as {
-    title?: string;
-    description?: string;
-  };
+  const { title, description } = req.body as CreatePostBody;
   if (!title || !description)
     return res.status(400).json({ error: "Missing title or description" });
 
@@ -106,10 +104,7 @@ export async function updatePostHandler(
     if (!Number.isFinite(postId))
       return res.status(400).json({ error: "Invalid post id" });
 
-    const { title, description } = req.body as {
-      title?: string;
-      description?: string;
-    };
+    const { title, description } = req.body as UpdatePostBody;
     if (!title && !description && !req.file) {
       return res.status(400).json({ error: "Nothing to update" });
     }

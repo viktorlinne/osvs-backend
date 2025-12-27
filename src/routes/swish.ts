@@ -8,7 +8,7 @@ import {
 } from "../controllers/swishController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema, tokenParamSchema } from "../validators/params";
+// params validators removed
 
 const router = express.Router();
 
@@ -19,14 +19,14 @@ router.post("/membership", authMiddleware, wrapAsync(createMembershipHandler));
 router.get(
   "/membership/:id",
   authMiddleware,
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(getPaymentHandler)
 );
 
 // Get payment status by invoice token (public)
 router.get(
   "/membership/status/:token",
-  validateParams(tokenParamSchema),
+  validateParams,
   wrapAsync(getByTokenHandler)
 );
 

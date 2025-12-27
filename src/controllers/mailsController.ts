@@ -1,5 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
+import type { CreateMailBody } from "../types";
 import * as mailsService from "../services";
 
 export async function createMailHandler(
@@ -9,11 +10,7 @@ export async function createMailHandler(
 ) {
   const caller = req.user?.userId;
   if (!caller) return res.status(401).json({ error: "Unauthorized" });
-  const { lid, title, content } = req.body as {
-    lid?: number;
-    title?: string;
-    content?: string;
-  };
+  const { lid, title, content } = req.body as CreateMailBody;
   if (!lid || !title || !content)
     return res.status(400).json({ error: "Missing fields" });
   const id = await mailsService.createMail({

@@ -3,15 +3,8 @@ import usersController from "../controllers/usersController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import authMiddleware from "../middleware/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
-import { validateBody } from "../middleware/validate";
-import {
-  addAchievementSchema,
-  setRolesSchema,
-  setLodgeSchema,
-} from "../validators/users";
-import { updateUserSchema } from "../validators/users";
+// validators removed: runtime validation replaced by local DTOs/types
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "@osvs/types";
 
 const router = express.Router();
 
@@ -19,12 +12,7 @@ const router = express.Router();
 router.get("/me", authMiddleware, wrapAsync(usersController.placeholderMe));
 
 // Update current user's profile
-router.put(
-  "/me",
-  authMiddleware,
-  validateBody(updateUserSchema),
-  wrapAsync(usersController.updateMeHandler)
-);
+router.put("/me", authMiddleware, wrapAsync(usersController.updateMeHandler));
 
 // Update current user's profile picture
 router.post(
@@ -48,7 +36,6 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(updateUserSchema),
   wrapAsync(usersController.updateUserHandler)
 );
 
@@ -66,7 +53,6 @@ router.post(
   "/:id/achievements",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(addAchievementSchema),
   wrapAsync(usersController.addAchievementHandler)
 );
 
@@ -90,7 +76,6 @@ router.post(
   "/:id/roles",
   authMiddleware,
   requireRole("Admin"),
-  validateBody(setRolesSchema),
   wrapAsync(usersController.setRolesHandler)
 );
 
@@ -106,7 +91,6 @@ router.post(
   "/:id/lodges",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(setLodgeSchema),
   wrapAsync(usersController.setLodgeHandler)
 );
 

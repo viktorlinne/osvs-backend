@@ -1,5 +1,13 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
+import type {
+  ListEventsQuery,
+  CreateEventBody,
+  UpdateEventBody,
+  LinkLodgeBody,
+  LinkEstablishmentBody,
+  RSVPBody,
+} from "../types";
 import logger from "../utils/logger";
 import * as eventsService from "../services";
 import { ValidationError } from "../utils/errors";
@@ -10,7 +18,7 @@ export async function listEventsHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const query = _req.query as Record<string, unknown>;
+  const query = _req.query as ListEventsQuery;
   const rawLimit = Number(query.limit ?? 20);
   const rawOffset = Number(query.offset ?? 0);
   const limit = Number.isFinite(rawLimit)
@@ -55,14 +63,7 @@ export async function createEventHandler(
   _next: NextFunction
 ) {
   const { title, description, lodgeMeeting, price, startDate, endDate } =
-    req.body as {
-      title?: string;
-      description?: string;
-      lodgeMeeting?: boolean | null;
-      price?: number;
-      startDate?: string;
-      endDate?: string;
-    };
+    req.body as CreateEventBody;
   if (!title || !description || !startDate || !endDate) {
     return res.status(400).json({ error: "Missing required fields" });
   }
@@ -85,14 +86,7 @@ export async function updateEventHandler(
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
     return res.status(400).json({ error: "Invalid id" });
-  const payload = req.body as Partial<{
-    title: string;
-    description: string;
-    lodgeMeeting: boolean | null;
-    price: number;
-    startDate: string;
-    endDate: string;
-  }>;
+  const payload = req.body as UpdateEventBody;
   await eventsService.updateEvent(id, payload);
   void delPattern("events:*");
   return res.status(200).json({ success: true });
@@ -117,7 +111,7 @@ export async function linkLodgeHandler(
   _next: NextFunction
 ) {
   const id = Number(req.params.id);
-  const { lodgeId } = req.body as { lodgeId?: number };
+  const { lodgeId } = req.body as LinkLodgeBody;
   if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId)))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.linkLodgeToEvent(id, Number(lodgeId));
@@ -131,9 +125,8 @@ export async function unlinkLodgeHandler(
   _next: NextFunction
 ) {
   const id = Number(req.params.id);
-  const bodyLodge = (req.body as { lodgeId?: string | number | undefined })
-    .lodgeId;
-  const queryLodge = (req.query as Record<string, unknown>)?.lodgeId;
+  const bodyLodge = (req.body as LinkLodgeBody).lodgeId;
+  const queryLodge = (req.query as ListEventsQuery)?.lodgeId;
   const lodgeId = Number(bodyLodge ?? queryLodge);
   if (!Number.isFinite(id) || !Number.isFinite(lodgeId))
     return res.status(400).json({ error: "Invalid ids" });
@@ -148,7 +141,7 @@ export async function linkEstablishmentHandler(
   _next: NextFunction
 ) {
   const id = Number(req.params.id);
-  const { esId } = req.body as { esId?: number };
+  const { esId } = req.body as LinkEstablishmentBody;
   if (!Number.isFinite(id) || !Number.isFinite(Number(esId)))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.linkEstablishmentToEvent(id, Number(esId));
@@ -162,8 +155,8 @@ export async function unlinkEstablishmentHandler(
   _next: NextFunction
 ) {
   const id = Number(req.params.id);
-  const bodyEs = (req.body as { esId?: string | number | undefined }).esId;
-  const queryEs = (req.query as Record<string, unknown>)?.esId;
+  const bodyEs = (req.body as LinkEstablishmentBody).esId;
+  const queryEs = (req.query as ListEventsQuery)?.esId;
   const esId = Number(bodyEs ?? queryEs);
   if (!Number.isFinite(id) || !Number.isFinite(esId))
     return res.status(400).json({ error: "Invalid ids" });
@@ -179,7 +172,7 @@ export async function listForUserHandler(
 ) {
   const uid = req.user?.userId;
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
-  const query = req.query as Record<string, unknown>;
+  const query = req.query as ListEventsQuery;
   const rawLimit = Number(query.limit ?? 20);
   const rawOffset = Number(query.offset ?? 0);
   const limit = Number.isFinite(rawLimit)
@@ -235,7 +228,7 @@ export async function rsvpHandler(
     if (!Number.isFinite(id))
       return res.status(400).json({ error: "Invalid id" });
 
-    const { status } = req.body as { status?: string };
+    const { status } = req.body as RSVPBody;
     if (status !== "going" && status !== "not-going")
       return res.status(400).json({ error: "Invalid status" });
 

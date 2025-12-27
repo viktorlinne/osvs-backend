@@ -1,7 +1,6 @@
 import { Router } from "express";
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
-import { UserRole } from "@osvs/types";
 import adminController from "../controllers/adminController";
 import { wrapAsync } from "../middleware/asyncHandler";
 

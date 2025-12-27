@@ -4,9 +4,9 @@ import type {
   CreateUserInput,
   PublicUser,
   UserRole,
-} from "@osvs/types";
-import type { Achievement, Role } from "@osvs/types";
-import { UserRoleValues } from "@osvs/types";
+} from "../types";
+import type { Achievement, Role } from "../types";
+import { UserRoleValues } from "../types";
 // UserRoleValues runtime array from shared types
 import { toPublicUser } from "../utils/serialize";
 import { normalizeToSqlDate } from "../utils/dates";
@@ -208,7 +208,10 @@ export async function listRoles(): Promise<Role[]> {
   const rows = await userRepo.listRoles();
   // Normalize `role` field from DB to `name` used in shared types
   return rows
-    .map((r) => ({ id: Number(r.id), name: String((r as any).role ?? "") }))
+    .map((r) => ({
+      id: Number(r.id),
+      name: String((r as unknown as Record<string, unknown>).role ?? ""),
+    }))
     .filter((r) => Number.isFinite(r.id)) as Role[];
 }
 

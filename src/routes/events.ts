@@ -19,15 +19,7 @@ import {
 } from "../controllers/eventsController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import { validateParams } from "../middleware/validate";
-import { idParamSchema } from "../validators/params";
-import { validateBody } from "../middleware/validate";
-import {
-  createEventSchema,
-  updateEventSchema,
-  linkLodgeSchema,
-  linkEstablishmentSchema,
-  rsvpSchema,
-} from "../validators/events";
+// validators removed; controllers handle request validation/typing
 
 const router = express.Router();
 
@@ -38,27 +30,16 @@ router.get("/", authMiddleware, wrapAsync(listEventsHandler));
 router.get("/mine", authMiddleware, wrapAsync(listForUserHandler));
 
 // Get single event
-router.get(
-  "/:id",
-  authMiddleware,
-  validateParams(idParamSchema),
-  wrapAsync(getEventHandler)
-);
+router.get("/:id", authMiddleware, wrapAsync(getEventHandler));
 
 // Get lodges linked to an event
-router.get(
-  "/:id/lodges",
-  authMiddleware,
-  validateParams(idParamSchema),
-  wrapAsync(listEventLodgesHandler)
-);
+router.get("/:id/lodges", authMiddleware, wrapAsync(listEventLodgesHandler));
 
 // Admin-only: event statistics
 router.get(
   "/:id/stats",
   authMiddleware,
   requireRole("Admin"),
-  validateParams(idParamSchema),
   wrapAsync(getEventStatsHandler)
 );
 
@@ -67,7 +48,6 @@ router.post(
   "/",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(createEventSchema),
   wrapAsync(createEventHandler)
 );
 
@@ -76,8 +56,7 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(updateEventSchema),
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(updateEventHandler)
 );
 
@@ -86,7 +65,6 @@ router.delete(
   "/:id",
   authMiddleware,
   requireRole("Admin"),
-  validateParams(idParamSchema),
   wrapAsync(deleteEventHandler)
 );
 
@@ -95,16 +73,14 @@ router.post(
   "/:id/lodges",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(linkLodgeSchema),
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(linkLodgeHandler)
 );
 router.delete(
   "/:id/lodges",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(linkLodgeSchema),
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(unlinkLodgeHandler)
 );
 
@@ -113,16 +89,14 @@ router.post(
   "/:id/establishments",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(linkEstablishmentSchema),
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(linkEstablishmentHandler)
 );
 router.delete(
   "/:id/establishments",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateBody(linkEstablishmentSchema),
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(unlinkEstablishmentHandler)
 );
 
@@ -130,17 +104,11 @@ router.delete(
 router.post(
   "/:id/rsvp",
   authMiddleware,
-  validateBody(rsvpSchema),
-  validateParams(idParamSchema),
+  validateParams,
   wrapAsync(rsvpHandler)
 );
 
 // Get current user's RSVP for an event
-router.get(
-  "/:id/rsvp",
-  authMiddleware,
-  validateParams(idParamSchema),
-  wrapAsync(getUserRsvpHandler)
-);
+router.get("/:id/rsvp", authMiddleware, wrapAsync(getUserRsvpHandler));
 
 export default router;

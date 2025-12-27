@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import { UserRole } from "@osvs/types";
+import { UserRole } from "../types";
 import { getUserRoles } from "../services";
 import logger from "../utils/logger";
 

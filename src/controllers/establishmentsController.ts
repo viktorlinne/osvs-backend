@@ -1,5 +1,11 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
+import type {
+  ListEstablishmentsQuery,
+  CreateEstablishmentBody,
+  UpdateEstablishmentBody,
+  LinkLodgeBody,
+} from "../types";
 import * as estService from "../services";
 
 export async function listEstablishmentsHandler(
@@ -7,7 +13,7 @@ export async function listEstablishmentsHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const query = _req.query as Record<string, unknown>;
+  const query = _req.query as ListEstablishmentsQuery;
   const rawLimit = Number(query.limit ?? 20);
   const rawOffset = Number(query.offset ?? 0);
   const limit = Number.isFinite(rawLimit)
@@ -37,11 +43,7 @@ export async function createEstablishmentHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { name, description, address } = req.body as {
-    name?: string;
-    description?: string | null;
-    address?: string;
-  };
+  const { name, description, address } = req.body as CreateEstablishmentBody;
   if (!name || name.trim().length === 0)
     return res.status(400).json({ error: "Missing name" });
   if (!address || address.trim().length === 0)
@@ -62,11 +64,7 @@ export async function updateEstablishmentHandler(
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
     return res.status(400).json({ error: "Invalid id" });
-  const payload = req.body as Partial<{
-    name?: string;
-    description?: string | null;
-    address?: string;
-  }>;
+  const payload = req.body as UpdateEstablishmentBody;
   await estService.updateEstablishment(id, payload);
   return res.status(200).json({ success: true });
 }
@@ -89,7 +87,7 @@ export async function linkLodgeHandler(
   _next: NextFunction
 ) {
   const id = Number(req.params.id);
-  const { lodgeId } = req.body as { lodgeId?: number };
+  const { lodgeId } = req.body as LinkLodgeBody;
   if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId)))
     return res.status(400).json({ error: "Invalid ids" });
   await estService.linkLodgeToEstablishment(id, Number(lodgeId));
@@ -102,9 +100,8 @@ export async function unlinkLodgeHandler(
   _next: NextFunction
 ) {
   const id = Number(req.params.id);
-  const bodyLodge = (req.body as { lodgeId?: string | number | undefined })
-    .lodgeId;
-  const queryLodge = (req.query as Record<string, unknown>)?.lodgeId;
+  const bodyLodge = (req.body as LinkLodgeBody).lodgeId;
+  const queryLodge = (req.query as ListEstablishmentsQuery)?.lodgeId;
   const lodgeId = Number(bodyLodge ?? queryLodge);
   if (!Number.isFinite(id) || !Number.isFinite(lodgeId))
     return res.status(400).json({ error: "Invalid ids" });
