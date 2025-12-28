@@ -112,7 +112,7 @@ export async function findPaymentsForUsers(year: number, uids: number[]) {
 
 export async function findPaymentsForUser(uid: number) {
   const [rows] = await pool.execute(
-    `SELECT * FROM membership_payments WHERE uid = ? ORDER BY year DESC`,
+    "SELECT * FROM membership_payments WHERE uid = ? ORDER BY year DESC",
     [uid]
   );
   return rows as unknown as Array<Record<string, unknown>>;
