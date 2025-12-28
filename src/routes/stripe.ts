@@ -4,6 +4,7 @@ import {
   createMembershipHandler,
   getPaymentHandler,
   getByTokenHandler,
+  getMyMembershipsHandler,
   createCheckoutSessionHandler,
   sessionStatusHandler,
 } from "../controllers/stripeController";
@@ -20,6 +21,13 @@ const router = express.Router();
 
 // Create a membership invoice for current user
 router.post("/membership", authMiddleware, wrapAsync(createMembershipHandler));
+
+// List membership payments for current user
+router.get(
+  "/membership",
+  authMiddleware,
+  wrapAsync(getMyMembershipsHandler)
+);
 
 // Get a membership payment by id (owner or admin)
 router.get(

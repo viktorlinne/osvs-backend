@@ -7,6 +7,7 @@ import type {
 } from "../types";
 import { stripeService } from "../services";
 import * as membershipPaymentsService from "../services";
+import { membershipRepo } from "../repositories";
 import * as eventsService from "../services";
 import { Stripe } from "stripe";
 
@@ -126,6 +127,32 @@ export async function getByTokenHandler(req: Request, res: Response) {
   const payment = await membershipPaymentsService.getByToken(token);
   if (!payment) return res.status(404).json({ error: "Not found" });
   return res.json(payment);
+}
+
+export async function getMyMembershipsHandler(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const user = req.user;
+    const uid = Number(user?.userId ?? 0);
+    if (!uid) return res.status(401).json({ error: "Unauthorized" });
+    const yearQuery = req.query.year;
+    let rows: Array<Record<string, unknown>> = [];
+    if (typeof yearQuery === "undefined" || yearQuery === null || String(yearQuery).trim() === "") {
+      // no year specified -> return all payments for user
+      rows = await membershipRepo.findPaymentsForUser(uid);
+    } else {
+      const year = Number(yearQuery ?? NaN);
+      if (!Number.isFinite(year))
+        return res.status(400).json({ error: "Invalid year" });
+      rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
+    }
+
+    return res.json(rows ?? []);
+  } catch (err) {
+    return res.status(500).json({ error: String(err) });
+  }
 }
 
 // Create or return existing event payment and create a Stripe PaymentIntent
