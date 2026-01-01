@@ -223,7 +223,14 @@ ON DUPLICATE KEY UPDATE `role` = VALUES(`role`);
 INSERT INTO `achievements` (`id`, `title`) VALUES
   (1, 'I:a Graden'),
   (2, 'II:a Graden'),
-  (3, 'III:e Graden')
+  (3, 'III:e Graden'),
+  (4, 'IV:e Graden'),
+  (5, 'V:e Graden'),
+  (6, 'VI:e Graden'),
+  (7, 'VII:e Graden'),
+  (8, 'VIII:e Graden'),
+  (9, 'IX:e Graden'),
+  (10, 'X:e Graden')
 ON DUPLICATE KEY UPDATE `title` = VALUES(`title`);
 
 -- Users: Alice (id=1) and example Bob (id=2)
@@ -326,7 +333,7 @@ INSERT INTO `users_roles` (`uid`, `rid`) VALUES
   (3,1), (3,2), (3,3);
   
 -- Ensure a sample achievement exists for Bob (single, replace any existing for that user/achievement)
-DELETE FROM `users_achievements` WHERE `uid` = 2 AND `aid` = 1;
+DELETE FROM `users_achievements` WHERE `uid` IN (1, 2, 3);
 INSERT INTO `users_achievements` (`uid`, `aid`, `awardedAt`) VALUES
   (1, 1, '2025-12-01 10:00:00'),
   (2, 1, '2025-12-01 10:00:00');
@@ -367,7 +374,10 @@ ON DUPLICATE KEY UPDATE `esid` = VALUES(`esid`), `eid` = VALUES(`eid`);
 
 INSERT INTO `posts` (`id`, `title`, `description`, `picture`) VALUES
   (1, 'Welcome to OSVS', 'This is the first post on our new platform!', 'posts/postPlaceholder.png'),
-  (2, 'Upcoming Event', 'Join us for our annual gathering next month.', 'posts/postPlaceholder.png')
+  (2, 'Upcoming Event', 'Join us for our annual gathering next month.', 'posts/postPlaceholder.png'),
+  (3, 'Upcoming Event', 'Join us for our annual gathering next month.', 'posts/postPlaceholder.png'),
+  (4, 'Upcoming Event', 'Join us for our annual gathering next month.', 'posts/postPlaceholder.png'),
+  (5, 'Upcoming Event', 'Join us for our annual gathering next month.', 'posts/postPlaceholder.png')
 ON DUPLICATE KEY UPDATE
   `title` = VALUES(`title`),
   `description` = VALUES(`description`),
