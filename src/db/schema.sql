@@ -183,7 +183,7 @@ CREATE TABLE `establishments_events` (
 -- Achievements
 CREATE TABLE `achievements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` enum('I:a Graden','II:a Graden','III:e Graden') NOT NULL,
+  `title` enum('I:a Graden','II:a Graden','III:e Graden','IV:e Graden','V:e Graden','VI:e Graden','VII:e Graden','VIII:e Graden','IX:e Graden','X:e Graden') NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
