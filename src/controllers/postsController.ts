@@ -8,6 +8,7 @@ import {
   getPublicUrl,
   deleteProfilePicture,
 } from "../utils/fileUpload";
+import logger from "../utils/logger";
 import { getCached, setCached, delPattern } from "../infra/cache";
 
 export async function listPostsHandler(
@@ -23,28 +24,36 @@ export async function listPostsHandler(
     : 20;
   const offset =
     Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
-  const rows = await postsService.listPosts(limit, offset);
-  // Cache key includes pagination so front-end can page deterministically
-  const cacheKey = `posts:limit:${limit}:offset:${offset}`;
-  const cached = await getCached(cacheKey);
-  if (cached && Array.isArray(cached as unknown[])) {
-    return res.status(200).json({ posts: cached });
-  }
-  // Resolve public URLs for pictures if present
-  const withUrls = await Promise.all(
-    rows.map(async (r) => ({
-      id: r.id,
-      title: r.title,
-      // Use a shared post placeholder when no picture is set
-      pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
-      // avoid returning large description in list responses
-      description: r.description ? String(r.description).slice(0, 200) : "",
-    }))
-  );
+  try {
+    const rows = await postsService.listPosts(limit, offset);
+    // Cache key includes pagination so front-end can page deterministically
+    const cacheKey = `posts:limit:${limit}:offset:${offset}`;
+    const cached = await getCached(cacheKey);
+    if (cached && Array.isArray(cached as unknown[])) {
+      return res.status(200).json({ posts: cached });
+    }
+    // Resolve public URLs for pictures if present
+    const withUrls = await Promise.all(
+      rows.map(async (r) => ({
+        id: r.id,
+        title: r.title,
+        // Use a shared post placeholder when no picture is set
+        pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
+        // avoid returning large description in list responses
+        description: r.description ? String(r.description).slice(0, 200) : "",
+      }))
+    );
 
-  // store cache (best-effort)
-  void setCached(cacheKey, withUrls);
-  res.status(200).json({ posts: withUrls });
+    // store cache (best-effort)
+    void setCached(cacheKey, withUrls);
+    return res.status(200).json({ posts: withUrls });
+  } catch (err) {
+    const requestId =
+      res.locals.requestId ?? (_req as unknown as { requestId?: string }).requestId;
+    logger.error({ msg: "Failed to list posts", err, requestId });
+    return res.status(500).json({ error: "InternalError", message: "Failed to list posts", requestId });
+  }
+  
 }
 
 export async function getPostHandler(

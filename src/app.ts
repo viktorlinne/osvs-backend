@@ -1,4 +1,6 @@
 import express from "express";
+import path from "path";
+import os from "os";
 import { randomUUID } from "crypto";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -139,6 +141,11 @@ app.use(
 
 // Serve static files (profile pictures, etc.)
 app.use(express.static("public"));
+
+// Expose configured uploads directory under /uploads so storage adapters
+// that write to a writable temp dir are still publicly accessible.
+const baseUploadsDir = process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
+app.use("/uploads", express.static(baseUploadsDir));
 
 // attach request id middleware
 app.use(requestId);
