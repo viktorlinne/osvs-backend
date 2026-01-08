@@ -6,6 +6,7 @@ import compression from "compression";
 import dotenv from "dotenv";
 import pinoHttp from "pino-http";
 import logger from "./utils/logger";
+import pool from "./config/db";
 import requestId from "./middleware/requestId";
 import requestTiming from "./middleware/requestTiming";
 import scrubResponseJson from "./middleware/scrubResponse";
@@ -32,6 +33,28 @@ dotenv.config();
 
 const app = express();
 
+// When running behind a proxy (Vercel, Railway, etc.) Express should trust
+// the proxy so middleware like express-rate-limit can use the forwarded IP.
+// Allow override via TRUST_PROXY env (set to "false" to disable).
+const trustProxyEnv = process.env.TRUST_PROXY;
+const shouldTrustProxy =
+  typeof trustProxyEnv === "undefined"
+    ? Boolean(process.env.VERCEL || process.env.RAILWAY)
+    : trustProxyEnv.toLowerCase() !== "false";
+app.set("trust proxy", shouldTrustProxy);
+logger.info({ shouldTrustProxy }, "Express trust proxy set");
+
+// Non-blocking DB connection test so failures are visible in logs quickly.
+(async () => {
+  try {
+    const conn = await pool.getConnection();
+    conn.release();
+    logger.info("DB connection test successful");
+  } catch (err) {
+    logger.error({ err }, "DB connection test failed");
+  }
+})();
+
 // Mount Stripe webhook before any body parsing middleware so we get the raw body
 // required for signature verification.
 app.post(
@@ -51,7 +74,12 @@ if (process.env.SENTRY_DSN) {
 }
 
 // Configure CORS to allow the frontend origin and support credentials (cookies).
-const FRONTEND_ORIGIN = process.env.FRONTEND_URL || "http://localhost:5173";
+const rawFrontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").trim();
+const FRONTEND_ORIGIN =
+  rawFrontendUrl.startsWith("http://") || rawFrontendUrl.startsWith("https://")
+    ? rawFrontendUrl
+    : `https://${rawFrontendUrl}`;
+
 app.use(
   cors({
     origin: FRONTEND_ORIGIN,

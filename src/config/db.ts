@@ -18,6 +18,8 @@ const pool: Pool = mysql.createPool({
   user: process.env.DB_USER ?? "root",
   password: resolvedPassword,
   database: process.env.DB_NAME ?? "osvs",
+  // fail faster when DB host is unreachable in serverless environments
+  connectTimeout: Number(process.env.DB_CONNECT_TIMEOUT_MS ?? "5000"),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
