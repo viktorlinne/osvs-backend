@@ -37,12 +37,18 @@ const app = express();
 // the proxy so middleware like express-rate-limit can use the forwarded IP.
 // Allow override via TRUST_PROXY env (set to "false" to disable).
 const trustProxyEnv = process.env.TRUST_PROXY;
-const shouldTrustProxy =
-  typeof trustProxyEnv === "undefined"
-    ? Boolean(process.env.VERCEL || process.env.RAILWAY)
-    : trustProxyEnv.toLowerCase() !== "false";
-app.set("trust proxy", shouldTrustProxy);
-logger.info({ shouldTrustProxy }, "Express trust proxy set");
+// Prefer a numeric '1' when running behind a single proxy (safer than boolean true).
+// Allow override via TRUST_PROXY ("false" to disable, "1" to trust first proxy).
+let trustProxyValue: boolean | number = false;
+if (typeof trustProxyEnv === "string") {
+  if (trustProxyEnv.toLowerCase() === "false") trustProxyValue = false;
+  else if (trustProxyEnv === "1") trustProxyValue = 1;
+  else if (trustProxyEnv === "true") trustProxyValue = true;
+} else if (process.env.VERCEL || process.env.RAILWAY) {
+  trustProxyValue = 1;
+}
+app.set("trust proxy", trustProxyValue);
+logger.info({ trustProxyValue }, "Express trust proxy set");
 
 // Non-blocking DB connection test so failures are visible in logs quickly.
 (async () => {
