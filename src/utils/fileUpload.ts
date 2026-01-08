@@ -1,6 +1,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import type { Express } from "express";
 import sharp from "sharp";
 import logger from "./logger";
@@ -14,10 +15,18 @@ const storageAdapter: StorageAdapter = process.env.S3_BUCKET
   ? s3StorageAdapter
   : localStorageAdapter;
 
-// Ensure local uploads directory exists (local adapter uses it)
-const uploadDir = path.join(process.cwd(), "public", "uploads", "profiles");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Use configurable uploads dir (useful for serverless environments).
+// Prefer `UPLOADS_DIR` env var; fall back to a writable temp directory.
+const baseUploadsDir = process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
+const uploadDir = path.join(baseUploadsDir, "profiles");
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  // If directory creation fails, log and continue; storage adapters
+  // should handle errors when writing files.
+  logger.warn("Could not ensure upload directory exists:", err);
 }
 
 // Use memoryStorage — we upload to adapter after multer parses the file

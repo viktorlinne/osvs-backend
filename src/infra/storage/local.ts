@@ -1,16 +1,23 @@
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { promisify } from "util";
 import type { StorageAdapter, StorageUploadResult } from "./adapter";
 
 const writeFile = promisify(fs.writeFile);
 const unlink = promisify(fs.unlink);
 
-const baseUploadsDir = path.join(process.cwd(), "public", "uploads");
+// Allow overriding uploads dir (useful for serverless). Fall back to
+// a writable temp directory when `UPLOADS_DIR` is not set.
+const baseUploadsDir = process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
 
 async function ensureDir() {
-  if (!fs.existsSync(baseUploadsDir)) {
-    await fs.promises.mkdir(baseUploadsDir, { recursive: true });
+  try {
+    if (!fs.existsSync(baseUploadsDir)) {
+      await fs.promises.mkdir(baseUploadsDir, { recursive: true });
+    }
+  } catch (err) {
+    // Let upload operations handle errors; log silently here if needed.
   }
 }
 
