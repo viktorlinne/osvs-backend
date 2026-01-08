@@ -35,13 +35,13 @@ export function setAuthCookies(
   res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
     secure,
-    sameSite: "lax",
+    sameSite: "none",
     maxAge: ACCESS_EXPIRES_MS,
   });
   res.cookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
     secure,
-    sameSite: "lax",
+    sameSite: "none",
     maxAge: refreshDaysNum * 24 * 60 * 60 * 1000,
   });
 }
@@ -50,12 +50,12 @@ export function clearAuthCookies(res: Response) {
   res.clearCookie(ACCESS_COOKIE, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "none",
   });
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "none",
   });
 }
 
