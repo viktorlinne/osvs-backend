@@ -37,14 +37,18 @@ export async function findEventById(id: number) {
   return arr[0] ?? null;
 }
 
-export async function insertEvent(payload: {
-  title: string;
-  description: string;
-  lodgeMeeting?: boolean | null;
-  price?: number;
-  startDate: string;
-  endDate: string;
-}) {
+export async function insertEvent(
+  payload: {
+    title: string;
+    description: string;
+    lodgeMeeting?: boolean | null;
+    price?: number;
+    startDate: string;
+    endDate: string;
+  },
+  conn?: PoolConnection
+) {
+  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   const sql =
     "INSERT INTO events (title, description, lodgeMeeting, price, startDate, endDate) VALUES (?, ?, ?, ?, ?, ?)";
   const params = [
@@ -55,10 +59,10 @@ export async function insertEvent(payload: {
     payload.startDate,
     payload.endDate,
   ];
-  const [result] = (await pool.execute<ResultSetHeader>(
-    sql,
-    params
-  )) as unknown as [ResultSetHeader, unknown];
+  const [result] = (await executor<ResultSetHeader>(sql, params)) as unknown as [
+    ResultSetHeader,
+    unknown
+  ];
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 

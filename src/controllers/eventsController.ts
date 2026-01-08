@@ -62,19 +62,28 @@ export async function createEventHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { title, description, lodgeMeeting, price, startDate, endDate } =
+  const { title, description, lodgeMeeting, price, startDate, endDate, lodgeIds } =
     req.body as CreateEventBody;
   if (!title || !description || !startDate || !endDate) {
     return res.status(400).json({ error: "Missing required fields" });
   }
-  const id = await eventsService.createEvent({
-    title,
-    description,
-    lodgeMeeting,
-    price,
-    startDate,
-    endDate,
-  });
+  let id: number;
+  if (Array.isArray(lodgeIds) && lodgeIds.length > 0) {
+    id = await eventsService.createEventWithLodges(
+      { title, description, lodgeMeeting, price, startDate, endDate },
+      lodgeIds
+    );
+  } else {
+    id = await eventsService.createEvent({
+      title,
+      description,
+      lodgeMeeting,
+      price,
+      startDate,
+      endDate,
+    });
+  }
+  void delPattern("events:*");
   return res.status(201).json({ success: true, id });
 }
 

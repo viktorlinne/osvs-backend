@@ -147,6 +147,63 @@ export async function createEvent(payload: {
   return await eventsRepo.insertEvent(payload);
 }
 
+export async function createEventWithLodges(
+  payload: {
+    title: string;
+    description: string;
+    lodgeMeeting?: boolean | null;
+    price?: number;
+    startDate: string;
+    endDate: string;
+  },
+  lodgeIds: number[] | undefined
+): Promise<number> {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const eventId = await eventsRepo.insertEvent(payload, conn);
+
+    if (Array.isArray(lodgeIds) && lodgeIds.length > 0) {
+      // insert lodge links
+      for (const lid of lodgeIds) {
+        if (!Number.isFinite(Number(lid))) continue;
+        await eventsRepo.insertLodgeEvent(eventId, Number(lid), conn);
+      }
+
+      // If priced, create event payment rows for unique users across lodges
+      const price = await eventsRepo.selectEventPrice(eventId, conn);
+      if (Number.isFinite(price) && price > 0) {
+        const uidSet = new Set<number>();
+        for (const lid of lodgeIds) {
+          const users = await eventsRepo.findUsersInLodge(Number(lid), conn);
+          if (Array.isArray(users) && users.length > 0) {
+            for (const u of users) {
+              const uid = typeof u.uid === "number" ? u.uid : Number(u.uid);
+              if (Number.isFinite(uid)) uidSet.add(uid);
+            }
+          }
+        }
+        const values = Array.from(uidSet).map((uid) => [uid, eventId, price, "Pending"]);
+        if (values.length > 0) {
+          await eventsRepo.bulkInsertEventPayments(values, conn);
+        }
+      }
+    }
+
+    await conn.commit();
+    return eventId;
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      // ignore
+    }
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 export async function updateEvent(
   id: number,
   payload: Partial<{
@@ -352,6 +409,7 @@ export default {
   listEvents,
   getEventById,
   createEvent,
+  createEventWithLodges,
   updateEvent,
   deleteEvent,
   linkLodgeToEvent,
