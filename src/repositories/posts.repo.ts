@@ -6,18 +6,16 @@ export async function listPosts(
   limit?: number,
   offset?: number
 ): Promise<PostRecord[]> {
-  const params: Array<unknown> = [];
-  let sql =
-    "SELECT id, title, description, picture FROM posts ORDER BY id DESC";
-  if (typeof limit === "number") {
-    sql += " LIMIT ?";
-    params.push(limit);
-    if (typeof offset === "number") {
-      sql += " OFFSET ?";
-      params.push(offset);
+  let sql = "SELECT id, title, description, picture FROM posts ORDER BY id DESC";
+  if (typeof limit === "number" && Number.isFinite(limit)) {
+    const safeLimit = Math.max(0, Math.floor(limit));
+    sql += ` LIMIT ${safeLimit}`;
+    if (typeof offset === "number" && Number.isFinite(offset)) {
+      const safeOffset = Math.max(0, Math.floor(offset));
+      sql += ` OFFSET ${safeOffset}`;
     }
   }
-  const [rows] = await pool.execute(sql, params);
+  const [rows] = await pool.execute(sql);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr

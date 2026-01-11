@@ -9,14 +9,15 @@ const unlink = promisify(fs.unlink);
 
 // Allow overriding uploads dir (useful for serverless). Fall back to
 // a writable temp directory when `UPLOADS_DIR` is not set.
-const baseUploadsDir = process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
+const baseUploadsDir =
+  process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
 
 async function ensureDir() {
   try {
     if (!fs.existsSync(baseUploadsDir)) {
       await fs.promises.mkdir(baseUploadsDir, { recursive: true });
     }
-  } catch (err) {
+  } catch {
     // Let upload operations handle errors; log silently here if needed.
   }
 }
