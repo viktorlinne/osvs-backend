@@ -8,18 +8,16 @@ export type EstablishmentRecord = {
 };
 
 export async function listEstablishments(limit?: number, offset?: number) {
-  const params: Array<unknown> = [];
-  let sql =
-    "SELECT id, name, description FROM establishments ORDER BY name ASC";
-  if (typeof limit === "number") {
-    sql += " LIMIT ?";
-    params.push(limit);
-    if (typeof offset === "number") {
-      sql += " OFFSET ?";
-      params.push(offset);
+  let sql = "SELECT id, name, description FROM establishments ORDER BY name ASC";
+  if (typeof limit === "number" && Number.isFinite(limit)) {
+    const safeLimit = Math.max(0, Math.floor(limit));
+    sql += ` LIMIT ${safeLimit}`;
+    if (typeof offset === "number" && Number.isFinite(offset)) {
+      const safeOffset = Math.max(0, Math.floor(offset));
+      sql += ` OFFSET ${safeOffset}`;
     }
   }
-  const [rows] = await pool.execute(sql, params);
+  const [rows] = await pool.execute(sql);
   return rows as unknown as Array<Record<string, unknown>>;
 }
 

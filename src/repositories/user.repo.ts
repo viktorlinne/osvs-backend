@@ -305,10 +305,18 @@ export async function listUsers(
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-  const sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.official, u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes
-    FROM users u ${whereSql} ORDER BY u.id DESC LIMIT ? OFFSET ?`;
+  let sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.official, u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes
+    FROM users u ${whereSql} ORDER BY u.id DESC`;
 
-  params.push(limit, offset);
+  if (typeof limit === "number" && Number.isFinite(limit)) {
+    const safeLimit = Math.max(0, Math.floor(limit));
+    sql += ` LIMIT ${safeLimit}`;
+    if (typeof offset === "number" && Number.isFinite(offset)) {
+      const safeOffset = Math.max(0, Math.floor(offset));
+      sql += ` OFFSET ${safeOffset}`;
+    }
+  }
+
   const [rows] = await exec(sql, params);
   return rows as unknown as Array<Record<string, unknown>>;
 }
