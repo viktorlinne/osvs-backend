@@ -7,13 +7,17 @@ import sharp from "sharp";
 import logger from "./logger";
 import { localStorageAdapter } from "../infra/storage/local";
 import { s3StorageAdapter } from "../infra/storage/s3";
+import { supabaseStorageAdapter } from "../infra/storage/supabase";
 import type { StorageAdapter } from "../infra/storage/adapter";
 import { PROFILE_PICTURE_MAX_SIZE } from "../config/constants";
 
-// Choose storage adapter: S3 if configured, otherwise local
-const storageAdapter: StorageAdapter = process.env.S3_BUCKET
-  ? s3StorageAdapter
-  : localStorageAdapter;
+// Choose storage adapter: Supabase (service role) > S3 > local
+let storageAdapter: StorageAdapter = localStorageAdapter;
+if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  storageAdapter = supabaseStorageAdapter;
+} else if (process.env.S3_BUCKET) {
+  storageAdapter = s3StorageAdapter;
+}
 
 // Use configurable uploads dir (useful for serverless environments).
 // Prefer `UPLOADS_DIR` env var; fall back to a writable temp directory.
