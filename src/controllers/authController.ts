@@ -21,6 +21,7 @@ import { clearAuthCookies } from "../utils/authTokens";
 import crypto from "crypto";
 import { getPublicUrl } from "../utils/fileUpload";
 import { toPublicUser } from "../utils/serialize";
+import { PROFILE_PLACEHOLDER } from "../config/constants";
 import type { AuthenticatedRequest } from "../types/auth";
 import type {
   LoginBody,
@@ -242,7 +243,9 @@ export async function register(
 
   if (!user) return res.status(500).json({ error: "Failed to create user" });
   const roles = user.id ? await getUserRoles(user.id) : [];
-  return res.status(201).json({ user, roles });
+  const publicUser = user; // `createUser` already returns a PublicUser
+  const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
+  return res.status(201).json({ user: { ...publicUser, pictureUrl }, roles });
 }
 
 export async function me(

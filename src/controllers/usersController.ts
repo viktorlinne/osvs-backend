@@ -153,7 +153,11 @@ export async function updateMeHandler(
     const updated = await findUserById(uid);
     if (!updated) return res.status(404).json({ error: "User not found" });
 
-    return res.status(200).json({ user: toPublicUser(updated) });
+    const publicUser = toPublicUser(updated);
+    const pictureUrl = await getPublicUrl(
+      updated.picture ?? PROFILE_PLACEHOLDER
+    );
+    return res.status(200).json({ user: { ...publicUser, pictureUrl } });
   } catch (err) {
     return _next(err);
   }
@@ -179,7 +183,11 @@ export async function updateUserHandler(
     const updated = await findUserById(targetId);
     if (!updated) return res.status(404).json({ error: "User not found" });
 
-    return res.status(200).json({ user: toPublicUser(updated) });
+    const publicUser = toPublicUser(updated);
+    const pictureUrl = await getPublicUrl(
+      updated.picture ?? PROFILE_PLACEHOLDER
+    );
+    return res.status(200).json({ user: { ...publicUser, pictureUrl } });
   } catch (err) {
     return _next(err);
   }
