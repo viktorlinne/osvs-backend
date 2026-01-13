@@ -32,6 +32,51 @@ const registerLimiter = rateLimit({
 // Auth schemas are imported from ./schemas/auth
 
 // Register a user (admin/editor only)
+/**
+ * @openapi
+ * /auth/register:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Register a new user (Admin/Editor only)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               firstname:
+ *                 type: string
+ *               lastname:
+ *                 type: string
+ *               dateOfBirth:
+ *                 type: string
+ *               mobile:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               zipcode:
+ *                 type: string
+ *               lodgeId:
+ *                 type: integer
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: User created
+ *       400:
+ *         description: Validation error
+ */
 router.post(
   "/register",
   registerLimiter,
@@ -42,17 +87,141 @@ router.post(
 );
 
 // Request login with email and password
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Login with email and password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
+ */
 router.post("/login", loginLimiter, wrapAsync(authController.login));
 
 // Request a password reset: returns a one-time token in tmp/ (for Postman/dev).
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Request password reset link
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *     responses:
+ *       204:
+ *         description: If email exists, reset token created (no body)
+ */
 router.post("/forgot-password", wrapAsync(authController.forgotPassword));
 
 // Perform password reset using token
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Reset password using token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password changed
+ *       400:
+ *         description: Invalid token or input
+ */
 router.post("/reset-password", wrapAsync(authController.resetPassword));
 
 router.post("/refresh", wrapAsync(authController.refresh));
+/**
+ * @openapi
+ * /auth/refresh:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Refresh access token using refresh cookie
+ *     responses:
+ *       200:
+ *         description: New access token issued
+ *       401:
+ *         description: Missing or invalid refresh token
+ */
+
+/**
+ * @openapi
+ * /auth/me:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Get current authenticated user
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user object
+ *       401:
+ *         description: Unauthorized
+ */
 router.get("/me", authMiddleware, wrapAsync(authController.me));
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Logout from this device
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out
+ */
 router.post("/logout", authMiddleware, wrapAsync(authController.logout));
+
+/**
+ * @openapi
+ * /auth/revoke-all:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Revoke all sessions for current user
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: All sessions revoked
+ */
 router.post("/revoke-all", authMiddleware, wrapAsync(authController.revokeAll));
 
 export default router;

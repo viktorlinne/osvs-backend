@@ -7,6 +7,19 @@ import { wrapAsync } from "../middleware/asyncHandler";
 const router = Router();
 
 // Protected endpoint for admins to trigger token cleanup on-demand.
+/**
+ * @openapi
+ * /admin/cleanup-tokens:
+ *   post:
+ *     tags:
+ *       - Admin
+ *     summary: Trigger token cleanup (Admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Cleanup started
+ */
 router.post(
   "/cleanup-tokens",
   authMiddleware,
@@ -15,6 +28,19 @@ router.post(
 );
 
 // List available roles
+/**
+ * @openapi
+ * /admin/roles:
+ *   get:
+ *     tags:
+ *       - Admin
+ *     summary: List available roles (Admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of roles
+ */
 router.get(
   "/roles",
   authMiddleware,

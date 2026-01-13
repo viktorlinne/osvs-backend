@@ -16,8 +16,41 @@ import { wrapAsync } from "../middleware/asyncHandler";
 const router = express.Router();
 
 // List/get
+/**
+ * @openapi
+ * /establishments:
+ *   get:
+ *     tags:
+ *       - Establishments
+ *     summary: List establishments
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of establishments
+ */
 router.get("/", authMiddleware, wrapAsync(listEstablishmentsHandler));
 router.get("/:id", authMiddleware, wrapAsync(getEstablishmentHandler));
+
+/**
+ * @openapi
+ * /establishments/{id}:
+ *   put:
+ *     tags:
+ *       - Establishments
+ *     summary: Update an establishment (Admin)
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Establishment updated
+ */
 
 // Admin CRUD
 router.post(

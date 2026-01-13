@@ -16,6 +16,8 @@ import scrubRequestBody from "./middleware/scrubRequest";
 import * as Sentry from "@sentry/node";
 import { Integrations } from "@sentry/tracing";
 import errorHandler from "./middleware/errorHandler";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./docs/openapi";
 
 // Route imports
 import authRouter from "./routes/auth";
@@ -178,6 +180,18 @@ app.use("/api/mails", mailsRouter);
 app.use("/api/swish", swishRouter);
 // Stripe Payments
 app.use("/api/stripe", stripeRouter);
+
+// OpenAPI / Swagger UI
+try {
+  // mount raw JSON for programmatic access
+  app.get("/api/openapi.json", (_req, res) => res.json(swaggerSpec));
+
+  // Serve swagger UI at /api/docs (only useful when running locally or on staging)
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+} catch (err) {
+  // Do not break startup if swagger UI fails to mount
+  logger.warn({ err }, "Swagger UI mount failed");
+}
 
 // root health check
 app.get("/", (_req, res) => res.send("Backend is running"));

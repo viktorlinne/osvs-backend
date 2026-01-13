@@ -16,12 +16,63 @@ import { requireRole } from "../middleware/authorize";
 const router = express.Router();
 
 // Authenticated: list lodges
+/**
+ * @openapi
+ * /lodges:
+ *   get:
+ *     tags:
+ *       - Lodges
+ *     summary: List lodges
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of lodges
+ */
 router.get("/", authMiddleware, wrapAsync(listLodgesHandler));
 
 // Get single lodge
+/**
+ * @openapi
+ * /lodges/{id}:
+ *   get:
+ *     tags:
+ *       - Lodges
+ *     summary: Get lodge by id
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Lodge object
+ */
 router.get("/:id", authMiddleware, wrapAsync(getLodgeHandler));
 
 // Admin: create lodge
+/**
+ * @openapi
+ * /lodges:
+ *   post:
+ *     tags:
+ *       - Lodges
+ *     summary: Create a lodge (Admin only)
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       201:
+ *         description: Lodge created
+ */
 router.post(
   "/",
   authMiddleware,
