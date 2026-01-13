@@ -21,7 +21,8 @@ if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
 
 // Use configurable uploads dir (useful for serverless environments).
 // Prefer `UPLOADS_DIR` env var; fall back to a writable temp directory.
-const baseUploadsDir = process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
+const baseUploadsDir =
+  process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
 const uploadDir = path.join(baseUploadsDir, "profiles");
 try {
   if (!fs.existsSync(uploadDir)) {
