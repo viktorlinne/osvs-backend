@@ -23,6 +23,7 @@ import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
 import lodgesRouter from "./routes/lodges";
 import postsRouter from "./routes/posts";
+import uploadsRouter from "./routes/uploads";
 import eventsRouter from "./routes/events";
 import establishmentsRouter from "./routes/establishments";
 import mailsRouter from "./routes/mails";
@@ -82,7 +83,9 @@ if (process.env.SENTRY_DSN) {
 }
 
 // Configure CORS to allow the frontend origin and support credentials (cookies).
-const rawFrontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").trim();
+const rawFrontendUrl = (
+  process.env.FRONTEND_URL || "http://localhost:5173"
+).trim();
 const FRONTEND_ORIGIN =
   rawFrontendUrl.startsWith("http://") || rawFrontendUrl.startsWith("https://")
     ? rawFrontendUrl
@@ -144,7 +147,8 @@ app.use(express.static("public"));
 
 // Expose configured uploads directory under /uploads so storage adapters
 // that write to a writable temp dir are still publicly accessible.
-const baseUploadsDir = process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
+const baseUploadsDir =
+  process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
 app.use("/uploads", express.static(baseUploadsDir));
 
 // attach request id middleware
@@ -160,6 +164,8 @@ app.use("/api/admin", adminRouter);
 app.use("/api/lodges", lodgesRouter);
 // Post routes
 app.use("/api/posts", postsRouter);
+// Uploads (claim direct-client uploads)
+app.use("/api/uploads", uploadsRouter);
 // Events routes
 app.use("/api/events", eventsRouter);
 // Establishments routes
