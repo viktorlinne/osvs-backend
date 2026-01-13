@@ -31,31 +31,38 @@ export function setAuthCookies(
   const refreshDaysNum = Number(
     refreshDays ?? process.env.REFRESH_TOKEN_DAYS ?? REFRESH_TOKEN_DEFAULT_DAYS
   );
-  const secure = process.env.NODE_ENV === "production";
+  const isProd = process.env.NODE_ENV === "production";
+  const secure = isProd;
+  const sameSite: "none" | "lax" = isProd ? "none" : "lax";
+
   res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
     secure,
-    sameSite: "none",
+    sameSite,
     maxAge: ACCESS_EXPIRES_MS,
   });
   res.cookie(REFRESH_COOKIE, refreshToken, {
     httpOnly: true,
     secure,
-    sameSite: "none",
+    sameSite,
     maxAge: refreshDaysNum * 24 * 60 * 60 * 1000,
   });
 }
 
 export function clearAuthCookies(res: Response) {
+  const isProd = process.env.NODE_ENV === "production";
+  const secure = isProd;
+  const sameSite: "none" | "lax" = isProd ? "none" : "lax";
+
   res.clearCookie(ACCESS_COOKIE, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "none",
+    secure,
+    sameSite,
   });
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "none",
+    secure,
+    sameSite,
   });
 }
 
