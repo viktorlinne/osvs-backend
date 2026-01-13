@@ -144,6 +144,12 @@ export async function getPublicUrl(
 ): Promise<string | null> {
   if (!key) return null;
   try {
+    // If the stored value is already an absolute URL, return it unchanged.
+    // This avoids the local storage adapter encoding an absolute URL into
+    // `/uploads/https%3A/...` when keys accidentally contain full URLs.
+    if (typeof key === "string" && /^(https?:)\/\//i.test(key)) {
+      return key;
+    }
     return await storageAdapter.getUrl(key);
   } catch (err) {
     logger.warn("Failed to resolve public URL for key", key, err);
