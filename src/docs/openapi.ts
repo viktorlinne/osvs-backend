@@ -1,7 +1,14 @@
 import swaggerJSDoc from "swagger-jsdoc";
 
-const FRONTEND = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
-const BACKEND = (process.env.BACKEND_URL || process.env.APP_URL || "http://localhost:4000").replace(/\/$/, "");
+const FRONTEND = (process.env.FRONTEND_URL || "http://localhost:5173").replace(
+  /\/$/,
+  ""
+);
+const BACKEND = (
+  process.env.BACKEND_URL ||
+  process.env.APP_URL ||
+  "http://localhost:4000"
+).replace(/\/$/, "");
 
 const options: swaggerJSDoc.Options = {
   definition: {

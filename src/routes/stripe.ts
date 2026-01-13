@@ -67,11 +67,7 @@ router.post("/membership", authMiddleware, wrapAsync(createMembershipHandler));
  *       200:
  *         description: Array of membership payments
  */
-router.get(
-  "/membership",
-  authMiddleware,
-  wrapAsync(getMyMembershipsHandler)
-);
+router.get("/membership", authMiddleware, wrapAsync(getMyMembershipsHandler));
 
 // Get a membership payment by id (owner or admin)
 /**
