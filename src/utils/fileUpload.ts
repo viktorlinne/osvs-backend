@@ -1,38 +1,16 @@
 import multer from "multer";
-import path from "path";
-import fs from "fs";
-import os from "os";
 import type { Express } from "express";
 import sharp from "sharp";
 import logger from "./logger";
-import { localStorageAdapter } from "../infra/storage/local";
-import { s3StorageAdapter } from "../infra/storage/s3";
 import { supabaseStorageAdapter } from "../infra/storage/supabase";
 import type { StorageAdapter } from "../infra/storage/adapter";
 import { PROFILE_PICTURE_MAX_SIZE } from "../config/constants";
 
-// Choose storage adapter: Supabase (service role) > S3 > local
-let storageAdapter: StorageAdapter = localStorageAdapter;
-if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  storageAdapter = supabaseStorageAdapter;
-} else if (process.env.S3_BUCKET) {
-  storageAdapter = s3StorageAdapter;
-}
+// Only Supabase storage adapter is supported in production.
+// `supabaseStorageAdapter` will throw helpful errors if Supabase isn't configured.
+const storageAdapter: StorageAdapter = supabaseStorageAdapter;
 
-// Use configurable uploads dir (useful for serverless environments).
-// Prefer `UPLOADS_DIR` env var; fall back to a writable temp directory.
-const baseUploadsDir =
-  process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
-const uploadDir = path.join(baseUploadsDir, "profiles");
-try {
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-} catch (err) {
-  // If directory creation fails, log and continue; storage adapters
-  // should handle errors when writing files.
-  logger.warn("Could not ensure upload directory exists:", err);
-}
+// No local uploads directory is used when using Supabase adapter.
 
 // Use memoryStorage — we upload to adapter after multer parses the file
 const memory = multer.memoryStorage();
