@@ -1,6 +1,5 @@
 export * as adminController from "./adminController";
 export * as authController from "./authController";
-export * as establishmentsController from "./establishmentsController";
 export * as eventsController from "./eventsController";
 export * as lodgesController from "./lodgesController";
 export * as mailsController from "./mailsController";

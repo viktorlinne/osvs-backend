@@ -13,7 +13,7 @@ export function createAccessToken(
   payload: Record<string, unknown>,
   expiresIn = "15m"
 ) {
-  const secret: Secret = (process.env.JWT_SECRET ?? "dev-secret") as Secret;
+  const secret: Secret = (process.env.JWT_SECRET) as Secret;
   const options: SignOptions = { expiresIn } as SignOptions;
   return jwt.sign(payload as string | JwtPayload, secret, options);
 }
