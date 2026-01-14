@@ -5,7 +5,6 @@ import type {
   CreateEventBody,
   UpdateEventBody,
   LinkLodgeBody,
-  LinkEstablishmentBody,
   RSVPBody,
 } from "../types";
 import logger from "../utils/logger";
@@ -62,8 +61,15 @@ export async function createEventHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { title, description, lodgeMeeting, price, startDate, endDate, lodgeIds } =
-    req.body as CreateEventBody;
+  const {
+    title,
+    description,
+    lodgeMeeting,
+    price,
+    startDate,
+    endDate,
+    lodgeIds,
+  } = req.body as CreateEventBody;
   if (!title || !description || !startDate || !endDate) {
     return res.status(400).json({ error: "Missing required fields" });
   }
@@ -140,36 +146,6 @@ export async function unlinkLodgeHandler(
   if (!Number.isFinite(id) || !Number.isFinite(lodgeId))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.unlinkLodgeFromEvent(id, lodgeId);
-  void delPattern("events:*");
-  return res.status(200).json({ success: true });
-}
-
-export async function linkEstablishmentHandler(
-  req: AuthenticatedRequest,
-  res: Response,
-  _next: NextFunction
-) {
-  const id = Number(req.params.id);
-  const { esId } = req.body as LinkEstablishmentBody;
-  if (!Number.isFinite(id) || !Number.isFinite(Number(esId)))
-    return res.status(400).json({ error: "Invalid ids" });
-  await eventsService.linkEstablishmentToEvent(id, Number(esId));
-  void delPattern("events:*");
-  return res.status(200).json({ success: true });
-}
-
-export async function unlinkEstablishmentHandler(
-  req: AuthenticatedRequest,
-  res: Response,
-  _next: NextFunction
-) {
-  const id = Number(req.params.id);
-  const bodyEs = (req.body as LinkEstablishmentBody).esId;
-  const queryEs = (req.query as ListEventsQuery)?.esId;
-  const esId = Number(bodyEs ?? queryEs);
-  if (!Number.isFinite(id) || !Number.isFinite(esId))
-    return res.status(400).json({ error: "Invalid ids" });
-  await eventsService.unlinkEstablishmentFromEvent(id, esId);
   void delPattern("events:*");
   return res.status(200).json({ success: true });
 }

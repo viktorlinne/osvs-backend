@@ -9,8 +9,6 @@ import {
   deleteEventHandler,
   linkLodgeHandler,
   unlinkLodgeHandler,
-  linkEstablishmentHandler,
-  unlinkEstablishmentHandler,
   listForUserHandler,
   listEventLodgesHandler,
   getEventStatsHandler,
@@ -165,22 +163,6 @@ router.delete(
   requireRole("Admin", "Editor"),
   validateParams,
   wrapAsync(unlinkLodgeHandler)
-);
-
-// Link/unlink establishments
-router.post(
-  "/:id/establishments",
-  authMiddleware,
-  requireRole("Admin", "Editor"),
-  validateParams,
-  wrapAsync(linkEstablishmentHandler)
-);
-router.delete(
-  "/:id/establishments",
-  authMiddleware,
-  requireRole("Admin", "Editor"),
-  validateParams,
-  wrapAsync(unlinkEstablishmentHandler)
 );
 
 // RSVP: set current user's RSVP for event (going / not-going)

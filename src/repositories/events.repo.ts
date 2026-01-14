@@ -58,10 +58,10 @@ export async function insertEvent(
     payload.startDate,
     payload.endDate,
   ];
-  const [result] = (await executor<ResultSetHeader>(sql, params)) as unknown as [
-    ResultSetHeader,
-    unknown
-  ];
+  const [result] = (await executor<ResultSetHeader>(
+    sql,
+    params
+  )) as unknown as [ResultSetHeader, unknown];
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 
@@ -195,25 +195,6 @@ export async function deleteLodgeEvent(
     lodgeId,
     eventId,
   ]);
-}
-
-export async function insertEstablishmentEvent(
-  eventId: number,
-  esId: number,
-  conn?: PoolConnection
-) {
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
-  await executor(
-    "INSERT IGNORE INTO establishments_events (esid, eid) VALUES (?, ?)",
-    [esId, eventId]
-  );
-}
-
-export async function deleteEstablishmentEvent(eventId: number, esId: number) {
-  await pool.execute(
-    "DELETE FROM establishments_events WHERE esid = ? AND eid = ?",
-    [esId, eventId]
-  );
 }
 
 export async function listEventsForUser(
@@ -409,8 +390,6 @@ export default {
   selectUsersToRemoveOnUnlink,
   deletePendingEventPaymentsForUids,
   deleteLodgeEvent,
-  insertEstablishmentEvent,
-  deleteEstablishmentEvent,
   listEventsForUser,
   isUserInvitedToEvent,
   upsertUserRsvp,
