@@ -16,18 +16,18 @@ export async function findLodgeById(id: number): Promise<LodgeRecord | null> {
 export async function createLodge(
   name: string,
   description?: string | null,
-  address?: string | null
+  email?: string | null
 ): Promise<number> {
-  return await lodgeRepo.insertLodge(name, description, address);
+  return await lodgeRepo.insertLodge(name, description, email);
 }
 
 export async function updateLodge(
   id: number,
   name?: string,
   description?: string | null,
-  address?: string | null
+  email?: string | null
 ): Promise<void> {
-  await lodgeRepo.updateLodgeRecord(id, name, description, address);
+  await lodgeRepo.updateLodgeRecord(id, name, description, email);
 }
 
 export async function getUserLodge(

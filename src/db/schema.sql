@@ -25,7 +25,7 @@ CREATE TABLE `lodges` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(256) NOT NULL,
   `description` varchar(256) NOT NULL,
-  `address` varchar(256) DEFAULT NULL,
+  `email` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -308,18 +308,23 @@ VALUES
 
 -- Lodges seed (ensure some lodges exist for local/dev testing)
 INSERT INTO
-  `lodges` (`id`, `name`, `description`, `address`)
+  `lodges` (`id`, `name`, `description`, `email`)
 VALUES
-  (1, 'Stamlogen', 'Första Logen', 'Storgatan 5'),
+  (
+    1,
+    'Stamlogen',
+    'Första Logen',
+    'stamlogen@osvs.se'
+  ),
   (
     2,
     'Stella Polaris',
     'Andra Logen',
-    'Nordvägen 2'
+    'stellapolaris@osvs.se'
   ),
-  (3, 'Regulus', 'Tredje Logen', 'Testvägen 3'),
-  (4, 'Orion', 'Fjärde Logen', 'Stadsgatan 4'),
-  (5, 'Capella', 'Femte Logen', 'Hamngatan 6') ON DUPLICATE KEY
+  (3, 'Regulus', 'Tredje Logen', 'regulus@osvs.se'),
+  (4, 'Orion', 'Fjärde Logen', 'orion@osvs.se'),
+  (5, 'Capella', 'Femte Logen', 'capella@osvs.se') ON DUPLICATE KEY
 UPDATE
   `name` =
 VALUES
@@ -327,9 +332,9 @@ VALUES
   `description` =
 VALUES
   (`description`),
-  `address` =
+  `email` =
 VALUES
-  (`address`);
+  (`email`);
 
 -- Assign roles: give Alice all roles (1,2,3) and Bob the Member role (3)
 -- Replace any existing role assignments for these seeded users to keep test state predictable.

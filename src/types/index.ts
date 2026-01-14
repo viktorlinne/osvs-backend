@@ -10,7 +10,7 @@ export type Lodge = {
   id: number;
   name: string;
   description?: string | null;
-  address?: string | null;
+  email?: string | null;
 };
 
 export type User = {
@@ -133,12 +133,12 @@ export type ListLodgesQuery = {
 export type CreateLodgeBody = {
   name?: string;
   description?: string | null;
-  address?: string;
+  email?: string;
 };
 export type UpdateLodgeBody = {
   name?: string;
   description?: string | null;
-  address?: string | null;
+  email?: string | null;
 };
 // Users DTOs
 export type UpdateUserProfileBody = Partial<{
