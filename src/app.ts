@@ -27,6 +27,7 @@ import lodgesRouter from "./routes/lodges";
 import postsRouter from "./routes/posts";
 import uploadsRouter from "./routes/uploads";
 import eventsRouter from "./routes/events";
+import establishmentsRouter from "./routes/establishments";
 import mailsRouter from "./routes/mails";
 import swishRouter from "./routes/swish";
 import stripeRouter from "./routes/stripe";
@@ -169,6 +170,8 @@ app.use("/api/posts", postsRouter);
 app.use("/api/uploads", uploadsRouter);
 // Events routes
 app.use("/api/events", eventsRouter);
+// Establishments routes
+app.use("/api/establishments", establishmentsRouter);
 // Achievements list
 app.use("/api/achievements", achievementsRouter);
 // Mails routes

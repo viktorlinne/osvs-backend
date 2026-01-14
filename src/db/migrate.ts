@@ -51,13 +51,16 @@ async function migrate() {
       DROP TABLE IF EXISTS event_attendances;
       DROP TABLE IF EXISTS users_mails;
       DROP TABLE IF EXISTS users_posts;
+      DROP TABLE IF EXISTS establishments_events;
       DROP TABLE IF EXISTS lodges_events;
+      DROP TABLE IF EXISTS lodges_establishments;
       DROP TABLE IF EXISTS users_lodges;
       DROP TABLE IF EXISTS users_roles;
       DROP TABLE IF EXISTS mails;
       DROP TABLE IF EXISTS events;
       DROP TABLE IF EXISTS posts;
       DROP TABLE IF EXISTS users;
+      DROP TABLE IF EXISTS establishments;
       DROP TABLE IF EXISTS lodges;
       DROP TABLE IF EXISTS roles;
       SET FOREIGN_KEY_CHECKS = 1;

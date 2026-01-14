@@ -398,6 +398,138 @@
       ]
     },
     {
+      "name": "Establishments",
+      "item": [
+        {
+          "name": "List Establishments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/api/establishments",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "establishments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Establishment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/api/establishments/{{estId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "establishments", "{{estId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Establishment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Establishment\",\n  \"description\": \"Main branch\",\n  \"address\": \"Street 12, City\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/establishments",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "establishments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Establishment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Renamed Establishment\",\n  \"address\": \"New address 3\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/establishments/{{estId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "establishments", "{{estId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Establishment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/api/establishments/{{estId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "establishments", "{{estId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Link Lodge to Establishment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lodgeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/establishments/{{estId}}/lodges",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "establishments", "{{estId}}", "lodges"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unlink Lodge from Establishment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lodgeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/establishments/{{estId}}/lodges",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "establishments", "{{estId}}", "lodges"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Posts",
       "item": [
         {
