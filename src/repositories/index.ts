@@ -1,3 +1,4 @@
+export { default as establishmentsRepo } from "./establishments.repo";
 export { default as eventsRepo } from "./events.repo";
 export { default as lodgeRepo } from "./lodge.repo";
 export { default as mailsRepo } from "./mails.repo";
