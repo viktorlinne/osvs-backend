@@ -1,6 +1,5 @@
 export * from "./authService";
 export * from "./brevoService";
-export * from "./establishmentService";
 export * from "./eventsService";
 export * from "./lodgeService";
 export * from "./mailsService";

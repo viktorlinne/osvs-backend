@@ -106,7 +106,6 @@ export async function listEvents(
       description: String(r.description ?? ""),
       lodgeMeeting:
         r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
-      establishments_events: [],
       event_payments: [],
       events_attendances: [],
       lodges_events: [],
@@ -126,7 +125,6 @@ export async function getEventById(id: number): Promise<EventRecord | null> {
     description: String(r.description ?? ""),
     lodgeMeeting:
       r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
-    establishments_events: [],
     event_payments: [],
     events_attendances: [],
     lodges_events: [],
@@ -183,7 +181,12 @@ export async function createEventWithLodges(
             }
           }
         }
-        const values = Array.from(uidSet).map((uid) => [uid, eventId, price, "Pending"]);
+        const values = Array.from(uidSet).map((uid) => [
+          uid,
+          eventId,
+          price,
+          "Pending",
+        ]);
         if (values.length > 0) {
           await eventsRepo.bulkInsertEventPayments(values, conn);
         }
@@ -222,7 +225,7 @@ export async function deleteEvent(id: number): Promise<void> {
   await eventsRepo.deleteEvent(id);
 }
 
-// Link/unlink lodges and establishments to events. Implemented as simple INSERT/DELETE
+// Link/unlink lodges to events. Implemented as simple INSERT/DELETE
 export async function linkLodgeToEvent(
   eventId: number,
   lodgeId: number
@@ -306,33 +309,6 @@ export async function unlinkLodgeFromEvent(
   }
 }
 
-export async function linkEstablishmentToEvent(
-  eventId: number,
-  esId: number
-): Promise<void> {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    await eventsRepo.insertEstablishmentEvent(eventId, esId, conn);
-    await conn.commit();
-  } catch (err) {
-    try {
-      await conn.rollback();
-    } catch {
-      throw err;
-    }
-  } finally {
-    conn.release();
-  }
-}
-
-export async function unlinkEstablishmentFromEvent(
-  eventId: number,
-  esId: number
-): Promise<void> {
-  await eventsRepo.deleteEstablishmentEvent(eventId, esId);
-}
-
 export async function listEventsForUser(
   userId: number,
   limit?: number,
@@ -349,7 +325,6 @@ export async function listEventsForUser(
       description: String(r.description ?? ""),
       lodgeMeeting:
         r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
-      establishments_events: [],
       event_payments: [],
       events_attendances: [],
       lodges_events: [],
@@ -414,8 +389,6 @@ export default {
   deleteEvent,
   linkLodgeToEvent,
   unlinkLodgeFromEvent,
-  linkEstablishmentToEvent,
-  unlinkEstablishmentFromEvent,
   listEventsForUser,
   isUserInvitedToEvent,
   setUserRsvp,

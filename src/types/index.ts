@@ -13,13 +13,6 @@ export type Lodge = {
   address?: string | null;
 };
 
-export type Establishment = {
-  id: number;
-  name: string;
-  description: string;
-  address: string;
-};
-
 export type User = {
   id: number;
   username: string;
@@ -57,7 +50,6 @@ export type Event = {
   startDate: string; // ISO datetime
   endDate: string; // ISO datetime
   // Relation placeholders
-  establishments_events?: unknown[];
   event_payments?: unknown[];
   events_attendances?: unknown[];
   lodges_events?: unknown[];
@@ -109,7 +101,6 @@ export type EventPayment = MembershipPayment & { eid: number };
 export type events = Event;
 export type event_payments = EventPayment;
 export type events_attendances = EventsAttendance;
-export type establishments_events = unknown[];
 export type lodges_events = unknown[];
 export type users_mails = UsersMail;
 
@@ -192,7 +183,6 @@ export type CreateEventBody = {
 };
 export type UpdateEventBody = Partial<CreateEventBody>;
 export type LinkLodgeBody = { lodgeId?: number | string | undefined };
-export type LinkEstablishmentBody = { esId?: number | string | undefined };
 export type RSVPBody = { status?: string };
 
 // Posts DTOs
@@ -202,19 +192,6 @@ export type ListPostsQuery = {
 };
 export type CreatePostBody = { title?: string; description?: string };
 export type UpdatePostBody = Partial<CreatePostBody>;
-
-// Establishments DTOs
-export type ListEstablishmentsQuery = {
-  limit?: string | number;
-  offset?: string | number;
-  lodgeId?: string | number;
-};
-export type CreateEstablishmentBody = {
-  name?: string;
-  description?: string | null;
-  address?: string;
-};
-export type UpdateEstablishmentBody = Partial<CreateEstablishmentBody>;
 
 // Mails DTOs
 export type CreateMailBody = { lid?: number; title?: string; content?: string };
