@@ -336,7 +336,8 @@ INSERT INTO `users_roles` (`uid`, `rid`) VALUES
 DELETE FROM `users_achievements` WHERE `uid` IN (1, 2, 3);
 INSERT INTO `users_achievements` (`uid`, `aid`, `awardedAt`) VALUES
   (1, 1, '2025-12-01 10:00:00'),
-  (2, 1, '2025-12-01 10:00:00');
+  (2, 1, '2025-12-01 10:00:00'),
+  (3, 1, '2025-12-01 10:00:00');
 
 -- Ensure seeded users have predictable lodge assignments (replace existing assignments)
 DELETE FROM `users_lodges` WHERE `uid` IN (1,2,3);
