@@ -845,6 +845,72 @@
       ]
     },
     {
+      "name": "Officials",
+      "item": [
+        {
+          "name": "List Officials (GET /api/officials)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/api/officials",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "officials"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Officials (GET /api/officials/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/api/officials/me",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "officials", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Member Officials (GET /api/officials/member/:id)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}/api/officials/member/{{userId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "officials", "member", "{{userId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Member Officials (PUT /api/officials/member/:id)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officialIds\": [1,2]\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/officials/member/{{userId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "officials", "member", "{{userId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Swish",
       "item": [
         {
