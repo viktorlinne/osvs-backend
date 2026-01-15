@@ -24,7 +24,7 @@ export type User = {
   firstname: string;
   lastname: string;
   dateOfBirth: string; // ISO date
-  official?: string | null;
+  work?: string | null;
   revokedAt?: string | null; // ISO datetime
   mobile: string;
   homeNumber?: string | null;
@@ -59,7 +59,12 @@ export type Mail = { id: number; lid: number; title: string; content: string };
 
 export type Achievement = {
   id: number;
-  title: "I:a Graden" | "II:a Graden" | "III:e Graden";
+  title: string;
+};
+
+export type Official = {
+  id: number;
+  title: string;
 };
 
 export type UserAchievement = {
@@ -67,6 +72,12 @@ export type UserAchievement = {
   uid: number;
   aid: number;
   awardedAt: string;
+};
+
+export type UserOfficial = {
+  id: number;
+  uid: number;
+  oid: number;
 };
 
 export type EventsAttendance = { uid: number; eid: number; rsvp: boolean };
@@ -145,7 +156,7 @@ export type UpdateUserProfileBody = Partial<{
   firstname: string;
   lastname: string;
   dateOfBirth: string;
-  official?: string | null;
+  work?: string | null;
   mobile?: string;
   city?: string;
   address?: string;
@@ -219,7 +230,7 @@ export type RegisterBody = {
   firstname?: string;
   lastname?: string;
   dateOfBirth?: string;
-  official?: string;
+  work?: string;
   mobile?: string;
   city?: string;
   address?: string;

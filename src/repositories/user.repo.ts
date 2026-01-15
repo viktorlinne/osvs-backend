@@ -10,7 +10,7 @@ export interface CreateUserParams {
   firstname: string;
   lastname: string;
   dateOfBirth: string;
-  official?: string | null;
+  work?: string | null;
   mobile?: string | null;
   city?: string | null;
   address?: string | null;
@@ -46,7 +46,7 @@ export async function insertUser(
   conn?: PoolConnection
 ): Promise<number | undefined> {
   const sql = `INSERT INTO users
-    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, official, mobile, city, address, zipcode, notes)
+    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, work, mobile, city, address, zipcode, notes)
     VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const execParams = [
@@ -57,7 +57,8 @@ export async function insertUser(
     params.firstname,
     params.lastname,
     params.dateOfBirth,
-    params.official ?? null,
+    params.work ?? null,
+    params.work ?? null,
     params.mobile ?? null,
     params.city ?? null,
     params.address ?? null,
@@ -127,7 +128,7 @@ export async function updateUserProfile(
     firstname: string;
     lastname: string;
     dateOfBirth: string;
-    official?: string | null;
+    work?: string | null;
     mobile?: string;
     city?: string;
     address?: string;
@@ -150,9 +151,9 @@ export async function updateUserProfile(
     params.push(data.dateOfBirth);
     fields.push("dateOfBirth = ?");
   }
-  if (typeof data.official !== "undefined") {
-    fields.push("official = ?");
-    params.push(data.official ?? null);
+  if (typeof data.work !== "undefined") {
+    fields.push("work = ?");
+    params.push(data.work ?? null);
   }
   if (typeof data.mobile !== "undefined") {
     fields.push("mobile = ?");
@@ -305,7 +306,7 @@ export async function listUsers(
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-  let sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.official, u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes
+  let sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes
     FROM users u ${whereSql} ORDER BY u.id DESC`;
 
   if (typeof limit === "number" && Number.isFinite(limit)) {
@@ -323,12 +324,45 @@ export async function listUsers(
 
 export async function getUserPublicById(id: number) {
   const [rows] = await exec(
-    `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, official, mobile, homeNumber, city, address, zipcode, notes
+    `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes
      FROM users WHERE id = ? LIMIT 1`,
     [id]
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return arr.length > 0 ? arr[0] : undefined;
+}
+
+export async function selectUserOfficials(userId: number) {
+  const sql = `
+    SELECT o.id, o.title
+    FROM users_officials uo
+    JOIN officials o ON o.id = uo.oid
+    WHERE uo.uid = ?
+    ORDER BY o.id ASC
+  `;
+  const [rows] = await exec(sql, [userId]);
+  const arr = rows as unknown as Array<Record<string, unknown>>;
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
+    .filter((r) => Number.isFinite(r.id));
+}
+
+export async function setUserOfficials(
+  userId: number,
+  officialIds: number[],
+  conn?: PoolConnection
+) {
+  // Delete existing and insert provided set. Caller may provide `conn` to run in transaction.
+  await exec("DELETE FROM users_officials WHERE uid = ?", [userId], conn);
+  if (!Array.isArray(officialIds) || officialIds.length === 0) return;
+  const placeholders = officialIds.map(() => "(?,?)").join(",");
+  const params: Array<number> = [];
+  for (const oid of officialIds) {
+    params.push(userId, oid);
+  }
+  const sql = `INSERT INTO users_officials (uid, oid) VALUES ${placeholders}`;
+  await exec(sql, params, conn);
 }
 
 export default {
@@ -343,4 +377,6 @@ export default {
   listUsers,
   getUserPublicById,
   listAchievements,
+  selectUserOfficials,
+  setUserOfficials,
 };

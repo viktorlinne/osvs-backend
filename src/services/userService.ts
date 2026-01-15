@@ -47,7 +47,10 @@ export function isValidUserRecord(value: unknown): value is UserRecord {
     typeof record.lastname === "string" &&
     (typeof record.dateOfBirth === "string" ||
       record.dateOfBirth instanceof Date) &&
-    typeof record.official === "string" &&
+    // work is optional string
+    (typeof record.work === "undefined" ||
+      typeof record.work === "string" ||
+      record.work === null) &&
     typeof record.mobile === "string" &&
     // homeNumber optional
     (typeof record.homeNumber === "undefined" ||
@@ -75,8 +78,8 @@ export function trimUserInput(input: CreateUserInput): CreateUserInput {
     firstname: trimRequired(input.firstname),
     lastname: trimRequired(input.lastname),
     dateOfBirth: trimRequired(input.dateOfBirth),
-    // `official` is optional: preserve undefined/null rather than forcing empty string
-    official: trimIfString(input.official) as string | undefined,
+    work: trimRequired(input.work),
+    // officials are handled via users_officials junction
     // `notes` is optional: preserve undefined/null rather than forcing empty string
     notes: trimIfString(input.notes) as string | undefined,
     mobile: trimRequired(input.mobile),
@@ -106,7 +109,7 @@ export async function updateUserProfile(
     firstname: string;
     lastname: string;
     dateOfBirth: string;
-    official?: string | null;
+    work?: string | null;
     mobile?: string;
     city?: string;
     address?: string;
@@ -293,7 +296,7 @@ export async function createUser(
     firstname,
     lastname,
     dateOfBirth,
-    official,
+    work,
     mobile,
     city,
     address,
@@ -357,7 +360,7 @@ export async function createUser(
         firstname,
         lastname,
         dateOfBirth: sqlDate,
-        official,
+        work,
         mobile,
         city,
         address,

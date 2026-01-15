@@ -10,7 +10,8 @@ export type UserRecord = {
   firstname: string;
   lastname: string;
   dateOfBirth: string;
-  official: string;
+  work?: string | null;
+  officials?: number[];
   mobile: string;
   homeNumber?: string | null;
   city: string;
@@ -26,7 +27,7 @@ export type CreateUserInput = {
   firstname: string;
   lastname: string;
   dateOfBirth: string;
-  official: string;
+  work?: string | null;
   mobile: string;
   city: string;
   address: string;

@@ -31,6 +31,7 @@ import mailsRouter from "./routes/mails";
 import swishRouter from "./routes/swish";
 import stripeRouter from "./routes/stripe";
 import achievementsRouter from "./routes/achievements";
+import officialsRouter from "./routes/officials";
 import { webhookHandler } from "./controllers/stripeController";
 
 dotenv.config();
@@ -159,7 +160,7 @@ app.use(requestId);
 app.use("/api/auth", authRouter);
 // User routes
 app.use("/api/users", usersRouter);
-// Admin routes (manual/diagnostic operations)
+// Admin routes
 app.use("/api/admin", adminRouter);
 // Lodge routes
 app.use("/api/lodges", lodgesRouter);
@@ -169,8 +170,10 @@ app.use("/api/posts", postsRouter);
 app.use("/api/uploads", uploadsRouter);
 // Events routes
 app.use("/api/events", eventsRouter);
-// Achievements list
+// Achievements routes
 app.use("/api/achievements", achievementsRouter);
+// Officials routes
+app.use("/api/officials", officialsRouter);
 // Mails routes
 app.use("/api/mails", mailsRouter);
 // Swish Payments
