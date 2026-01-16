@@ -41,7 +41,7 @@ CREATE TABLE `users` (
   `firstname` varchar(256) NOT NULL,
   `lastname` varchar(256) NOT NULL,
   `dateOfBirth` date NOT NULL,
-  `official` varchar(256) DEFAULT NULL,
+  `work` varchar(256) DEFAULT NULL,
   `revokedAt` datetime DEFAULT NULL,
   `mobile` varchar(256) NOT NULL,
   `homeNumber` varchar(256) DEFAULT NULL,
@@ -86,6 +86,155 @@ CREATE TABLE `mails` (
   CONSTRAINT `fk_mails_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+-- Achievements
+CREATE TABLE `achievements` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` enum(
+    'I:a Graden',
+    'II:a Graden',
+    'III:e Graden',
+    'IV:e Graden',
+    'V:e Graden',
+    'VI:e Graden',
+    'VII:e Graden',
+    'VIII:e Graden',
+    'IX:e Graden',
+    'X:e Graden',
+    'Förtjänstmedalj',
+    'Bärare av Stiftarband',
+    'Ordensring',
+    '25 år Veteran',
+    '40 år Veteran',
+    '50 år Veteran'
+  ) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `officials` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` enum(
+    'Ordensmästare',
+    'Ordenssekreterare',
+    'Logemästare',
+    'Logekansler',
+    'Logesekreterare',
+    'Logeskattmästare',
+    'Överceremonimästare',
+    'Ceremonimästare',
+    'Orator',
+    'Visdomens Broder',
+    'Instruktionsbroder',
+    'Ledande Broder',
+    'Ljudtekniker',
+    'Intendent',
+    'Biträdande Intendent',
+    'Kanslisekreterare',
+    'Director Musices',
+    'Klubbmästare',
+    'Barmästare',
+    'Biträdande Barmästare',
+    'Chef för köksförvaltningen',
+    'Biträdande Chef för köksförvaltningen',
+    'Webmaster',
+    'Webbredaktör',
+    'Borgfogde',
+    'Förtroendeutskottet',
+    'Kurator'
+  ) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_officials_title` (`title`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Revoked JWT JTIs (blacklist for logout) - store token id instead of full token
+CREATE TABLE IF NOT EXISTS `revoked_tokens` (
+  `jti` varchar(128) NOT NULL,
+  `expiresAt` datetime NOT NULL,
+  PRIMARY KEY (`jti`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Refresh tokens for long-lived session renewal (rotate on use)
+CREATE TABLE IF NOT EXISTS `refresh_tokens` (
+  `token_hash` varchar(128) NOT NULL,
+  `uid` int(11) NOT NULL,
+  `expiresAt` datetime NOT NULL,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  `isRevoked` tinyint(1) NOT NULL DEFAULT 0,
+  `replacedBy` varchar(128) DEFAULT NULL,
+  `lastUsed` datetime DEFAULT NULL,
+  PRIMARY KEY (`token_hash`),
+  KEY `fk_refresh_token_user` (`uid`),
+  CONSTRAINT `fk_refresh_token_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Password reset tokens (one-time use) — store hashed token
+CREATE TABLE IF NOT EXISTS `password_resets` (
+  `token_hash` varchar(128) NOT NULL,
+  `uid` int(11) NOT NULL,
+  `expiresAt` datetime NOT NULL,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`token_hash`),
+  KEY `fk_password_reset_user` (`uid`),
+  CONSTRAINT `fk_password_reset_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Event attendances (RSVP)
+CREATE TABLE IF NOT EXISTS `events_attendances` (
+  `uid` int(11) NOT NULL,
+  `eid` int(11) NOT NULL,
+  `rsvp` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`uid`, `eid`),
+  KEY `fk_events_attendances_event` (`eid`),
+  CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- =====================================================
+-- PAYMENT TABLES
+-- =====================================================
+-- Membership payments (yearly)
+CREATE TABLE `membership_payments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `uid` int(11) NOT NULL,
+  `amount` decimal(10, 2) NOT NULL DEFAULT 600.00,
+  `year` int(11) NOT NULL,
+  `status` enum('Pending', 'Paid', 'Failed', 'Refunded') NOT NULL DEFAULT 'Pending',
+  `provider` varchar(64) DEFAULT NULL,
+  `provider_ref` varchar(256) DEFAULT NULL,
+  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
+  `invoice_token` varchar(128) DEFAULT NULL,
+  `expiresAt` datetime DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
+  `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
+  `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_membership_uid_year` (`uid`, `year`),
+  KEY `fk_membership_payments_user` (`uid`),
+  CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Event payments (Swish)
+CREATE TABLE `event_payments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `uid` int(11) NOT NULL,
+  `eid` int(11) NOT NULL,
+  `amount` decimal(10, 2) NOT NULL DEFAULT 0.00,
+  `status` enum('Pending', 'Paid', 'Failed', 'Refunded') NOT NULL DEFAULT 'Pending',
+  `provider` varchar(64) DEFAULT NULL,
+  `provider_ref` varchar(256) DEFAULT NULL,
+  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
+  `invoice_token` varchar(128) DEFAULT NULL,
+  `expiresAt` datetime DEFAULT NULL,
+  `metadata` json DEFAULT NULL,
+  `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
+  `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_event_payments_uid_eid` (`uid`, `eid`),
+  KEY `fk_event_payments_user` (`uid`),
+  KEY `fk_event_payments_event` (`eid`),
+  CONSTRAINT `fk_event_payments_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_event_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 -- =====================================================
 -- RELATION / JUNCTION TABLES
 -- =====================================================
@@ -119,24 +268,6 @@ CREATE TABLE `lodges_events` (
   CONSTRAINT `fk_lodges_events_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Achievements
-CREATE TABLE `achievements` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` enum(
-    'I:a Graden',
-    'II:a Graden',
-    'III:e Graden',
-    'IV:e Graden',
-    'V:e Graden',
-    'VI:e Graden',
-    'VII:e Graden',
-    'VIII:e Graden',
-    'IX:e Graden',
-    'X:e Graden'
-  ) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
 -- Users ↔ Achievements (which user has which achievement)
 CREATE TABLE `users_achievements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -150,12 +281,34 @@ CREATE TABLE `users_achievements` (
   CONSTRAINT `fk_users_achievements_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+CREATE TABLE `users_officials` (
+  `uid` int(11) NOT NULL,
+  `oid` int(11) NOT NULL,
+  `appointedAt` datetime NOT NULL,
+  `unAppointedAt` datetime DEFAULT NULL,
+  PRIMARY KEY (`uid`, `oid`),
+  KEY `fk_users_officials_official` (`oid`),
+  CONSTRAINT `fk_users_officials_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_officials_official` FOREIGN KEY (`oid`) REFERENCES `officials` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Users ↔ Mails (inbox entries generated when a mail is sent to users)
+CREATE TABLE IF NOT EXISTS `users_mails` (
+  `uid` int(11) NOT NULL,
+  `mid` int(11) NOT NULL,
+  `sentAt` datetime NOT NULL,
+  `isRead` tinyint(1) NOT NULL DEFAULT 0,
+  `delivered` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`uid`, `mid`),
+  KEY `fk_users_mails_mail` (`mid`),
+  CONSTRAINT `fk_users_mails_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_mails_mail` FOREIGN KEY (`mid`) REFERENCES `mails` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 -- =====================================================
 -- Seed data for local development / tests
--- Ensures an `alice` user and a second example user exist, with roles and one achievement
--- These statements are idempotent where practical.
 -- =====================================================
--- Roles (ensure base roles exist)
+-- Roles
 INSERT INTO
   `roles` (`id`, `role`)
 VALUES
@@ -165,9 +318,9 @@ VALUES
 UPDATE
   `role` =
 VALUES
-  (`role`);
+(`role`);
 
--- Achievements (ensure enum titles are present)
+-- Achievements
 INSERT INTO
   `achievements` (`id`, `title`)
 VALUES
@@ -180,14 +333,55 @@ VALUES
   (7, 'VII:e Graden'),
   (8, 'VIII:e Graden'),
   (9, 'IX:e Graden'),
-  (10, 'X:e Graden') ON DUPLICATE KEY
+  (10, 'X:e Graden'),
+  (11, 'Förtjänstmedalj'),
+  (12, 'Bärare av Stiftarband'),
+  (13, 'Ordensring'),
+  (14, '25 år Veteran'),
+  (15, '40 år Veteran'),
+  (16, '50 år Veteran') ON DUPLICATE KEY
 UPDATE
   `title` =
 VALUES
-  (`title`);
+(`title`);
 
--- Users: Alice (id=1) and example Bob (id=2)
--- Note: passwordHash uses SHA256 for a deterministic seeded value for local testing.
+-- Officials
+INSERT INTO
+  `officials` (`id`, `title`)
+VALUES
+  (1, 'Ordensmästare'),
+  (2, 'Ordenssekreterare'),
+  (3, 'Logemästare'),
+  (4, 'Logekansler'),
+  (5, 'Logesekreterare'),
+  (6, 'Logeskattmästare'),
+  (7, 'Överceremonimästare'),
+  (8, 'Ceremonimästare'),
+  (9, 'Orator'),
+  (10, 'Visdomens Broder'),
+  (11, 'Instruktionsbroder'),
+  (12, 'Ledande Broder'),
+  (13, 'Ljudtekniker'),
+  (14, 'Intendent'),
+  (15, 'Biträdande Intendent'),
+  (16, 'Kanslisekreterare'),
+  (17, 'Director Musices'),
+  (18, 'Klubbmästare'),
+  (19, 'Barmästare'),
+  (20, 'Biträdande Barmästare'),
+  (21, 'Chef för köksförvaltningen'),
+  (22, 'Biträdande Chef för köksförvaltningen'),
+  (23, 'Webmaster'),
+  (24, 'Webbredaktör'),
+  (25, 'Borgfogde'),
+  (26, 'Förtroendeutskottet'),
+  (27, 'Kurator') ON DUPLICATE KEY
+UPDATE
+  `title` =
+VALUES
+(`title`);
+
+-- Users
 INSERT INTO
   `users` (
     `id`,
@@ -199,7 +393,7 @@ INSERT INTO
     `firstname`,
     `lastname`,
     `dateOfBirth`,
-    `official`,
+    `work`,
     `mobile`,
     `homeNumber`,
     `city`,
@@ -265,48 +459,48 @@ VALUES
 UPDATE
   `username` =
 VALUES
-  (`username`),
+(`username`),
   `email` =
 VALUES
-  (`email`),
+(`email`),
   `passwordHash` =
 VALUES
-  (`passwordHash`),
+(`passwordHash`),
   `picture` =
 VALUES
-  (`picture`),
+(`picture`),
   `firstname` =
 VALUES
-  (`firstname`),
+(`firstname`),
   `lastname` =
 VALUES
-  (`lastname`),
+(`lastname`),
   `dateOfBirth` =
 VALUES
-  (`dateOfBirth`),
-  `official` =
+(`dateOfBirth`),
+  `work` =
 VALUES
-  (`official`),
+(`work`),
   `mobile` =
 VALUES
-  (`mobile`),
+(`mobile`),
   `homeNumber` =
 VALUES
-  (`homeNumber`),
+(`homeNumber`),
   `city` =
 VALUES
-  (`city`),
+(`city`),
   `address` =
 VALUES
-  (`address`),
+(`address`),
   `zipcode` =
 VALUES
-  (`zipcode`),
+(`zipcode`),
   `notes` =
 VALUES
-  (`notes`);
+(`notes`);
 
--- Lodges seed (ensure some lodges exist for local/dev testing)
+-- Lodges
 INSERT INTO
   `lodges` (`id`, `name`, `description`, `email`)
 VALUES
@@ -328,16 +522,15 @@ VALUES
 UPDATE
   `name` =
 VALUES
-  (`name`),
+(`name`),
   `description` =
 VALUES
-  (`description`),
+(`description`),
   `email` =
 VALUES
-  (`email`);
+(`email`);
 
--- Assign roles: give Alice all roles (1,2,3) and Bob the Member role (3)
--- Replace any existing role assignments for these seeded users to keep test state predictable.
+-- Users ↔ Roles (predictable state)
 DELETE FROM
   `users_roles`
 WHERE
@@ -354,7 +547,7 @@ VALUES
   (3, 2),
   (3, 3);
 
--- Ensure a sample achievement exists for Bob (single, replace any existing for that user/achievement)
+-- Users ↔ Achievements
 DELETE FROM
   `users_achievements`
 WHERE
@@ -366,7 +559,20 @@ VALUES
   (1, 1, '2025-12-01 10:00:00'),
   (2, 1, '2025-12-01 10:00:00');
 
--- Ensure seeded users have predictable lodge assignments (replace existing assignments)
+-- Users ↔ Officials
+DELETE FROM
+  `users_officials`
+WHERE
+  `uid` IN (1, 2, 3);
+
+INSERT INTO
+  `users_officials` (`uid`, `oid`, `appointedAt`)
+VALUES
+  (1, 1, '2025-12-01 10:00:00'),
+  (1, 2, '2025-12-01 10:00:00'),
+  (2, 2, '2025-12-01 10:00:00');
+
+-- Users ↔ Lodges
 DELETE FROM
   `users_lodges`
 WHERE
@@ -377,13 +583,9 @@ INSERT INTO
 VALUES
   (1, 1),
   (2, 2),
-  (3, 1) ON DUPLICATE KEY
-UPDATE
-  `lid` =
-VALUES
-  (`lid`);
+  (3, 1);
 
--- Seed events for local/dev testing
+-- Events
 INSERT INTO
   `events` (
     `id`,
@@ -416,42 +618,36 @@ VALUES
 UPDATE
   `title` =
 VALUES
-  (`title`),
+(`title`),
   `description` =
 VALUES
-  (`description`),
+(`description`),
   `lodgeMeeting` =
 VALUES
-  (`lodgeMeeting`),
+(`lodgeMeeting`),
   `price` =
 VALUES
-  (`price`),
+(`price`),
   `startDate` =
 VALUES
-  (`startDate`),
+(`startDate`),
   `endDate` =
 VALUES
-  (`endDate`);
+(`endDate`);
 
--- Seed relationships: attach events to lodges for local testing
+-- Lodges ↔ Events
 DELETE FROM
   `lodges_events`
 WHERE
-  (lid, eid) IN ((1, 1),(2, 2));
+  (lid, eid) IN ((1, 1), (2, 2));
 
 INSERT INTO
   `lodges_events` (`lid`, `eid`)
 VALUES
   (1, 1),
-  (2, 2) ON DUPLICATE KEY
-UPDATE
-  `lid` =
-VALUES
-  (`lid`),
-  `eid` =
-VALUES
-  (`eid`);
+  (2, 2);
 
+-- Posts
 INSERT INTO
   `posts` (`id`, `title`, `description`, `picture`)
 VALUES
@@ -488,15 +684,15 @@ VALUES
 UPDATE
   `title` =
 VALUES
-  (`title`),
+(`title`),
   `description` =
 VALUES
-  (`description`),
+(`description`),
   `picture` =
 VALUES
-  (`picture`);
+(`picture`);
 
--- Sample mails for local/dev testing
+-- Mails
 INSERT INTO
   `mails` (`id`, `lid`, `title`, `content`)
 VALUES
@@ -515,121 +711,16 @@ VALUES
 UPDATE
   `lid` =
 VALUES
-  (`lid`),
+(`lid`),
   `title` =
 VALUES
-  (`title`),
+(`title`),
   `content` =
 VALUES
-  (`content`);
-
--- Seed some internal inbox entries so the frontend shows messages
--- (moved) seed for users_mails will be inserted after table creation to avoid ordering issues
--- Event attendances (RSVP)
-CREATE TABLE IF NOT EXISTS `events_attendances` (
-  `uid` int(11) NOT NULL,
-  `eid` int(11) NOT NULL,
-  `rsvp` tinyint(1) DEFAULT 0 NOT NULL,
-  PRIMARY KEY (`uid`, `eid`),
-  KEY `fk_events_attendances_event` (`eid`),
-  CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Users ↔ Mails (inbox entries generated when a mail is sent to users)
-CREATE TABLE IF NOT EXISTS `users_mails` (
-  `uid` int(11) NOT NULL,
-  `mid` int(11) NOT NULL,
-  `sentAt` datetime NOT NULL,
-  `isRead` tinyint(1) NOT NULL DEFAULT 0,
-  `delivered` tinyint(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`uid`, `mid`),
-  KEY `fk_users_mails_mail` (`mid`),
-  CONSTRAINT `fk_users_mails_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_users_mails_mail` FOREIGN KEY (`mid`) REFERENCES `mails` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- =====================================================
--- PAYMENT TABLES
--- =====================================================
--- Membership payments (yearly)
-CREATE TABLE `membership_payments` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `uid` int(11) NOT NULL,
-  `amount` decimal(10, 2) NOT NULL DEFAULT 600.00,
-  `year` int(11) NOT NULL,
-  `status` enum('Pending', 'Paid', 'Failed', 'Refunded') NOT NULL DEFAULT 'Pending',
-  `provider` varchar(64) DEFAULT NULL,
-  `provider_ref` varchar(256) DEFAULT NULL,
-  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
-  `invoice_token` varchar(128) DEFAULT NULL,
-  `expiresAt` datetime DEFAULT NULL,
-  `metadata` json DEFAULT NULL,
-  `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_membership_uid_year` (`uid`, `year`),
-  KEY `fk_membership_payments_user` (`uid`),
-  CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Event payments (Swish)
-CREATE TABLE `event_payments` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `uid` int(11) NOT NULL,
-  `eid` int(11) NOT NULL,
-  `amount` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `status` enum('Pending', 'Paid', 'Failed', 'Refunded') NOT NULL DEFAULT 'Pending',
-  `provider` varchar(64) DEFAULT NULL,
-  `provider_ref` varchar(256) DEFAULT NULL,
-  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
-  `invoice_token` varchar(128) DEFAULT NULL,
-  `expiresAt` datetime DEFAULT NULL,
-  `metadata` json DEFAULT NULL,
-  `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_event_payments_uid_eid` (`uid`, `eid`),
-  KEY `fk_event_payments_user` (`uid`),
-  KEY `fk_event_payments_event` (`eid`),
-  CONSTRAINT `fk_event_payments_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT `fk_event_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+(`content`);
 
 -- =====================================================
 -- RE-ENABLE FOREIGN KEY CHECKS
 -- =====================================================
--- Revoked JWT JTIs (blacklist for logout) - store token id instead of full token
-CREATE TABLE IF NOT EXISTS `revoked_tokens` (
-  `jti` varchar(128) NOT NULL,
-  `expiresAt` datetime NOT NULL,
-  PRIMARY KEY (`jti`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Refresh tokens for long-lived session renewal (rotate on use)
-CREATE TABLE IF NOT EXISTS `refresh_tokens` (
-  `token_hash` varchar(128) NOT NULL,
-  `uid` int(11) NOT NULL,
-  `expiresAt` datetime NOT NULL,
-  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  `isRevoked` tinyint(1) NOT NULL DEFAULT 0,
-  `replacedBy` varchar(128) DEFAULT NULL,
-  `lastUsed` datetime DEFAULT NULL,
-  PRIMARY KEY (`token_hash`),
-  KEY `fk_refresh_token_user` (`uid`),
-  CONSTRAINT `fk_refresh_token_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Password reset tokens (one-time use) — store hashed token
-CREATE TABLE IF NOT EXISTS `password_resets` (
-  `token_hash` varchar(128) NOT NULL,
-  `uid` int(11) NOT NULL,
-  `expiresAt` datetime NOT NULL,
-  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  PRIMARY KEY (`token_hash`),
-  KEY `fk_password_reset_user` (`uid`),
-  CONSTRAINT `fk_password_reset_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
 SET
   FOREIGN_KEY_CHECKS = 1;

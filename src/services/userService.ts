@@ -79,6 +79,7 @@ export function trimUserInput(input: CreateUserInput): CreateUserInput {
     lastname: trimRequired(input.lastname),
     dateOfBirth: trimRequired(input.dateOfBirth),
     work: trimRequired(input.work),
+    homeNumber: trimIfString(input.homeNumber) as string | undefined,
     // officials are handled via users_officials junction
     // `notes` is optional: preserve undefined/null rather than forcing empty string
     notes: trimIfString(input.notes) as string | undefined,
@@ -297,11 +298,13 @@ export async function createUser(
     lastname,
     dateOfBirth,
     work,
+    homeNumber,
     mobile,
     city,
     address,
     zipcode,
     picture,
+    notes,
   } = trimmed;
 
   const required = [
@@ -311,7 +314,6 @@ export async function createUser(
     "firstname",
     "lastname",
     "dateOfBirth",
-    // `official` is optional and therefore not included here
     "mobile",
     "city",
     "address",
@@ -361,7 +363,9 @@ export async function createUser(
         lastname,
         dateOfBirth: sqlDate,
         work,
+        homeNumber,
         mobile,
+        notes: notes ?? null,
         city,
         address,
         zipcode,

@@ -11,6 +11,7 @@ export interface CreateUserParams {
   lastname: string;
   dateOfBirth: string;
   work?: string | null;
+  homeNumber?: string | null;
   mobile?: string | null;
   city?: string | null;
   address?: string | null;
@@ -46,8 +47,8 @@ export async function insertUser(
   conn?: PoolConnection
 ): Promise<number | undefined> {
   const sql = `INSERT INTO users
-    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, work, mobile, city, address, zipcode, notes)
-    VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes)
+      VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const execParams = [
     params.username,
@@ -57,9 +58,9 @@ export async function insertUser(
     params.firstname,
     params.lastname,
     params.dateOfBirth,
-    params.work ?? null,
-    params.work ?? null,
+      params.work ?? null,
     params.mobile ?? null,
+    params.homeNumber ?? null,
     params.city ?? null,
     params.address ?? null,
     params.zipcode ?? null,

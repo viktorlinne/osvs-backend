@@ -232,6 +232,7 @@ export type RegisterBody = {
   dateOfBirth?: string;
   work?: string;
   mobile?: string;
+  homeNumber?: string;
   city?: string;
   address?: string;
   zipcode?: string;

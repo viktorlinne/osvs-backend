@@ -28,6 +28,7 @@ export type CreateUserInput = {
   lastname: string;
   dateOfBirth: string;
   work?: string | null;
+  homeNumber?: string | null;
   mobile: string;
   city: string;
   address: string;
