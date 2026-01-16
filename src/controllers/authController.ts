@@ -14,6 +14,7 @@ import {
   consumePasswordResetToken,
   sendPasswordReset,
   hashPassword,
+  getUserOfficials,
 } from "../services";
 import { REFRESH_COOKIE } from "../config/constants";
 import logger from "../utils/logger";
@@ -261,11 +262,12 @@ export async function me(
   if (!user) return res.status(404).json({ error: "User not found" });
   const roles = user.id ? await getUserRoles(user.id) : [];
   const achievements = user.id ? await getUserAchievements(user.id) : [];
+  const officials = user.id ? await getUserOfficials(user.id) : [];
   const publicUser = toPublicUser(user);
   const pictureUrl = publicUser.picture
     ? await getPublicUrl(publicUser.picture)
     : null;
-  return res.json({ user: { ...publicUser, pictureUrl }, roles, achievements });
+  return res.json({ user: { ...publicUser, pictureUrl }, roles, achievements, officials });
 }
 
 export async function revokeAll(

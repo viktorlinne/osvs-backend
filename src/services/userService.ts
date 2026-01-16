@@ -201,6 +201,13 @@ export async function getUserAchievements(
     ) as Achievement[];
 }
 
+export async function getUserOfficials(userId: number) {
+  const rows = await userRepo.selectUserOfficials(userId);
+  return rows
+    .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
+    .filter((r) => Number.isFinite(r.id));
+}
+
 export async function listAchievements(): Promise<Achievement[]> {
   const rows = await userRepo.listAchievements();
   return rows
