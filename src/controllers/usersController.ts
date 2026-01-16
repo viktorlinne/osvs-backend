@@ -16,6 +16,7 @@ import {
   updatePicture,
   setUserAchievement,
   getUserAchievements,
+  getUserOfficials,
   getUserRoles,
   updateUserProfile,
   listPublicUsers,
@@ -301,9 +302,10 @@ export async function getPublicUserHandler(
     if (!user) return res.status(404).json({ error: "User not found" });
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
     const achievements = await getUserAchievements(userId);
+    const officials = await getUserOfficials(userId);
     return res
       .status(200)
-      .json({ user: { ...user, pictureUrl }, achievements });
+      .json({ user: { ...user, pictureUrl, officials }, achievements, officials });
   } catch (err) {
     logger.error("Failed to get public user", err);
     return res.status(500).json({ error: "Failed to get user" });
