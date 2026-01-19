@@ -7,7 +7,8 @@ export async function listLodges(
   limit?: number,
   offset?: number
 ): Promise<LodgeRecord[]> {
-  let sql = "SELECT id, name, description, email FROM lodges ORDER BY id ASC";
+  let sql =
+    "SELECT id, name, city, description, email FROM lodges ORDER BY id ASC";
   if (typeof limit === "number" && Number.isFinite(limit)) {
     const safeLimit = Math.max(0, Math.floor(limit));
     sql += ` LIMIT ${safeLimit}`;
@@ -23,6 +24,7 @@ export async function listLodges(
     .map((r) => ({
       id: Number(r.id),
       name: String(r.name ?? ""),
+      city: String(r.city ?? ""),
       description: r.description == null ? undefined : String(r.description),
       email: r.email == null ? undefined : String(r.email),
     }))
@@ -31,7 +33,7 @@ export async function listLodges(
 
 export async function findLodgeById(id: number) {
   const [rows] = await pool.execute(
-    "SELECT id, name, description, email FROM lodges WHERE id = ? LIMIT 1",
+    "SELECT id, name, city, description, email FROM lodges WHERE id = ? LIMIT 1",
     [id]
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
@@ -40,6 +42,7 @@ export async function findLodgeById(id: number) {
   return {
     id: Number(r.id),
     name: String(r.name ?? ""),
+    city: String(r.city ?? ""),
     description: r.description == null ? undefined : String(r.description),
     email: r.email == null ? undefined : String(r.email),
   };
@@ -50,8 +53,9 @@ export async function insertLodge(
   description?: string | null,
   email?: string | null
 ) {
-  const sql = "INSERT INTO lodges (name, description, email) VALUES (?, ?, ?)";
-  const params = [name, description ?? null, email ?? null];
+  const sql =
+    "INSERT INTO lodges (name, city, description, email) VALUES (?, ?, ?, ?)";
+  const params = [name, city ?? null, description ?? null, email ?? null];
   const [result] = (await pool.execute<ResultSetHeader>(
     sql,
     params
@@ -62,13 +66,15 @@ export async function insertLodge(
 export async function updateLodgeRecord(
   id: number,
   name?: string,
+  city?: string | null,
   description?: string | null,
   email?: string | null
 ) {
   const sql =
-    "UPDATE lodges SET name = COALESCE(?, name), description = ?, email = ? WHERE id = ?";
+    "UPDATE lodges SET name = COALESCE(?, name), city = COALESCE(?, city), description = ?, email = ? WHERE id = ?";
   await pool.execute(sql, [
     name ?? null,
+    city ?? null,
     description ?? null,
     email ?? null,
     id,
@@ -77,7 +83,7 @@ export async function updateLodgeRecord(
 
 export async function getUserLodge(userId: number) {
   const sql = `
-    SELECT l.id, l.name, l.description, l.email
+    SELECT l.id, l.name, l.city, l.description, l.email
     FROM lodges l
     JOIN users_lodges ul ON ul.lid = l.id
     WHERE ul.uid = ?
@@ -90,6 +96,7 @@ export async function getUserLodge(userId: number) {
   return {
     id: Number(r.id),
     name: String(r.name ?? ""),
+    city: String(r.city ?? ""),
     description: r.description == null ? undefined : String(r.description),
     email: r.email == null ? undefined : String(r.email),
   };
