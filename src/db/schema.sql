@@ -24,7 +24,8 @@ CREATE TABLE `roles` (
 CREATE TABLE `lodges` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(256) NOT NULL,
-  `description` varchar(256) NOT NULL,
+  `city` varchar(256) NOT NULL,
+  `description` text NOT NULL,
   `email` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -83,7 +84,7 @@ CREATE TABLE `mails` (
   `content` text NOT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_mails_lodge` (`lid`),
-  CONSTRAINT `fk_mails_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_mails_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Achievements
@@ -318,7 +319,7 @@ VALUES
 UPDATE
   `role` =
 VALUES
-(`role`);
+  (`role`);
 
 -- Achievements
 INSERT INTO
@@ -343,7 +344,7 @@ VALUES
 UPDATE
   `title` =
 VALUES
-(`title`);
+  (`title`);
 
 -- Officials
 INSERT INTO
@@ -379,7 +380,7 @@ VALUES
 UPDATE
   `title` =
 VALUES
-(`title`);
+  (`title`);
 
 -- Users
 INSERT INTO
@@ -459,76 +460,96 @@ VALUES
 UPDATE
   `username` =
 VALUES
-(`username`),
+  (`username`),
   `email` =
 VALUES
-(`email`),
+  (`email`),
   `passwordHash` =
 VALUES
-(`passwordHash`),
+  (`passwordHash`),
   `picture` =
 VALUES
-(`picture`),
+  (`picture`),
   `firstname` =
 VALUES
-(`firstname`),
+  (`firstname`),
   `lastname` =
 VALUES
-(`lastname`),
+  (`lastname`),
   `dateOfBirth` =
 VALUES
-(`dateOfBirth`),
+  (`dateOfBirth`),
   `work` =
 VALUES
-(`work`),
+  (`work`),
   `mobile` =
 VALUES
-(`mobile`),
+  (`mobile`),
   `homeNumber` =
 VALUES
-(`homeNumber`),
+  (`homeNumber`),
   `city` =
 VALUES
-(`city`),
+  (`city`),
   `address` =
 VALUES
-(`address`),
+  (`address`),
   `zipcode` =
 VALUES
-(`zipcode`),
+  (`zipcode`),
   `notes` =
 VALUES
-(`notes`);
+  (`notes`);
 
 -- Lodges
 INSERT INTO
-  `lodges` (`id`, `name`, `description`, `email`)
+  `lodges` (`id`, `name`, `city`, `description`, `email`)
 VALUES
   (
     1,
     'Stamlogen',
-    'Första Logen',
+    'Karlskrona',
+    'Karlskrona Stamlogens Fastighetsförening bildades och verkade i sju år innan man vid ett logemöte 1939 meddelade förvärv av Johanneskapellet och året därefter bildades V - Sexans första Damklubben. Idag har Stamogen 200 medlemmar varav där är 30 i Damklubben.',
     'stamlogen@osvs.se'
   ),
   (
     2,
     'Stella Polaris',
-    'Andra Logen',
+    'Helsingborg',
+    'Vid släktmiddag i Karlskrona 1930 träffade disponent Ewald Stridh t.f.Styrande Recorn Ernst Johansson och där framförde tanke om kamratförbund i Helsingborg vilket senare välkomnades av bröderna i Karlskrona. Den handlingskraftige Bernhard Rosenlindh knöts till kretsen. Efter målmedvetet arbete gavs så framgång och 6 bröder kunde proformarecipiera i Karlskrona. Instiftning, där 40 blivande bröder deltog, avhölls 1931.Idag är vi ca 70 Bröder i varierande grader.',
     'stellapolaris@osvs.se'
   ),
-  (3, 'Regulus', 'Tredje Logen', 'regulus@osvs.se'),
-  (4, 'Orion', 'Fjärde Logen', 'orion@osvs.se'),
-  (5, 'Capella', 'Femte Logen', 'capella@osvs.se') ON DUPLICATE KEY
+  (
+    3,
+    'Regulus',
+    'Ängelholm',
+    'Inpulser till logens bildande kom från broderlogen Helsingborg. Den 27 juli 1932 anordnades ett sammanträffande med intresserade personer i Ängelholm och Helsingborg för information. I januari 1933 hölls invigning i Odd Fellows lokaler i närvaro av Stora Rådets medlemmar. En ny länk i Ordenskedjan bildas. Logens SR var Albin Nilsson. Logen har nu 40 Bröder och c:a 10 Damer.',
+    'regulus@osvs.se'
+  ),
+  (
+    4,
+    'Orion',
+    'Göteborg',
+    'Logen Orion instiftades den 26 februari 1943. Logens tillkomst föregicks av några sammanträden under senare delen av 1942 mellan från Karlskrona till Nya Varvet flyttad militär personal, och personer i Göteborg, som gjort sin värnplikt i Karlskrona. Till Logens Styrande Recor valdes Löjtnant Gustaf Idh. Från 1955 egen fastighet där logelokalen är förlagd. Idag har logen 180 medlemmar och 80 i Damklubben.',
+    'orion@osvs.se'
+  ),
+  (
+    5,
+    'Capella',
+    'Halmstad',
+    'Enligt ett protokoll från Förtroenderådets sammanträde i maj 1974 framgår det, att det gamla önskemålet, att Ordenssamfundet VS finge flera loger än nuvarande fyra, tycktes gå i uppfyllelse. Det gäller en loge i Halmstad, dit många av bröderna från både Göteborg och Ängelholm flyttat. Logen Capella instiftades således den 28 november 1975. Idag har logen 68 Bröder och 25 i Damklubben.',
+    'capella@osvs.se'
+  ) ON DUPLICATE KEY
 UPDATE
   `name` =
 VALUES
-(`name`),
+  (`name`),
   `description` =
 VALUES
-(`description`),
+  (`description`),
   `email` =
 VALUES
-(`email`);
+  (`email`);
 
 -- Users ↔ Roles (predictable state)
 DELETE FROM
@@ -618,22 +639,22 @@ VALUES
 UPDATE
   `title` =
 VALUES
-(`title`),
+  (`title`),
   `description` =
 VALUES
-(`description`),
+  (`description`),
   `lodgeMeeting` =
 VALUES
-(`lodgeMeeting`),
+  (`lodgeMeeting`),
   `price` =
 VALUES
-(`price`),
+  (`price`),
   `startDate` =
 VALUES
-(`startDate`),
+  (`startDate`),
   `endDate` =
 VALUES
-(`endDate`);
+  (`endDate`);
 
 -- Lodges ↔ Events
 DELETE FROM
@@ -684,13 +705,13 @@ VALUES
 UPDATE
   `title` =
 VALUES
-(`title`),
+  (`title`),
   `description` =
 VALUES
-(`description`),
+  (`description`),
   `picture` =
 VALUES
-(`picture`);
+  (`picture`);
 
 -- Mails
 INSERT INTO
@@ -711,13 +732,13 @@ VALUES
 UPDATE
   `lid` =
 VALUES
-(`lid`),
+  (`lid`),
   `title` =
 VALUES
-(`title`),
+  (`title`),
   `content` =
 VALUES
-(`content`);
+  (`content`);
 
 -- =====================================================
 -- RE-ENABLE FOREIGN KEY CHECKS

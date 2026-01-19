@@ -56,9 +56,9 @@ export async function refresh(
   const refresh = req.cookies
     ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
     : undefined;
-  if (!refresh) return res.status(401).json({ error: "Missing refresh token" });
+  if (!refresh) return res.status(401).json({ error: "Saknar uppdateringstoken" });
   const out = await sessionService.refreshFromCookie(res, String(refresh));
-  if (!out) return res.status(401).json({ error: "Invalid refresh token" });
+  if (!out) return res.status(401).json({ error: "Saknar uppdateringstokenF" });
   return res.json(out);
 }
 

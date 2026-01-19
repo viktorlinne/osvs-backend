@@ -29,7 +29,7 @@ const router = express.Router();
  *       200:
  *         description: Array of lodges
  */
-router.get("/", authMiddleware, wrapAsync(listLodgesHandler));
+router.get("/", wrapAsync(listLodgesHandler));
 
 // Get single lodge
 /**
@@ -51,7 +51,7 @@ router.get("/", authMiddleware, wrapAsync(listLodgesHandler));
  *       200:
  *         description: Lodge object
  */
-router.get("/:id", authMiddleware, wrapAsync(getLodgeHandler));
+router.get("/:id", wrapAsync(getLodgeHandler));
 
 // Admin: create lodge
 /**

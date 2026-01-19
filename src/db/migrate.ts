@@ -45,12 +45,11 @@ async function migrate() {
       USE osvs;
       SET FOREIGN_KEY_CHECKS = 0;
       DROP TABLE IF EXISTS event_payments;
+      DROP TABLE IF EXISTS events_attendances;
       DROP TABLE IF EXISTS membership_payments;
       DROP TABLE IF EXISTS users_achievements;
       DROP TABLE IF EXISTS achievements;
-      DROP TABLE IF EXISTS event_attendances;
       DROP TABLE IF EXISTS users_mails;
-      DROP TABLE IF EXISTS users_posts;
       DROP TABLE IF EXISTS lodges_events;
       DROP TABLE IF EXISTS users_lodges;
       DROP TABLE IF EXISTS users_roles;
