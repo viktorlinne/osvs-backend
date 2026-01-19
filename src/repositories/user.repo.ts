@@ -17,12 +17,13 @@ export interface CreateUserParams {
   address?: string | null;
   zipcode?: string | null;
   notes?: string | null;
+  accommodationAvailable?: boolean | null;
 }
 
 async function exec(
   sql: string,
   params: unknown[] = [],
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ): Promise<[unknown, unknown]> {
   if (conn) return conn.execute(sql, params);
   return pool.execute(sql, params);
@@ -44,11 +45,11 @@ export async function findById(id: number) {
 
 export async function insertUser(
   params: CreateUserParams,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ): Promise<number | undefined> {
   const sql = `INSERT INTO users
-    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes)
-      VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, accommodationAvailable, notes)
+      VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const execParams = [
     params.username,
@@ -58,12 +59,17 @@ export async function insertUser(
     params.firstname,
     params.lastname,
     params.dateOfBirth,
-      params.work ?? null,
+    params.work ?? null,
     params.mobile ?? null,
     params.homeNumber ?? null,
     params.city ?? null,
     params.address ?? null,
     params.zipcode ?? null,
+    params.accommodationAvailable == null
+      ? null
+      : params.accommodationAvailable
+        ? 1
+        : 0,
     params.notes ?? null,
   ];
 
@@ -77,7 +83,7 @@ export async function insertUser(
 
 export async function assignDefaultRoleToUser(
   userId: number,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   const sql =
     "INSERT INTO users_roles (uid, rid) SELECT ?, id FROM roles WHERE role = 'Member' LIMIT 1";
@@ -88,7 +94,7 @@ export async function lodgeExists(lodgeId: number, conn?: PoolConnection) {
   const [rows] = await exec(
     "SELECT id FROM lodges WHERE id = ? LIMIT 1",
     [lodgeId],
-    conn
+    conn,
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return Array.isArray(arr) && arr.length > 0;
@@ -97,7 +103,7 @@ export async function lodgeExists(lodgeId: number, conn?: PoolConnection) {
 export async function assignUserToLodge(
   userId: number,
   lodgeId: number,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   const sql = "INSERT INTO users_lodges (uid, lid) VALUES (?, ?)";
   await exec(sql, [userId, lodgeId], conn);
@@ -109,7 +115,7 @@ export async function deleteUserRoles(userId: number, conn?: PoolConnection) {
 
 export async function insertUserRolesBulk(
   values: Array<[number, number]>,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   if (!Array.isArray(values) || values.length === 0) return;
 
@@ -135,10 +141,11 @@ export async function updateUserProfile(
     address?: string;
     zipcode?: string;
     notes?: string | null;
-  }>
+    accommodationAvailable?: boolean | null;
+  }>,
 ) {
   const fields: string[] = [];
-  const params: Array<string | null> = [];
+  const params: Array<string | number | null> = [];
 
   if (typeof data.firstname === "string") {
     fields.push("firstname = ?");
@@ -175,6 +182,10 @@ export async function updateUserProfile(
   if (typeof data.notes !== "undefined") {
     fields.push("notes = ?");
     params.push(data.notes ?? null);
+  }
+  if (typeof data.accommodationAvailable !== "undefined") {
+    fields.push("accommodationAvailable = ?");
+    params.push(data.accommodationAvailable ? 1 : 0);
   }
 
   if (fields.length === 0) return;
@@ -225,7 +236,7 @@ export async function setUserRevokedAt(userId: number, when: Date) {
 export async function setUserAchievement(
   userId: number,
   achievementId: number,
-  awardedAt?: Date
+  awardedAt?: Date,
 ) {
   const when = awardedAt ? awardedAt : new Date();
   const sql =
@@ -259,7 +270,7 @@ export async function getUserAchievements(userId: number) {
 
 export async function listAchievements() {
   const [rows] = await exec(
-    "SELECT id, title FROM achievements ORDER BY id ASC"
+    "SELECT id, title FROM achievements ORDER BY id ASC",
   );
   const arr = rows as unknown as Array<{ id?: number; title?: unknown }>;
   if (!Array.isArray(arr)) return [];
@@ -280,7 +291,7 @@ export async function listRoles() {
 export async function listUsers(
   limit = 100,
   offset = 0,
-  filters?: { name?: string; achievementId?: number; lodgeId?: number }
+  filters?: { name?: string; achievementId?: number; lodgeId?: number },
 ) {
   // Build dynamic SQL with optional filters
   const where: string[] = [];
@@ -294,20 +305,20 @@ export async function listUsers(
 
   if (typeof filters?.achievementId === "number") {
     where.push(
-      "EXISTS (SELECT 1 FROM users_achievements ua WHERE ua.uid = u.id AND ua.aid = ?)"
+      "EXISTS (SELECT 1 FROM users_achievements ua WHERE ua.uid = u.id AND ua.aid = ?)",
     );
     params.push(filters.achievementId);
   }
 
   if (typeof filters?.lodgeId === "number") {
     where.push(
-      "EXISTS (SELECT 1 FROM users_lodges ul WHERE ul.uid = u.id AND ul.lid = ?)"
+      "EXISTS (SELECT 1 FROM users_lodges ul WHERE ul.uid = u.id AND ul.lid = ?)",
     );
     params.push(filters.lodgeId);
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-  let sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes
+  let sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
     FROM users u ${whereSql} ORDER BY u.id DESC`;
 
   if (typeof limit === "number" && Number.isFinite(limit)) {
@@ -325,9 +336,9 @@ export async function listUsers(
 
 export async function getUserPublicById(id: number) {
   const [rows] = await exec(
-    `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes
+    `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable
      FROM users WHERE id = ? LIMIT 1`,
-    [id]
+    [id],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return arr.length > 0 ? arr[0] : undefined;
@@ -352,7 +363,7 @@ export async function selectUserOfficials(userId: number) {
 export async function setUserOfficials(
   userId: number,
   officialIds: number[],
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   // Delete existing and insert provided set. Caller may provide `conn` to run in transaction.
   await exec("DELETE FROM users_officials WHERE uid = ?", [userId], conn);

@@ -26,6 +26,7 @@ export type User = {
   lastname: string;
   dateOfBirth: string; // ISO date
   work?: string | null;
+  accommodationAvailable?: boolean | null;
   revokedAt?: string | null; // ISO datetime
   mobile: string;
   homeNumber?: string | null;
@@ -164,6 +165,7 @@ export type UpdateUserProfileBody = Partial<{
   city?: string;
   address?: string;
   zipcode?: string;
+  accommodationAvailable?: boolean | null;
 }>;
 
 export type AddAchievementBody = {
@@ -236,6 +238,7 @@ export type RegisterBody = {
   address?: string;
   zipcode?: string;
   notes?: string | null;
+  accommodationAvailable?: string | boolean | null;
   lodgeId?: string | number | null;
 };
 

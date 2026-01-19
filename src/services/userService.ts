@@ -51,6 +51,11 @@ export function isValidUserRecord(value: unknown): value is UserRecord {
     (typeof record.work === "undefined" ||
       typeof record.work === "string" ||
       record.work === null) &&
+    // accommodationAvailable may come back from DB as number, boolean, null or undefined
+    (typeof record.accommodationAvailable === "undefined" ||
+      typeof record.accommodationAvailable === "number" ||
+      typeof record.accommodationAvailable === "boolean" ||
+      record.accommodationAvailable === null) &&
     typeof record.mobile === "string" &&
     // homeNumber optional
     (typeof record.homeNumber === "undefined" ||
@@ -91,7 +96,7 @@ export function trimUserInput(input: CreateUserInput): CreateUserInput {
 }
 
 export async function findByEmail(
-  email: string
+  email: string,
 ): Promise<UserRecord | undefined> {
   const row = await userRepo.findByEmail(email);
   if (!row) return undefined;
@@ -116,7 +121,8 @@ export async function updateUserProfile(
     address?: string;
     zipcode?: string;
     notes?: string | null;
-  }>
+    accommodationAvailable?: boolean | null;
+  }>,
 ): Promise<void> {
   // normalize date if provided
   if (typeof data.dateOfBirth === "string") {
@@ -129,13 +135,13 @@ export async function getUserRoles(userId: number): Promise<UserRole[]> {
   const rows = await userRepo.getUserRoles(userId);
   return rows.filter(
     (role): role is UserRole =>
-      typeof role === "string" && UserRoleValues.includes(role as UserRole)
+      typeof role === "string" && UserRoleValues.includes(role as UserRole),
   ) as UserRole[];
 }
 
 export async function updatePassword(
   userId: number,
-  passwordHash: string
+  passwordHash: string,
 ): Promise<void> {
   await userRepo.updatePassword(userId, passwordHash);
 }
@@ -146,14 +152,14 @@ export async function updatePassword(
  */
 export async function updatePicture(
   userId: number,
-  pictureKey: string | null
+  pictureKey: string | null,
 ): Promise<string | null> {
   return await userRepo.updatePicture(userId, pictureKey);
 }
 
 export async function setUserRevokedAt(
   userId: number,
-  when: Date
+  when: Date,
 ): Promise<void> {
   await userRepo.setUserRevokedAt(userId, when);
 }
@@ -179,13 +185,13 @@ export async function revokeAllSessions(userId: number): Promise<void> {
 export async function setUserAchievement(
   userId: number,
   achievementId: number,
-  awardedAt?: Date
+  awardedAt?: Date,
 ): Promise<number> {
   return await userRepo.setUserAchievement(userId, achievementId, awardedAt);
 }
 
 export async function getUserAchievements(
-  userId: number
+  userId: number,
 ): Promise<Achievement[]> {
   const rows = await userRepo.getUserAchievements(userId);
   // map to canonical Achievement type
@@ -197,7 +203,7 @@ export async function getUserAchievements(
       title: String(r.title ?? ""),
     }))
     .filter(
-      (it) => Number.isFinite(it.id) && Number.isFinite(it.aid)
+      (it) => Number.isFinite(it.id) && Number.isFinite(it.aid),
     ) as Achievement[];
 }
 
@@ -229,7 +235,7 @@ export async function listRoles(): Promise<Role[]> {
 export async function listPublicUsers(
   limit = 100,
   offset = 0,
-  filters?: { name?: string; achievementId?: number; lodgeId?: number }
+  filters?: { name?: string; achievementId?: number; lodgeId?: number },
 ) {
   const rows = await userRepo.listUsers(limit, offset, filters);
   if (!Array.isArray(rows)) return [];
@@ -247,7 +253,7 @@ export async function getPublicUserById(id: number) {
 
 export async function setUserRoles(
   userId: number,
-  roleIds: number[]
+  roleIds: number[],
 ): Promise<void> {
   // Replace user's roles atomically: delete existing and insert new ones
   const conn = await pool.getConnection();
@@ -293,7 +299,7 @@ export async function setUserRoles(
 
 export async function createUser(
   input: CreateUserInput,
-  lodgeId?: number | null
+  lodgeId?: number | null,
 ): Promise<PublicUser | undefined> {
   // Trim all string inputs first
   const trimmed = trimUserInput(input);
@@ -377,7 +383,7 @@ export async function createUser(
         address,
         zipcode,
       },
-      conn
+      conn,
     );
 
     if (!insertId) {
@@ -390,7 +396,7 @@ export async function createUser(
     } catch (err) {
       logger.warn(
         { err, userId: insertId },
-        "Failed to assign default Member role"
+        "Failed to assign default Member role",
       );
       await conn.rollback();
       throw err;
@@ -407,7 +413,7 @@ export async function createUser(
       } catch (err) {
         logger.warn(
           { err, userId: insertId, lodgeId },
-          "Failed to assign lodge to new user"
+          "Failed to assign lodge to new user",
         );
         await conn.rollback();
         throw err;
@@ -448,11 +454,11 @@ export async function createUser(
         key && key.includes("email")
           ? "email"
           : key && key.includes("username")
-          ? "username"
-          : key;
+            ? "username"
+            : key;
       throw new ConflictError(
         field,
-        `Duplicate entry${field ? ` on ${field}` : ""}`
+        `Duplicate entry${field ? ` on ${field}` : ""}`,
       );
     }
     throw err;
@@ -473,7 +479,7 @@ export async function createUser(
   } catch (err) {
     logger.warn(
       { err, userId: insertId },
-      "Failed to create membership invoice for new user"
+      "Failed to create membership invoice for new user",
     );
   }
 
@@ -484,8 +490,8 @@ export async function createUser(
     .catch((err) =>
       logger.warn(
         { err, userId: insertId },
-        "Failed to award default achievement"
-      )
+        "Failed to award default achievement",
+      ),
     );
 
   const user = await findById(insertId);

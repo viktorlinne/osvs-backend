@@ -11,6 +11,7 @@ export type UserRecord = {
   lastname: string;
   dateOfBirth: string;
   work?: string | null;
+  accommodationAvailable?: boolean | null;
   officials?: number[];
   mobile: string;
   homeNumber?: string | null;
@@ -27,6 +28,7 @@ export type CreateUserInput = {
   firstname: string;
   lastname: string;
   dateOfBirth: string;
+  accommodationAvailable?: boolean | null;
   work?: string | null;
   homeNumber?: string | null;
   mobile: string;

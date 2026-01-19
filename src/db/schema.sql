@@ -51,6 +51,7 @@ CREATE TABLE `users` (
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(256) NOT NULL,
   `notes` text DEFAULT NULL,
+  `accommodationAvailable` tinyint(1) DEFAULT NULL,
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_username` (`username`),
   PRIMARY KEY (`id`)
@@ -401,6 +402,7 @@ INSERT INTO
     `city`,
     `address`,
     `zipcode`,
+    `accommodationAvailable`,
     `notes`
   )
 VALUES
@@ -420,6 +422,7 @@ VALUES
     'Stockholm',
     'Storgatan 1',
     '11122',
+    1,
     ''
   ),
   (
@@ -438,6 +441,7 @@ VALUES
     'Stockholm',
     'Testvägen 2',
     '22233',
+    0,
     NULL
   ),
   (
@@ -456,6 +460,7 @@ VALUES
     'Kungsbacka',
     '',
     '43490',
+    NULL,
     NULL
   ) ON DUPLICATE KEY
 UPDATE
@@ -498,6 +503,9 @@ VALUES
   `zipcode` =
 VALUES
   (`zipcode`),
+  `accommodationAvailable` =
+VALUES
+  (`accommodationAvailable`),
   `notes` =
 VALUES
   (`notes`);
