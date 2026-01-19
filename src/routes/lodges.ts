@@ -6,8 +6,6 @@ import {
   updateLodgeHandler,
 } from "../controllers/lodgesController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { validateParams } from "../middleware/validate";
-// params/body validators removed
 import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 
@@ -77,7 +75,7 @@ router.post(
   "/",
   authMiddleware,
   requireRole("Admin"),
-  wrapAsync(createLodgeHandler)
+  wrapAsync(createLodgeHandler),
 );
 
 // Admin: update lodge
@@ -85,8 +83,7 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole("Admin"),
-  validateParams, // leave params middleware but without Zod schema
-  wrapAsync(updateLodgeHandler)
+  wrapAsync(updateLodgeHandler),
 );
 
 export default router;

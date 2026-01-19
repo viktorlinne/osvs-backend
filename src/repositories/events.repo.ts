@@ -1,4 +1,5 @@
 import pool from "../config/db";
+import logger from "../utils/logger";
 import type { PoolConnection } from "mysql2/promise";
 import type { ResultSetHeader } from "mysql2";
 
@@ -30,7 +31,7 @@ export async function listEvents(limit?: number, offset?: number) {
 export async function findEventById(id: number) {
   const [rows] = await pool.execute(
     "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events WHERE id = ? LIMIT 1",
-    [id]
+    [id],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return arr[0] ?? null;
@@ -45,7 +46,7 @@ export async function insertEvent(
     startDate: string;
     endDate: string;
   },
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   const sql =
@@ -60,14 +61,14 @@ export async function insertEvent(
   ];
   const [result] = (await executor<ResultSetHeader>(
     sql,
-    params
+    params,
   )) as unknown as [ResultSetHeader, unknown];
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 
 export async function updateEventRecord(
   id: number,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
 ) {
   const sets: string[] = [];
   const params: Array<unknown> = [];
@@ -98,6 +99,10 @@ export async function updateEventRecord(
   if (sets.length === 0) return;
   params.push(id);
   const sql = `UPDATE events SET ${sets.join(", ")} WHERE id = ?`;
+  logger.info(
+    { id, fields: sets.length },
+    "events.repo: updateEventRecord executing SQL",
+  );
   await pool.execute(sql, params);
 }
 
@@ -108,7 +113,7 @@ export async function deleteEvent(id: number) {
 export async function insertLodgeEvent(
   eventId: number,
   lodgeId: number,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   await executor("INSERT IGNORE INTO lodges_events (lid, eid) VALUES (?, ?)", [
@@ -121,7 +126,7 @@ export async function selectEventPrice(eventId: number, conn?: PoolConnection) {
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   const [rows] = await executor(
     "SELECT price FROM events WHERE id = ? LIMIT 1",
-    [eventId]
+    [eventId],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return Array.isArray(arr) && arr.length > 0 ? Number(arr[0].price ?? 0) : 0;
@@ -137,20 +142,20 @@ export async function findUsersInLodge(lodgeId: number, conn?: PoolConnection) {
 
 export async function bulkInsertEventPayments(
   values: Array<Array<unknown>>,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   if (!Array.isArray(values) || values.length === 0) return;
   const executor = conn ? conn.query.bind(conn) : pool.query.bind(pool);
   await executor(
     "INSERT IGNORE INTO event_payments (uid, eid, amount, status) VALUES ?",
-    [values]
+    [values],
   );
 }
 
 export async function selectUsersToRemoveOnUnlink(
   lodgeId: number,
   eventId: number,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   const [rows] = await executor(
@@ -165,7 +170,7 @@ export async function selectUsersToRemoveOnUnlink(
           WHERE le.eid = ? AND ul2.uid = ul.uid AND le.lid != ?
         )
     `,
-    [lodgeId, eventId, lodgeId]
+    [lodgeId, eventId, lodgeId],
   );
   return rows as unknown as Array<Record<string, unknown>>;
 }
@@ -173,7 +178,7 @@ export async function selectUsersToRemoveOnUnlink(
 export async function deletePendingEventPaymentsForUids(
   eventId: number,
   uids: number[],
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   if (!Array.isArray(uids) || uids.length === 0) return;
   const placeholders = uids.map(() => "?").join(",");
@@ -181,14 +186,14 @@ export async function deletePendingEventPaymentsForUids(
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   await executor(
     `DELETE FROM event_payments WHERE eid = ? AND status = 'Pending' AND uid IN (${placeholders})`,
-    params
+    params,
   );
 }
 
 export async function deleteLodgeEvent(
   lodgeId: number,
   eventId: number,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   await executor("DELETE FROM lodges_events WHERE lid = ? AND eid = ?", [
@@ -200,7 +205,7 @@ export async function deleteLodgeEvent(
 export async function listEventsForUser(
   userId: number,
   limit?: number,
-  offset?: number
+  offset?: number,
 ) {
   const sql = `
     SELECT DISTINCT e.id, e.title, e.description, e.lodgeMeeting, e.price, e.startDate, e.endDate
@@ -227,7 +232,7 @@ export async function listEventsForUser(
 export async function selectLodgesForEvent(eventId: number) {
   const [rows] = await pool.execute(
     "SELECT l.id, l.name FROM lodges l JOIN lodges_events le ON le.lid = l.id WHERE le.eid = ? ORDER BY l.name",
-    [eventId]
+    [eventId],
   );
   return rows as unknown as Array<Record<string, unknown>>;
 }
@@ -246,7 +251,7 @@ export async function isUserInvitedToEvent(eventId: number, userId: number) {
 export async function upsertUserRsvp(
   userId: number,
   eventId: number,
-  rsvpValue: number
+  rsvpValue: number,
 ) {
   const sql =
     "INSERT INTO events_attendances (uid, eid, rsvp) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rsvp = VALUES(rsvp)";
@@ -286,7 +291,7 @@ export async function countRsvpStatsForEvent(eventId: number) {
 export async function getUserRsvpFromDb(userId: number, eventId: number) {
   const [rows] = await pool.execute(
     "SELECT rsvp FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
-    [userId, eventId]
+    [userId, eventId],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr) || arr.length === 0) return null;
@@ -297,7 +302,7 @@ export async function getUserRsvpFromDb(userId: number, eventId: number) {
 export async function findEventPaymentByUidEid(uid: number, eid: number) {
   const [rows] = await pool.execute(
     "SELECT * FROM event_payments WHERE uid = ? AND eid = ? LIMIT 1",
-    [uid, eid]
+    [uid, eid],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return arr[0] ?? null;
@@ -325,12 +330,12 @@ export async function insertEventPayment(opts: {
   ];
   const [res] = (await pool.execute<ResultSetHeader>(
     sql,
-    params
+    params,
   )) as unknown as [ResultSetHeader, unknown];
   const insertId = (res as ResultSetHeader).insertId ?? 0;
   const [rows] = await pool.execute(
     "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
-    [insertId]
+    [insertId],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return arr[0] ?? null;
@@ -339,7 +344,7 @@ export async function insertEventPayment(opts: {
 export async function findEventPaymentById(id: number) {
   const [rows] = await pool.execute(
     "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
-    [id]
+    [id],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return arr[0] ?? null;
@@ -348,7 +353,7 @@ export async function findEventPaymentById(id: number) {
 export async function findEventPaymentByToken(token: string) {
   const [rows] = await pool.execute(
     "SELECT * FROM event_payments WHERE invoice_token = ? LIMIT 1",
-    [token]
+    [token],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   return arr[0] ?? null;
@@ -357,11 +362,11 @@ export async function findEventPaymentByToken(token: string) {
 export async function updateEventPaymentProviderRefById(
   id: number,
   provider: string,
-  providerRef: string
+  providerRef: string,
 ) {
   await pool.execute(
     "UPDATE event_payments SET provider = ?, provider_ref = ? WHERE id = ?",
-    [provider, providerRef, id]
+    [provider, providerRef, id],
   );
 }
 
@@ -369,11 +374,11 @@ export async function updateEventPaymentsByProviderRef(
   provider: string,
   providerRef: string,
   status: string,
-  invoiceToken: string | null
+  invoiceToken: string | null,
 ) {
   await pool.execute(
     "UPDATE event_payments SET status = ?, provider = ?, provider_ref = ? WHERE invoice_token = ? OR provider_ref = ?",
-    [status, provider, providerRef, invoiceToken ?? null, providerRef]
+    [status, provider, providerRef, invoiceToken ?? null, providerRef],
   );
 }
 

@@ -11,10 +11,16 @@ import { getAccessTokenFromReq } from "../utils/authTokens";
 export async function authMiddleware(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   // Extract token using centralized helper (checks header, req.cookies, raw cookie)
   let token: string | undefined = getAccessTokenFromReq(req);
+
+  // lightweight trace log for incoming auth attempts (do not log token value)
+  logger.info(
+    { path: req.path, method: req.method },
+    "auth: checking for access token",
+  );
 
   if (!token) {
     return res.status(401).json({ error: "Vänligen logga in" });
@@ -22,12 +28,21 @@ export async function authMiddleware(
   try {
     const secret = process.env.JWT_SECRET ?? "dev-secret";
     const decoded = jwt.verify(token, secret) as unknown;
+    const decodedPayload = decoded as Partial<JWTPayload>;
+    logger.info(
+      {
+        path: req.path,
+        method: req.method,
+        userPayload: { iat: decodedPayload?.iat, exp: decodedPayload?.exp },
+      },
+      "auth: token verified",
+    );
 
     // Check token revocation by JTI (logout)
     try {
-      const decodedForJti = decoded as { jti?: unknown };
+      const decodedForJti = decodedPayload;
       const jti =
-        typeof decodedForJti.jti === "string" ? decodedForJti.jti : undefined;
+        typeof decodedForJti?.jti === "string" ? decodedForJti.jti : undefined;
       if (jti) {
         const revoked = await isJtiRevoked(jti);
         if (revoked) {
@@ -42,10 +57,10 @@ export async function authMiddleware(
 
     // User-level revocation check (revoke all tokens issued before a time)
     try {
-      const decodedObjForUser = decoded as { userId?: unknown; iat?: unknown };
-      const userIdCandidate = decodedObjForUser.userId;
+      const decodedObjForUser = decodedPayload;
+      const userIdCandidate = decodedObjForUser?.userId;
       const tokenIat =
-        typeof decodedObjForUser.iat === "number"
+        typeof decodedObjForUser?.iat === "number"
           ? decodedObjForUser.iat
           : undefined;
       if (typeof userIdCandidate === "number") {
@@ -71,13 +86,7 @@ export async function authMiddleware(
       });
     }
 
-    const decodedObj = decoded as {
-      userId?: unknown;
-      roles?: unknown[];
-      iat?: number;
-      exp?: number;
-      jti?: unknown;
-    };
+    const decodedObj = decodedPayload;
 
     // runtime guard for JWT payload shape
     if (
@@ -100,9 +109,9 @@ export async function authMiddleware(
     const payload: JWTPayload = {
       userId,
       roles: roles.filter(isValidRole),
-      iat: decodedObj.iat,
-      exp: decodedObj.exp,
-      jti: typeof decodedObj.jti === "string" ? decodedObj.jti : undefined,
+      iat: decodedObj?.iat,
+      exp: decodedObj?.exp,
+      jti: typeof decodedObj?.jti === "string" ? decodedObj.jti : undefined,
     };
 
     req.user = payload;

@@ -15,7 +15,7 @@ import { getCached, setCached, delPattern } from "../infra/cache";
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const query = _req.query as ListEventsQuery;
   const rawLimit = Number(query.limit ?? 20);
@@ -46,7 +46,7 @@ export async function listEventsHandler(
 export async function getEventHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
@@ -59,7 +59,7 @@ export async function getEventHandler(
 export async function createEventHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const {
     title,
@@ -77,7 +77,7 @@ export async function createEventHandler(
   if (Array.isArray(lodgeIds) && lodgeIds.length > 0) {
     id = await eventsService.createEventWithLodges(
       { title, description, lodgeMeeting, price, startDate, endDate },
-      lodgeIds
+      lodgeIds,
     );
   } else {
     id = await eventsService.createEvent({
@@ -96,9 +96,10 @@ export async function createEventHandler(
 export async function updateEventHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
+  logger.info({ id }, "eventsController: updateEventHandler called");
   if (!Number.isFinite(id))
     return res.status(400).json({ error: "Invalid id" });
   const payload = req.body as UpdateEventBody;
@@ -110,7 +111,7 @@ export async function updateEventHandler(
 export async function deleteEventHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
@@ -123,7 +124,7 @@ export async function deleteEventHandler(
 export async function linkLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   const { lodgeId } = req.body as LinkLodgeBody;
@@ -137,7 +138,7 @@ export async function linkLodgeHandler(
 export async function unlinkLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   const bodyLodge = (req.body as LinkLodgeBody).lodgeId;
@@ -153,7 +154,7 @@ export async function unlinkLodgeHandler(
 export async function listForUserHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const uid = req.user?.userId;
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
@@ -179,7 +180,7 @@ export async function listForUserHandler(
 export async function listEventLodgesHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
@@ -191,7 +192,7 @@ export async function listEventLodgesHandler(
 export async function getEventStatsHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
@@ -203,7 +204,7 @@ export async function getEventStatsHandler(
 export async function rsvpHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const uid = req.user?.userId;
@@ -245,7 +246,7 @@ export async function rsvpHandler(
 export async function getUserRsvpHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const uid = req.user?.userId;
   if (!uid) return res.status(401).json({ error: "Unauthorized" });

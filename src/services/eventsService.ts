@@ -356,9 +356,14 @@ export async function isUserInvitedToEvent(
 export async function setUserRsvp(
   userId: number,
   eventId: number,
-  rsvp: RsvpStatus
+  rsvp: RsvpStatus | number
 ): Promise<void> {
-  const rsvpValue = toDbRsvp(rsvp);
+  let rsvpValue: number;
+  if (typeof rsvp === "number") {
+    rsvpValue = Number(rsvp);
+  } else {
+    rsvpValue = toDbRsvp(rsvp as RsvpStatus);
+  }
   await eventsRepo.upsertUserRsvp(userId, eventId, rsvpValue);
 }
 

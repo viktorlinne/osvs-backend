@@ -27,6 +27,7 @@ CREATE TABLE `lodges` (
   `city` varchar(256) NOT NULL,
   `description` text NOT NULL,
   `email` varchar(256) DEFAULT NULL,
+  `picture` varchar(256) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -37,7 +38,7 @@ CREATE TABLE `users` (
   `email` varchar(256) NOT NULL,
   `passwordHash` varchar(512) NOT NULL,
   `createdAt` date NOT NULL,
-  `picture` varchar(256) NOT NULL,
+  `picture` varchar(256) DEFAULT NULL,
   `archive` enum('Deceased', 'Retired', 'Removed') DEFAULT NULL,
   `firstname` varchar(256) NOT NULL,
   `lastname` varchar(256) NOT NULL,
@@ -503,42 +504,54 @@ VALUES
 
 -- Lodges
 INSERT INTO
-  `lodges` (`id`, `name`, `city`, `description`, `email`)
+  `lodges` (
+    `id`,
+    `name`,
+    `city`,
+    `description`,
+    `email`,
+    `picture`
+  )
 VALUES
   (
     1,
     'Stamlogen',
     'Karlskrona',
     'Stamlogens Fastighetsförening bildades och verkade i sju år innan man vid ett logemöte 1939 meddelade förvärv av Johanneskapellet och året därefter bildades V - Sexans första Damklubben. Idag har Stamogen 200 medlemmar varav där är 30 i Damklubben.',
-    'stamlogen@osvs.se'
+    'stamlogen@osvs.se',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/karlskrona.webp'
   ),
   (
     2,
     'Stella Polaris',
     'Helsingborg',
     'Vid släktmiddag i Karlskrona 1930 träffade disponent Ewald Stridh t.f.Styrande Recorn Ernst Johansson och där framförde tanke om kamratförbund i Helsingborg vilket senare välkomnades av bröderna i Karlskrona. Den handlingskraftige Bernhard Rosenlindh knöts till kretsen. Efter målmedvetet arbete gavs så framgång och 6 bröder kunde proformarecipiera i Karlskrona. Instiftning, där 40 blivande bröder deltog, avhölls 1931.Idag är vi ca 70 Bröder i varierande grader.',
-    'stellapolaris@osvs.se'
+    'stellapolaris@osvs.se',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/helsingborg.webp'
   ),
   (
     3,
     'Regulus',
     'Ängelholm',
     'Inpulser till logens bildande kom från broderlogen Helsingborg. Den 27 juli 1932 anordnades ett sammanträffande med intresserade personer i Ängelholm och Helsingborg för information. I januari 1933 hölls invigning i Odd Fellows lokaler i närvaro av Stora Rådets medlemmar. En ny länk i Ordenskedjan bildas. Logens SR var Albin Nilsson. Logen har nu 40 Bröder och c:a 10 Damer.',
-    'regulus@osvs.se'
+    'regulus@osvs.se',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/angelholm.webp'
   ),
   (
     4,
     'Orion',
     'Göteborg',
     'Logen Orion instiftades den 26 februari 1943. Logens tillkomst föregicks av några sammanträden under senare delen av 1942 mellan från Karlskrona till Nya Varvet flyttad militär personal, och personer i Göteborg, som gjort sin värnplikt i Karlskrona. Till Logens Styrande Recor valdes Löjtnant Gustaf Idh. Från 1955 egen fastighet där logelokalen är förlagd. Idag har logen 180 medlemmar och 80 i Damklubben.',
-    'orion@osvs.se'
+    'orion@osvs.se',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/goteborg.webp'
   ),
   (
     5,
     'Capella',
     'Halmstad',
     'Enligt ett protokoll från Förtroenderådets sammanträde i maj 1974 framgår det, att det gamla önskemålet, att Ordenssamfundet VS finge flera loger än nuvarande fyra, tycktes gå i uppfyllelse. Det gäller en loge i Halmstad, dit många av bröderna från både Göteborg och Ängelholm flyttat. Logen Capella instiftades således den 28 november 1975. Idag har logen 68 Bröder och 25 i Damklubben.',
-    'capella@osvs.se'
+    'capella@osvs.se',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/halmstad.webp'
   ) ON DUPLICATE KEY
 UPDATE
   `name` =

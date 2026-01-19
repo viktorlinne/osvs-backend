@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import { membershipRepo } from "../repositories";
 
@@ -34,7 +34,7 @@ export async function getMyMembershipsHandler(
     }
 
     return res.json(rows ?? []);
-  } catch (err) {
+  } catch {
     return res
       .status(500)
       .json({ error: "Failed to list membership payments" });

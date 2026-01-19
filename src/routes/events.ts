@@ -16,8 +16,6 @@ import {
   getUserRsvpHandler,
 } from "../controllers/eventsController";
 import { wrapAsync } from "../middleware/asyncHandler";
-import { validateParams } from "../middleware/validate";
-// validators removed; controllers handle request validation/typing
 
 const router = express.Router();
 
@@ -102,7 +100,7 @@ router.get(
   "/:id/stats",
   authMiddleware,
   requireRole("Admin"),
-  wrapAsync(getEventStatsHandler)
+  wrapAsync(getEventStatsHandler),
 );
 
 // Create (Admin/Editor)
@@ -129,7 +127,7 @@ router.post(
   "/",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  wrapAsync(createEventHandler)
+  wrapAsync(createEventHandler),
 );
 
 // Update (Admin/Editor)
@@ -137,8 +135,7 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateParams,
-  wrapAsync(updateEventHandler)
+  wrapAsync(updateEventHandler),
 );
 
 // Delete (Admin)
@@ -146,7 +143,7 @@ router.delete(
   "/:id",
   authMiddleware,
   requireRole("Admin"),
-  wrapAsync(deleteEventHandler)
+  wrapAsync(deleteEventHandler),
 );
 
 // Link/unlink lodges
@@ -154,15 +151,13 @@ router.post(
   "/:id/lodges",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateParams,
-  wrapAsync(linkLodgeHandler)
+  wrapAsync(linkLodgeHandler),
 );
 router.delete(
   "/:id/lodges",
   authMiddleware,
   requireRole("Admin", "Editor"),
-  validateParams,
-  wrapAsync(unlinkLodgeHandler)
+  wrapAsync(unlinkLodgeHandler),
 );
 
 // RSVP: set current user's RSVP for event (going / not-going)
@@ -194,12 +189,7 @@ router.delete(
  *       200:
  *         description: RSVP recorded
  */
-router.post(
-  "/:id/rsvp",
-  authMiddleware,
-  validateParams,
-  wrapAsync(rsvpHandler)
-);
+router.post("/:id/rsvp", authMiddleware, wrapAsync(rsvpHandler));
 
 // Get current user's RSVP for an event
 router.get("/:id/rsvp", authMiddleware, wrapAsync(getUserRsvpHandler));

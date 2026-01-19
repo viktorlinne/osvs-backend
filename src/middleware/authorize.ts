@@ -13,15 +13,19 @@ export function requireRole(...requiredRoles: UserRole[]) {
   return async (
     req: AuthenticatedRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const payload = req.user;
       if (!payload) return res.status(401).json({ error: "Unauthorized" });
-
       const userId = payload.userId;
+      logger.info(
+        { userId, requiredRoles },
+        "authorize: checking roles for user",
+      );
       const roles = await getUserRoles(userId);
       const has = requiredRoles.some((r) => roles.includes(r));
+      logger.info({ userId, roles, has }, "authorize: roles fetched");
       if (!has) {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -42,7 +46,7 @@ export function allowSelfOrRoles(...allowedRoles: UserRole[]) {
   return async (
     req: AuthenticatedRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const payload = req.user;
