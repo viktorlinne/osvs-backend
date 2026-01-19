@@ -20,7 +20,7 @@ export async function getUserOfficials(userId: number): Promise<Official[]> {
 
 export async function setUserOfficials(
   userId: number,
-  officialIds: number[]
+  officialIds: number[],
 ): Promise<void> {
   const conn = await pool.getConnection();
   try {
@@ -30,12 +30,16 @@ export async function setUserOfficials(
   } catch (err) {
     try {
       await conn.rollback();
-    } catch {}
+    } catch {
+      // ignore
+    }
     throw err;
   } finally {
     try {
       conn.release();
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 }
 

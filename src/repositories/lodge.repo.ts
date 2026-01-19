@@ -5,7 +5,7 @@ import type { Lodge as LodgeRecord } from "../types";
 
 export async function listLodges(
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<LodgeRecord[]> {
   let sql =
     "SELECT id, name, city, description, email FROM lodges ORDER BY id ASC";
@@ -34,7 +34,7 @@ export async function listLodges(
 export async function findLodgeById(id: number) {
   const [rows] = await pool.execute(
     "SELECT id, name, city, description, email FROM lodges WHERE id = ? LIMIT 1",
-    [id]
+    [id],
   );
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr) || arr.length === 0) return null;
@@ -50,15 +50,16 @@ export async function findLodgeById(id: number) {
 
 export async function insertLodge(
   name: string,
+  city: string,
   description?: string | null,
-  email?: string | null
+  email?: string | null,
 ) {
   const sql =
     "INSERT INTO lodges (name, city, description, email) VALUES (?, ?, ?, ?)";
-  const params = [name, city ?? null, description ?? null, email ?? null];
+  const params = [name, city, description, email];
   const [result] = (await pool.execute<ResultSetHeader>(
     sql,
-    params
+    params,
   )) as unknown as [ResultSetHeader, unknown];
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
@@ -66,9 +67,9 @@ export async function insertLodge(
 export async function updateLodgeRecord(
   id: number,
   name?: string,
-  city?: string | null,
+  city?: string,
   description?: string | null,
-  email?: string | null
+  email?: string | null,
 ) {
   const sql =
     "UPDATE lodges SET name = COALESCE(?, name), city = COALESCE(?, city), description = ?, email = ? WHERE id = ?";
@@ -110,7 +111,7 @@ export async function deleteUserLodges(userId: number, conn?: PoolConnection) {
 export async function insertUserLodge(
   userId: number,
   lodgeId: number,
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ) {
   const executor = conn ? conn.query.bind(conn) : pool.query.bind(pool);
   await executor("INSERT INTO users_lodges (uid, lid) VALUES (?, ?)", [

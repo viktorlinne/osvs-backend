@@ -9,7 +9,7 @@ import {
 export async function listOfficialsHandler(
   _req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const rows = await listOfficials();
@@ -22,7 +22,7 @@ export async function listOfficialsHandler(
 export async function getMyOfficialsHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const uid = req.user?.userId;
@@ -37,7 +37,7 @@ export async function getMyOfficialsHandler(
 export async function getMemberOfficialsHandler(
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const id = Number(req.params.id);
@@ -53,7 +53,7 @@ export async function getMemberOfficialsHandler(
 export async function setMemberOfficialsHandler(
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const id = Number(req.params.id);
@@ -66,7 +66,7 @@ export async function setMemberOfficialsHandler(
     await setUserOfficials(id, officialIds);
     const rows = await getUserOfficials(id);
     return res.status(200).json({ success: true, officials: rows });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ error: "Failed to set member officials" });
   }
 }

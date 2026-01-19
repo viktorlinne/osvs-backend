@@ -10,7 +10,7 @@ import * as lodgeService from "../services";
 export async function listLodgesHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const query = _req.query as ListLodgesQuery;
   const rawLimit = Number(query.limit ?? 20);
@@ -27,7 +27,7 @@ export async function listLodgesHandler(
 export async function getLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
@@ -40,7 +40,7 @@ export async function getLodgeHandler(
 export async function createLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const { name, city, description, email } = req.body as CreateLodgeBody;
   if (!name || typeof name !== "string" || name.trim().length === 0)
@@ -49,9 +49,9 @@ export async function createLodgeHandler(
     return res.status(400).json({ error: "Missing or invalid email" });
   const id = await lodgeService.createLodge(
     name.trim(),
-    typeof city === "string" ? city.trim() : undefined,
+    typeof city === "string" ? city.trim() : "",
     description ?? null,
-    email.trim()
+    email.trim(),
   );
   return res.status(201).json({ success: true, id });
 }
@@ -59,7 +59,7 @@ export async function createLodgeHandler(
 export async function updateLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id))
@@ -67,10 +67,10 @@ export async function updateLodgeHandler(
   const { name, city, description, email } = req.body as UpdateLodgeBody;
   await lodgeService.updateLodge(
     id,
-    name,
-    typeof city === "undefined" ? undefined : city ?? null,
-    description ?? null,
-    typeof email === "undefined" ? undefined : email ?? null
+    typeof name === "undefined" ? "" : (name ?? ""),
+    typeof city === "undefined" ? "" : (city ?? ""),
+    typeof description === "undefined" ? "" : (description ?? null),
+    typeof email === "undefined" ? null : (email ?? null),
   );
   return res.status(200).json({ success: true });
 }

@@ -28,11 +28,9 @@ import postsRouter from "./routes/posts";
 import uploadsRouter from "./routes/uploads";
 import eventsRouter from "./routes/events";
 import mailsRouter from "./routes/mails";
-import swishRouter from "./routes/swish";
-import stripeRouter from "./routes/stripe";
+import paymentsRouter from "./routes/payments";
 import achievementsRouter from "./routes/achievements";
 import officialsRouter from "./routes/officials";
-import { webhookHandler } from "./controllers/stripeController";
 
 dotenv.config();
 
@@ -65,14 +63,6 @@ logger.info({ trustProxyValue }, "Express trust proxy set");
     logger.error({ err }, "DB connection test failed");
   }
 })();
-
-// Mount Stripe webhook before any body parsing middleware so we get the raw body
-// required for signature verification.
-app.post(
-  "/api/stripe/webhook",
-  express.raw({ type: "application/json" }),
-  webhookHandler
-);
 
 // Initialize Sentry if configured
 if (process.env.SENTRY_DSN) {
@@ -176,10 +166,8 @@ app.use("/api/achievements", achievementsRouter);
 app.use("/api/officials", officialsRouter);
 // Mails routes
 app.use("/api/mails", mailsRouter);
-// Swish Payments
-app.use("/api/swish", swishRouter);
-// Stripe Payments
-app.use("/api/stripe", stripeRouter);
+// Payments routes
+app.use("/api/payments", paymentsRouter);
 
 // OpenAPI / Swagger UI
 try {

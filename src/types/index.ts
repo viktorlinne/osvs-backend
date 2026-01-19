@@ -210,17 +210,13 @@ export type UpdatePostBody = Partial<CreatePostBody>;
 // Mails DTOs
 export type CreateMailBody = { lid?: number; title?: string; content?: string };
 
-// Stripe / Payments DTOs
+// Payments DTOs
 export type CreateCheckoutBody = {
-  price_id?: string;
-  quantity?: number | string;
+  price?: string;
 };
 export type SessionStatusQuery = { session_id?: string };
 export type CreateMembershipBody = { year?: number; amount?: number };
 export type CreateEventPaymentBody = Record<string, unknown>;
-
-// Swish DTOs (reuse membership shape)
-export type SwishCreateMembershipBody = CreateMembershipBody;
 
 // Auth DTOs
 export type LoginBody = { email?: string; password?: string };

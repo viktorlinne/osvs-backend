@@ -5,7 +5,7 @@ export const ACCESS_COOKIE = process.env.ACCESS_COOKIE?.trim() || "accessToken";
 export const REFRESH_COOKIE =
   process.env.REFRESH_COOKIE?.trim() || "refreshToken";
 export const CRON_INTERVAL_MS = Number(
-  process.env.CRON_INTERVAL_MS ?? 24 * 60 * 60 * 1000
+  process.env.CRON_INTERVAL_MS ?? 24 * 60 * 60 * 1000,
 );
 
 // Token timing and defaults

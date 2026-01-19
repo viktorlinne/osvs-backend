@@ -4,6 +4,5 @@ export * as eventsController from "./eventsController";
 export * as lodgesController from "./lodgesController";
 export * as mailsController from "./mailsController";
 export * as postsController from "./postsController";
-export * as stripeController from "./stripeController";
-export * as swishController from "./swishController";
+export * as paymentsController from "./paymentsController";
 export * as usersController from "./usersController";

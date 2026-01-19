@@ -4,7 +4,7 @@ import type { Lodge as LodgeRecord } from "../types";
 
 export async function listLodges(
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<LodgeRecord[]> {
   return await lodgeRepo.listLodges(limit, offset);
 }
@@ -15,32 +15,32 @@ export async function findLodgeById(id: number): Promise<LodgeRecord | null> {
 
 export async function createLodge(
   name: string,
-  city?: string,
-  description?: string | null,
-  email?: string | null
+  city: string,
+  description: string | null,
+  email: string | null,
 ): Promise<number> {
   return await lodgeRepo.insertLodge(name, city, description, email);
 }
 
 export async function updateLodge(
   id: number,
-  name?: string,
-  city?: string | null,
-  description?: string | null,
-  email?: string | null
+  name: string,
+  city: string,
+  description: string | null,
+  email: string | null,
 ): Promise<void> {
   await lodgeRepo.updateLodgeRecord(id, name, city, description, email);
 }
 
 export async function getUserLodge(
-  userId: number
+  userId: number,
 ): Promise<LodgeRecord | null> {
   return await lodgeRepo.getUserLodge(userId);
 }
 
 export async function setUserLodge(
   userId: number,
-  lodgeId: number | null
+  lodgeId: number | null,
 ): Promise<void> {
   // Atomic replace: remove existing and insert new (if lodgeId provided)
   const conn = await pool.getConnection();
