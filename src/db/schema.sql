@@ -414,12 +414,12 @@ VALUES
     'Example',
     '1985-06-15',
     'Software Engineer',
-    '+46701234567',
+    '0701234567',
     NULL,
     'Stockholm',
     'Storgatan 1',
     '11122',
-    NULL
+    ''
   ),
   (
     2,
@@ -432,7 +432,7 @@ VALUES
     'Tester',
     '1990-01-01',
     'QA',
-    '+46709876543',
+    '0709876543',
     NULL,
     'Stockholm',
     'Testvägen 2',
@@ -450,7 +450,7 @@ VALUES
     'Linné',
     '2002-01-18',
     'Webadmin',
-    '+46708788520',
+    '0708788520',
     NULL,
     'Kungsbacka',
     '',
@@ -578,7 +578,8 @@ INSERT INTO
   `users_achievements` (`uid`, `aid`, `awardedAt`)
 VALUES
   (1, 1, '2025-12-01 10:00:00'),
-  (2, 1, '2025-12-01 10:00:00');
+  (2, 1, '2025-12-01 10:00:00'),
+  (3, 1, '2025-12-01 10:00:00');
 
 -- Users ↔ Officials
 DELETE FROM

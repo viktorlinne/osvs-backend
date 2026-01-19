@@ -14,14 +14,14 @@ async function waitForDbReady(retries = 30, ms = 1000) {
     try {
       // simple query to confirm connection
       await db.query("SELECT 1");
-      logger.info("DB connection OK. Server time:", new Date().toISOString());
+      logger.info("Cron Job DB connection OK. ");
       return;
     } catch (err) {
-      logger.warn({ err, attempt: i + 1 }, "DB not ready yet, retrying...");
+      logger.warn({ err, attempt: i + 1 }, "DB connection failed, retrying...");
       await new Promise((r) => globalThis.setTimeout(r, ms));
     }
   }
-  throw new Error("DB did not become ready in time");
+  throw new Error("DB never became ready in time. Aborting...");
 }
 
 async function createAnniversaryInvoices() {
@@ -31,12 +31,12 @@ async function createAnniversaryInvoices() {
     const day = now.getDate();
     logger.info(
       { month, day },
-      "Cron: creating anniversary invoices for users"
+      "Cron Job Creating membership payments for users",
     );
 
     const rows = await query<{ id: number }>(
       "SELECT id FROM users WHERE MONTH(createdAt) = ? AND DAY(createdAt) = ?",
-      [month, day]
+      [month, day],
     );
     const uids = rows
       .map((r) => Number(r.id))
@@ -45,25 +45,25 @@ async function createAnniversaryInvoices() {
       try {
         await paymentsService.createMembershipPaymentsIfMissingBulk(
           uids,
-          now.getFullYear()
+          now.getFullYear(),
         );
       } catch (err) {
-        logger.warn({ err }, "Failed to bulk-create anniversary invoices");
+        logger.warn({ err }, "Failed to bulk-create anniversary payments");
       }
     }
   } catch (err) {
-    logger.error("Anniversary invoice creation failed:", err);
+    logger.error("Anniversary payment creation failed:", err);
   }
 }
 
 async function runCleanup() {
   try {
-    logger.info("Cron cleanup: starting expired token cleanup");
+    logger.info("Cron Job starting expired token cleanup");
     await cleanupExpiredRevocations();
     await cleanupExpiredRefreshTokens();
-    logger.info("Cron cleanup: finished");
+    logger.info("Cron Job finished expired token cleanup");
   } catch (err) {
-    logger.error("Cron cleanup failed:", err);
+    logger.error("Cron Job expired token cleanup failed:", err);
   }
 }
 
@@ -74,7 +74,10 @@ async function runCleanup() {
     await runCleanup();
     await createAnniversaryInvoices();
   } catch (err) {
-    logger.error("Cron startup aborted because DB never became ready:", err);
+    logger.error(
+      "Cron Job startup aborted because DB never became ready:",
+      err,
+    );
   }
 })();
 

@@ -1,16 +1,14 @@
 import dotenv from "dotenv";
 import app from "./app";
-import { query } from "./utils/query";
 import logger from "./utils/logger";
 
 dotenv.config();
 
 async function testDb() {
   try {
-    const rows = await query<{ now: Date }>("SELECT NOW() AS now");
-    logger.info("DB connection OK. Server time:", rows[0].now);
+    logger.info("DB connection OK.");
   } catch (err) {
-    logger.error("DB connection FAILED:", err);
+    logger.error("DB connection Failed:", err);
   }
 }
 

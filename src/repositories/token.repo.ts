@@ -24,7 +24,7 @@ export async function cleanupExpiredRevocations() {
   const deleted =
     typeof result?.affectedRows === "number" ? result.affectedRows : 0;
   const logger = (await import("../utils/logger")).default;
-  logger.info({ deleted }, "cleanup: removed expired revoked_tokens rows");
+  logger.info({ deleted }, "Cleanup: removed expired revoked_tokens rows");
 }
 
 export async function cleanupExpiredRefreshTokens() {
@@ -36,7 +36,7 @@ export async function cleanupExpiredRefreshTokens() {
   const deleted =
     typeof result?.affectedRows === "number" ? result.affectedRows : 0;
   const logger = (await import("../utils/logger")).default;
-  logger.info({ deleted }, "cleanup: removed expired refresh_tokens rows");
+  logger.info({ deleted }, "Cleanup: removed expired refresh_tokens rows");
 }
 
 export async function insertRefreshToken(

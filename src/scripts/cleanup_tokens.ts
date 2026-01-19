@@ -10,10 +10,10 @@ dotenv.config();
 
 async function run() {
   try {
-    logger.info("Starting cleanup: revoked JTIs and expired refresh tokens");
+    logger.info("Starting Token Cleanup...");
     await cleanupExpiredRevocations();
     await cleanupExpiredRefreshTokens();
-    logger.info("Cleanup finished");
+    logger.info("Cleanup Finished");
     // close DB pool and exit successfully
     try {
       await pool.end();
@@ -22,7 +22,7 @@ async function run() {
     }
     process.exit(0);
   } catch (err) {
-    logger.error("Cleanup failed:", err);
+    logger.error("Cleanup Failed:", err);
     try {
       await pool.end();
     } catch (e) {
