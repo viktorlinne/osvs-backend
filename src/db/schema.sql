@@ -1,12 +1,6 @@
 -- =====================================================
 -- OSVS Fraternity Platform - Database Schema
 -- =====================================================
--- 1. Create and select database
-CREATE DATABASE IF NOT EXISTS osvs DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
-
-USE osvs;
-
--- 2. Temporarily disable foreign key checks
 SET
   FOREIGN_KEY_CHECKS = 0;
 
@@ -468,7 +462,6 @@ INSERT INTO
     `username`,
     `email`,
     `passwordHash`,
-    `picture`,
     `archive`,
     `firstname`,
     `lastname`,
@@ -489,7 +482,6 @@ VALUES
     'alice',
     'alice@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
-    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
     NULL,
     'Alice',
     'Example',
@@ -509,7 +501,6 @@ VALUES
     'bob',
     'bob@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
-    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
     NULL,
     'Bob',
     'Tester',
@@ -529,7 +520,6 @@ VALUES
     'viktorlinne',
     'viktor.linne@gmail.com',
     "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
-    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
     NULL,
     'Viktor',
     'Linné',
@@ -554,9 +544,6 @@ VALUES
   `passwordHash` =
 VALUES
   (`passwordHash`),
-  `picture` =
-VALUES
-  (`picture`),
   `archive` =
 VALUES
   (`archive`),

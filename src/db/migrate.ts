@@ -21,15 +21,43 @@ function findSchemaPath(): string {
   throw new Error(`schema.sql not found. Tried: ${candidates.join(", ")}`);
 }
 
+async function dropAllTables(conn: mysql.Connection, dbName: string) {
+  await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+  await conn.query(`USE \`${dbName}\``);
+
+  await conn.query("SET FOREIGN_KEY_CHECKS = 0");
+
+  const [rows] = await conn.query<mysql.RowDataPacket[]>(
+    `
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = ?
+      AND table_type = 'BASE TABLE'
+    `,
+    [dbName],
+  );
+
+  if (rows.length) {
+    const dropStatements = rows
+      .map((r) => `DROP TABLE IF EXISTS \`${r.table_name}\`;`)
+      .join("\n");
+
+    await conn.query(dropStatements);
+  }
+
+  await conn.query("SET FOREIGN_KEY_CHECKS = 1");
+}
+
 async function migrate() {
-  let conn;
+  let conn: mysql.Connection | undefined;
+
   try {
+    const dbName = process.env.DB_NAME ?? "osvs";
+
     const schemaPath = findSchemaPath();
     const sql = fs.readFileSync(schemaPath, "utf8");
-    logger.info(
-      { schemaPath },
-      "Running migration using dedicated connection...",
-    );
+
+    logger.info({ schemaPath, dbName }, "Running migration...");
 
     conn = await mysql.createConnection({
       host: process.env.DB_HOST ?? "localhost",
@@ -38,57 +66,21 @@ async function migrate() {
       multipleStatements: true,
     });
 
-    // Drop all tables in reverse order of foreign key dependencies (dev-friendly)
-    const dropSQL = `
-    CREATE DATABASE IF NOT EXISTS osvs DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
-    USE osvs;
-    SET FOREIGN_KEY_CHECKS = 0;
-    
-    DROP TABLE IF EXISTS event_payments;
-    DROP TABLE IF EXISTS membership_payments;
-    
-    DROP TABLE IF EXISTS users_mails;
-    DROP TABLE IF EXISTS mails;
-    
-    DROP TABLE IF EXISTS events_attendances;
-    DROP TABLE IF EXISTS lodges_events;
-    DROP TABLE IF EXISTS events;
-    
-    DROP TABLE IF EXISTS users_achievements;
-    DROP TABLE IF EXISTS users_officials;
-    DROP TABLE IF EXISTS users_lodges;
-    DROP TABLE IF EXISTS users_roles;
-    
-    DROP TABLE IF EXISTS password_resets;
-    DROP TABLE IF EXISTS refresh_tokens;
-    DROP TABLE IF EXISTS revoked_tokens;
-    
-    DROP TABLE IF EXISTS posts;
-    DROP TABLE IF EXISTS users;
-    
-    DROP TABLE IF EXISTS achievements;
-    DROP TABLE IF EXISTS officials;
-    DROP TABLE IF EXISTS lodges;
-    DROP TABLE IF EXISTS roles;
-    
-    SET FOREIGN_KEY_CHECKS = 1;
-    
-    `;
-
-    await conn.query(dropSQL);
+    await dropAllTables(conn, dbName);
     logger.info("Dropped all existing tables");
 
+    // make sure the schema runs in the right DB even if schema.sql doesn't have USE
+    await conn.query(`USE \`${dbName}\``);
+
     await conn.query(sql);
-    logger.info("Migration completed: all tables created successfully!");
+    logger.info("Migration completed: all tables created + seeded!");
   } catch (err) {
     logger.error("Migration failed:", err);
-    // Print stack to stdout/stderr for container logs visibility
-    // (some environments stringify objects silently)
     // eslint-disable-next-line no-console
     console.error(err && (err as Error).stack ? (err as Error).stack : err);
+    process.exitCode = 1;
   } finally {
     if (conn) await conn.end();
-    process.exit();
   }
 }
 
