@@ -1,12 +1,13 @@
 import { Request } from "express";
-import { UserRole, isValidRole } from "./index";
+import type { RoleValue } from "../schemas/rolesSchema";
+import { isValidRole } from "../schemas/rolesSchema";
 
 /**
  * JWT payload type
  */
 export interface JWTPayload {
   userId: number;
-  roles: UserRole[];
+  roles: RoleValue[];
   iat?: number;
   exp?: number;
   jti?: string;
@@ -17,12 +18,12 @@ export interface JWTPayload {
  */
 export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
-  userRoles?: UserRole[];
+  userRoles?: RoleValue[];
 }
 
 export { isValidRole };
 
-export function parseRoles(roles: string[]): UserRole[] {
+export function parseRoles(roles: string[]): RoleValue[] {
   if (!Array.isArray(roles)) return [];
-  return roles.filter(isValidRole);
+  return roles.filter(isValidRole) as RoleValue[];
 }

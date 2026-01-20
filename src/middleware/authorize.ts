@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import { UserRole } from "../types";
+import type { RoleValue } from "../schemas/rolesSchema";
 import { getUserRoles } from "../services";
 import logger from "../utils/logger";
 
@@ -9,7 +9,7 @@ import logger from "../utils/logger";
  * roles. This middleware expects `authMiddleware` to have run earlier and will
  * consult the authoritative roles from the DB via `getUserRoles`.
  */
-export function requireRole(...requiredRoles: UserRole[]) {
+export function requireRole(...requiredRoles: RoleValue[]) {
   return async (
     req: AuthenticatedRequest,
     res: Response,
@@ -42,7 +42,7 @@ export function requireRole(...requiredRoles: UserRole[]) {
  * target (in `req.params.id` or `req.params.userId`), or when the caller has
  * any of the specified roles (DB-backed check).
  */
-export function allowSelfOrRoles(...allowedRoles: UserRole[]) {
+export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
   return async (
     req: AuthenticatedRequest,
     res: Response,

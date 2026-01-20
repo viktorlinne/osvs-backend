@@ -1,4 +1,4 @@
-import type { UserRecord, PublicUser } from "../types";
+import type { UserRecord, PublicUser } from "../schemas/usersSchema";
 
 /** Format a JS Date or string to a local YYYY-MM-DD date-only string. */
 export function formatDateOnly(d: unknown): string | unknown {
@@ -12,15 +12,28 @@ export function formatDateOnly(d: unknown): string | unknown {
   return d;
 }
 
-// Convert a DB UserRecord into a PublicUser for API responses.
 export function toPublicUser(user: UserRecord): PublicUser {
-  const { passwordHash: _passwordHash, ...safe } = user;
-
-  const normalized = {
-    ...safe,
-    dateOfBirth: formatDateOnly(safe.dateOfBirth),
-    createdAt: formatDateOnly(safe.createdAt),
-  };
-
-  return normalized as PublicUser;
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    createdAt: String(formatDateOnly(user.createdAt)),
+    picture: user.picture ?? null,
+    archive: (user.archive as PublicUser["archive"]) ?? undefined,
+    firstname: user.firstname,
+    lastname: user.lastname,
+    dateOfBirth: String(formatDateOnly(user.dateOfBirth)),
+    work: user.work ?? null,
+    accommodationAvailable:
+      user.accommodationAvailable === null
+        ? null
+        : Boolean(user.accommodationAvailable),
+    revokedAt: user.revokedAt ?? null,
+    mobile: user.mobile,
+    homeNumber: user.homeNumber ?? null,
+    city: user.city,
+    address: user.address,
+    zipcode: user.zipcode,
+    notes: user.notes ?? null,
+  } as PublicUser;
 }

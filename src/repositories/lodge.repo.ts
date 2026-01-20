@@ -1,56 +1,54 @@
 import pool from "../config/db";
-import type { ResultSetHeader } from "mysql2";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import type { PoolConnection } from "mysql2/promise";
-import type { Lodge as LodgeRecord } from "../types";
+import type { Lodge } from "../schemas/lodgesSchema";
+import { lodgeSchema } from "../schemas/lodgesSchema";
+import parseRow from "../utils/parseRow";
 
-export async function listLodges(
-  limit?: number,
-  offset?: number,
-): Promise<LodgeRecord[]> {
+export async function listLodges(): Promise<Lodge[]> {
   let sql =
     "SELECT id, name, city, description, email, picture FROM lodges ORDER BY id ASC";
-  if (typeof limit === "number" && Number.isFinite(limit)) {
-    const safeLimit = Math.max(0, Math.floor(limit));
-    sql += ` LIMIT ${safeLimit}`;
-    if (typeof offset === "number" && Number.isFinite(offset)) {
-      const safeOffset = Math.max(0, Math.floor(offset));
-      sql += ` OFFSET ${safeOffset}`;
-    }
-  }
-  const [rows] = await pool.execute(sql);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+
+  const [rows] = await pool.execute<RowDataPacket[]>(sql);
+  const arr = rows as RowDataPacket[];
   if (!Array.isArray(arr)) return [];
-  return arr
-    .map((r) => ({
+
+  const result: Lodge[] = [];
+  for (const r of arr) {
+    const candidate = {
       id: Number(r.id),
-      name: String(r.name ?? ""),
-      city: String(r.city ?? ""),
-      description: r.description == null ? undefined : String(r.description),
-      email: r.email == null ? undefined : String(r.email),
-      picture: r.picture == null ? undefined : String(r.picture),
-    }))
-    .filter((r) => Number.isFinite(r.id)) as LodgeRecord[];
+      name: r.name ?? "",
+      city: r.city ?? "",
+      description: r.description ?? "",
+      email: r.email ?? "",
+      picture: r.picture ?? "",
+    } as unknown;
+    const parsed = parseRow(lodgeSchema, candidate, { id: r.id, log: true });
+    if (parsed) result.push(parsed);
+  }
+  return result;
 }
 
-export async function findLodgeById(id: number) {
+export async function findLodgeById(id: number): Promise<Lodge | null> {
   const [rows] = await pool.execute(
     "SELECT id, name, city, description, email, picture FROM lodges WHERE id = ? LIMIT 1",
     [id],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = rows as RowDataPacket[];
   if (!Array.isArray(arr) || arr.length === 0) return null;
   const r = arr[0];
-  return {
+  const candidate = {
     id: Number(r.id),
-    name: String(r.name ?? ""),
-    city: String(r.city ?? ""),
-    description: r.description == null ? undefined : String(r.description),
-    email: r.email == null ? undefined : String(r.email),
-    picture: r.picture == null ? undefined : String(r.picture),
-  };
+    name: r.name ?? "",
+    city: r.city ?? "",
+    description: r.description ?? "",
+    email: r.email ?? "",
+    picture: r.picture ?? "",
+  } as unknown;
+  return parseRow(lodgeSchema, candidate, { id: r.id, log: true });
 }
 
-export async function insertLodge(
+export async function createLodge(
   name: string,
   city: string,
   description?: string | null,
@@ -67,7 +65,7 @@ export async function insertLodge(
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 
-export async function updateLodgeRecord(
+export async function updateLodge(
   id: number,
   name?: string,
   city?: string,
@@ -76,7 +74,7 @@ export async function updateLodgeRecord(
   picture?: string | null,
 ) {
   const sql =
-    "UPDATE lodges SET name = COALESCE(?, name), city = COALESCE(?, city), description = ?, email = ?, picture = ? WHERE id = ?";
+    "UPDATE lodges SET name = COALESCE(?, name), city = COALESCE(?, city), description = COALESCE(?, description), email = COALESCE(?, email), picture = COALESCE(?, picture) WHERE id = ?";
   await pool.execute(sql, [
     name ?? null,
     city ?? null,
@@ -96,17 +94,18 @@ export async function getUserLodge(userId: number) {
     LIMIT 1
   `;
   const [rows] = await pool.execute(sql, [userId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = rows as RowDataPacket[];
   if (!Array.isArray(arr) || arr.length === 0) return null;
   const r = arr[0];
-  return {
+  const candidate = {
     id: Number(r.id),
-    name: String(r.name ?? ""),
-    city: String(r.city ?? ""),
-    description: r.description == null ? undefined : String(r.description),
-    email: r.email == null ? undefined : String(r.email),
-    picture: r.picture == null ? undefined : String(r.picture), 
-  };
+    name: r.name ?? "",
+    city: r.city ?? "",
+    description: r.description ?? "",
+    email: r.email ?? "",
+    picture: r.picture ?? "",
+  } as unknown;
+  return parseRow(lodgeSchema, candidate, { id: r.id, log: true });
 }
 
 export async function deleteUserLodges(userId: number, conn?: PoolConnection) {
@@ -129,9 +128,13 @@ export async function insertUserLodge(
 export default {
   listLodges,
   findLodgeById,
-  insertLodge,
-  updateLodgeRecord,
+  createLodge,
+  updateLodge,
   getUserLodge,
   deleteUserLodges,
   insertUserLodge,
 };
+
+// Backwards-compatible aliases expected by services
+export const insertLodge = createLodge;
+export const updateLodgeRecord = updateLodge;

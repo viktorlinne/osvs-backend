@@ -1,16 +1,20 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { CreateMailBody } from "../types";
+import type { CreateMailBody } from "../schemas/mailsSchema";
+import { createMailSchema } from "../schemas/mailsSchema";
 import * as mailsService from "../services";
 
 export async function createMailHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const caller = req.user?.userId;
   if (!caller) return res.status(401).json({ error: "Unauthorized" });
-  const { lid, title, content } = req.body as CreateMailBody;
+  const parsed = createMailSchema.safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: parsed.error.issues });
+  const { lid, title, content } = parsed.data as CreateMailBody;
   if (!lid || !title || !content)
     return res.status(400).json({ error: "Missing fields" });
   const id = await mailsService.createMail({
@@ -24,7 +28,7 @@ export async function createMailHandler(
 export async function sendMailHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const caller = req.user?.userId;
   if (!caller) return res.status(401).json({ error: "Unauthorized" });
@@ -38,7 +42,7 @@ export async function sendMailHandler(
 export async function inboxHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const uid = req.user?.userId;
   if (!uid) return res.status(401).json({ error: "Unauthorized" });

@@ -1,12 +1,13 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
-import type { posts as PostRecord } from "../types";
+import type { Post as PostRecord } from "../schemas/postsSchema";
 
 export async function listPosts(
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<PostRecord[]> {
-  let sql = "SELECT id, title, description, picture FROM posts ORDER BY id DESC";
+  let sql =
+    "SELECT id, title, description, picture FROM posts ORDER BY id DESC";
   if (typeof limit === "number" && Number.isFinite(limit)) {
     const safeLimit = Math.max(0, Math.floor(limit));
     sql += ` LIMIT ${safeLimit}`;
@@ -31,14 +32,14 @@ export async function listPosts(
 export async function insertPost(
   title: string,
   description: string,
-  pictureKey?: string | null
+  pictureKey?: string | null,
 ): Promise<number> {
   const sql =
     "INSERT INTO posts (title, description, picture) VALUES (?, ?, ?)";
   const params = [title, description, pictureKey ?? null];
   const [result] = (await pool.execute<ResultSetHeader>(
     sql,
-    params
+    params,
   )) as unknown as [ResultSetHeader, unknown];
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
@@ -60,12 +61,12 @@ export async function findPostById(postId: number) {
 
 export async function selectPostPicture(
   postId: number,
-  conn?: import("mysql2/promise").PoolConnection
+  conn?: import("mysql2/promise").PoolConnection,
 ) {
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   const [rows] = await executor(
     "SELECT picture FROM posts WHERE id = ? LIMIT 1",
-    [postId]
+    [postId],
   );
   const arr = rows as unknown as Array<{ picture?: unknown }>;
   return Array.isArray(arr) &&
@@ -80,7 +81,7 @@ export async function updatePost(
   title: string | null,
   description: string | null,
   newPictureKey: string | null,
-  conn?: import("mysql2/promise").PoolConnection
+  conn?: import("mysql2/promise").PoolConnection,
 ) {
   const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
   const sets: string[] = [];

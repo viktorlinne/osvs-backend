@@ -1,13 +1,8 @@
 import pool from "../config/db";
-import type {
-  UserRecord,
-  CreateUserInput,
-  PublicUser,
-  UserRole,
-} from "../types";
-import type { Achievement, Role } from "../types";
-import { UserRoleValues } from "../types";
-// UserRoleValues runtime array from shared types
+import type { UserRecord, CreateUserInput, PublicUser } from "../schemas/usersSchema";
+import type { Achievement } from "../schemas/achievementsSchema";
+import type { Role, RoleValue } from "../schemas/rolesSchema";
+import { RoleValues } from "../schemas/rolesSchema";
 import { toPublicUser } from "../utils/serialize";
 import { normalizeToSqlDate } from "../utils/dates";
 import { ValidationError, ConflictError } from "../utils/errors";
@@ -131,12 +126,13 @@ export async function updateUserProfile(
   await userRepo.updateUserProfile(userId, data);
 }
 
-export async function getUserRoles(userId: number): Promise<UserRole[]> {
+export async function getUserRoles(userId: number): Promise<RoleValue[]> {
   const rows = await userRepo.getUserRoles(userId);
   return rows.filter(
-    (role): role is UserRole =>
-      typeof role === "string" && UserRoleValues.includes(role as UserRole),
-  ) as UserRole[];
+    (role): role is RoleValue =>
+      typeof role === "string" &&
+      (RoleValues as readonly string[]).includes(role as string),
+  ) as RoleValue[];
 }
 
 export async function updatePassword(
@@ -223,11 +219,13 @@ export async function listAchievements(): Promise<Achievement[]> {
 
 export async function listRoles(): Promise<Role[]> {
   const rows = await userRepo.listRoles();
-  // Normalize `role` field from DB to `name` used in shared types
+  // Map DB `role` field to schema `Role` shape
   return rows
     .map((r) => ({
       id: Number(r.id),
-      name: String((r as unknown as Record<string, unknown>).role ?? ""),
+      role: String(
+        (r as unknown as Record<string, unknown>).role ?? "",
+      ) as unknown as Role["role"],
     }))
     .filter((r) => Number.isFinite(r.id)) as Role[];
 }

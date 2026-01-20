@@ -1,9 +1,7 @@
 import { sendMail } from "./brevoService";
 import * as mailsRepo from "../repositories/mails.repo";
-import type {
-  mails as MailRecord,
-  users_mails as UsersMailRecord,
-} from "../types";
+import type { Mail as MailRecord } from "../schemas/mailsSchema";
+import type { UsersMail as UsersMailRecord } from "../schemas/mailsSchema";
 
 export async function createMail(payload: {
   lid: number;
@@ -18,7 +16,7 @@ export async function getMailById(id: number): Promise<MailRecord | null> {
 }
 
 export async function sendMailToLodge(
-  mailId: number
+  mailId: number,
 ): Promise<{ total: number; delivered: number }> {
   const mail = await getMailById(mailId);
   if (!mail) throw new Error("Mail not found");

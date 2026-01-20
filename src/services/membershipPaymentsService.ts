@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { membershipRepo } from "../repositories";
-import type { membership_payments as MembershipPayment } from "../types";
+import type { membership_payments as MembershipPayment } from "../schemas/paymentsSchema";
 
 export interface CreateMembershipPaymentOpts {
   uid: number;

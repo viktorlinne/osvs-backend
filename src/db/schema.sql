@@ -21,8 +21,8 @@ CREATE TABLE `lodges` (
   `name` varchar(256) NOT NULL,
   `city` varchar(256) NOT NULL,
   `description` text NOT NULL,
-  `email` varchar(256) DEFAULT NULL,
-  `picture` varchar(256) DEFAULT NULL,
+  `email` varchar(256) NOT NULL,
+  `picture` varchar(256) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_lodges_name` (`name`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -110,7 +110,7 @@ CREATE TABLE `users` (
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(10) NOT NULL,
   `notes` text DEFAULT NULL,
-  `accommodationAvailable` tinyint(1) DEFAULT NULL,
+  `accommodationAvailable` tinyint(1) NOT NULL DEFAULT 0,
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_username` (`username`),
   PRIMARY KEY (`id`)

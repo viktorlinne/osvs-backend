@@ -1,7 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { ListPostsQuery, CreatePostBody, UpdatePostBody } from "../types";
+import type { ListPostsQuery, CreatePostBody, UpdatePostBody } from "../schemas/postsSchema";
 import * as postsService from "../services";
 import {
   uploadToStorage,

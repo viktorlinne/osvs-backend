@@ -1,11 +1,11 @@
 import pool from "../config/db";
 import { deleteProfilePicture } from "../utils/fileUpload";
 import * as postsRepo from "../repositories/posts.repo";
-import type { posts as PostRecord } from "../types";
+import type { Post as PostRecord } from "../schemas/postsSchema";
 
 export async function listPosts(
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<PostRecord[]> {
   return await postsRepo.listPosts(limit, offset);
 }
@@ -13,7 +13,7 @@ export async function listPosts(
 export async function createPost(
   title: string,
   description: string,
-  pictureKey?: string | null
+  pictureKey?: string | null,
 ): Promise<number> {
   return await postsRepo.insertPost(title, description, pictureKey);
 }
@@ -26,7 +26,7 @@ export async function updatePostAtomic(
   postId: number,
   title: string | null,
   description: string | null,
-  newPictureKey: string | null
+  newPictureKey: string | null,
 ): Promise<void> {
   const conn = await pool.getConnection();
   try {

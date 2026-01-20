@@ -1,15 +1,12 @@
 import pool from "../config/db";
 import * as lodgeRepo from "../repositories/lodge.repo";
-import type { Lodge as LodgeRecord } from "../types";
+import type { Lodge } from "../schemas/lodgesSchema";
 
-export async function listLodges(
-  limit?: number,
-  offset?: number,
-): Promise<LodgeRecord[]> {
-  return await lodgeRepo.listLodges(limit, offset);
+export async function listLodges(): Promise<Lodge[]> {
+  return await lodgeRepo.listLodges();
 }
 
-export async function findLodgeById(id: number): Promise<LodgeRecord | null> {
+export async function findLodgeById(id: number): Promise<Lodge | null> {
   return await lodgeRepo.findLodgeById(id);
 }
 
@@ -25,25 +22,23 @@ export async function createLodge(
 
 export async function updateLodge(
   id: number,
-  name: string,
-  city: string,
+  name: string | null,
+  city: string | null,
   description: string | null,
   email: string | null,
   picture: string | null,
 ): Promise<void> {
   await lodgeRepo.updateLodgeRecord(
     id,
-    name,
-    city,
+    name ?? undefined,
+    city ?? undefined,
     description,
     email,
     picture,
   );
 }
 
-export async function getUserLodge(
-  userId: number,
-): Promise<LodgeRecord | null> {
+export async function getUserLodge(userId: number): Promise<Lodge | null> {
   return await lodgeRepo.getUserLodge(userId);
 }
 

@@ -4,13 +4,13 @@ import type {
   ListEventsQuery,
   CreateEventBody,
   UpdateEventBody,
-  LinkLodgeBody,
-  RSVPBody,
-} from "../types";
+} from "../schemas/eventsSchema";
+import { rsvpSchema } from "../schemas/eventsSchema";
 import logger from "../utils/logger";
 import * as eventsService from "../services";
 import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
+import { LinkLodgeBody, linkLodgeSchema } from "../schemas/lodgesSchema";
 
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
@@ -127,7 +127,10 @@ export async function linkLodgeHandler(
   _next: NextFunction,
 ) {
   const id = Number(req.params.id);
-  const { lodgeId } = req.body as LinkLodgeBody;
+  const parsed = linkLodgeSchema.safeParse(req.body);
+  if (!parsed.success)
+    return res.status(400).json({ error: parsed.error.issues });
+  const { lodgeId } = parsed.data as LinkLodgeBody;
   if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId)))
     return res.status(400).json({ error: "Invalid ids" });
   await eventsService.linkLodgeToEvent(id, Number(lodgeId));
@@ -141,7 +144,13 @@ export async function unlinkLodgeHandler(
   _next: NextFunction,
 ) {
   const id = Number(req.params.id);
-  const bodyLodge = (req.body as LinkLodgeBody).lodgeId;
+  let bodyLodge: number | string | undefined = undefined;
+  if (req.body && Object.keys(req.body).length > 0) {
+    const parsed = linkLodgeSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res.status(400).json({ error: parsed.error.issues });
+    bodyLodge = (parsed.data as LinkLodgeBody).lodgeId;
+  }
   const queryLodge = (req.query as ListEventsQuery)?.lodgeId;
   const lodgeId = Number(bodyLodge ?? queryLodge);
   if (!Number.isFinite(id) || !Number.isFinite(lodgeId))
@@ -214,9 +223,10 @@ export async function rsvpHandler(
     if (!Number.isFinite(id))
       return res.status(400).json({ error: "Invalid id" });
 
-    const { status } = req.body as RSVPBody;
-    if (status !== "going" && status !== "not-going")
-      return res.status(400).json({ error: "Invalid status" });
+    const parsed = rsvpSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res.status(400).json({ error: parsed.error.issues });
+    const { status } = parsed.data;
 
     const ev = await eventsService.getEventById(id);
     if (!ev) return res.status(404).json({ error: "Event not found" });
@@ -233,7 +243,7 @@ export async function rsvpHandler(
     if (!invited)
       return res.status(403).json({ error: "Not invited to this event" });
 
-    await eventsService.setUserRsvp(uid, id, status as "going" | "not-going");
+    await eventsService.setUserRsvp(uid, id, status);
     return res.status(200).json({ success: true, status });
   } catch (err) {
     if (err instanceof ValidationError)

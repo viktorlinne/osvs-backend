@@ -1,12 +1,10 @@
 import type { NextFunction, Response, Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type {
-  UpdateUserProfileBody,
-  AddAchievementBody,
-  ListUsersQuery,
-  SetRolesBody,
-  SetLodgeBody,
-} from "../types";
+import type { UpdateUserProfileBody, ListUsersQuery } from "../schemas/usersSchema";
+import { addAchievementSchema } from "../schemas/achievementsSchema";
+import type { SetRolesBody } from "../schemas/rolesSchema";
+import { setRolesSchema } from "../schemas/rolesSchema";
+import type { SetLodgeBody } from "../schemas/lodgesSchema";
 import {
   uploadToStorage,
   deleteProfilePicture,
@@ -25,13 +23,14 @@ import {
 } from "../services";
 import { toPublicUser } from "../utils/serialize";
 import { getUserLodge, setUserLodge } from "../services";
+import { setLodgeSchema } from "../schemas/lodgesSchema";
 import logger from "../utils/logger";
 import { PROFILE_PLACEHOLDER } from "../config/constants";
 
 export async function updatePictureHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const uid = req.user?.userId;
@@ -82,7 +81,7 @@ export async function updatePictureHandler(
 export async function updateOtherPictureHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -140,7 +139,7 @@ export async function placeholderMe(_req: AuthenticatedRequest, res: Response) {
 export async function updateMeHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const uid = req.user?.userId;
@@ -156,7 +155,7 @@ export async function updateMeHandler(
 
     const publicUser = toPublicUser(updated);
     const pictureUrl = await getPublicUrl(
-      updated.picture ?? PROFILE_PLACEHOLDER
+      updated.picture ?? PROFILE_PLACEHOLDER,
     );
     return res.status(200).json({ user: { ...publicUser, pictureUrl } });
   } catch (err) {
@@ -167,7 +166,7 @@ export async function updateMeHandler(
 export async function updateUserHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -186,7 +185,7 @@ export async function updateUserHandler(
 
     const publicUser = toPublicUser(updated);
     const pictureUrl = await getPublicUrl(
-      updated.picture ?? PROFILE_PLACEHOLDER
+      updated.picture ?? PROFILE_PLACEHOLDER,
     );
     return res.status(200).json({ user: { ...publicUser, pictureUrl } });
   } catch (err) {
@@ -196,7 +195,7 @@ export async function updateUserHandler(
 
 export async function addAchievementHandler(
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -206,22 +205,20 @@ export async function addAchievementHandler(
     if (!Number.isFinite(targetId))
       return res.status(400).json({ error: "Invalid target user id" });
 
-    const { achievementId, awardedAt } = req.body as AddAchievementBody;
+    const parsed = addAchievementSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res.status(400).json({ error: parsed.error.issues });
+    const { achievementId } = parsed.data;
 
-    if (!achievementId || !Number.isFinite(Number(achievementId))) {
-      return res
-        .status(400)
-        .json({ error: "Missing or invalid achievementId" });
-    }
-
-    const when = awardedAt ? new Date(awardedAt) : undefined;
+    const awardedAt = (req.body as Record<string, unknown>).awardedAt;
+    const when = awardedAt ? new Date(String(awardedAt)) : undefined;
     if (when && Number.isNaN(when.getTime()))
       return res.status(400).json({ error: "Invalid awardedAt date" });
 
     const newId = await setUserAchievement(
       targetId,
       Number(achievementId),
-      when
+      when,
     );
 
     return res.status(201).json({ success: true, id: newId, awardedAt: when });
@@ -233,7 +230,7 @@ export async function addAchievementHandler(
 
 export async function getAchievementsHandler(
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -254,7 +251,7 @@ export async function getAchievementsHandler(
 export async function listUsersHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const q = _req.query as ListUsersQuery;
@@ -273,14 +270,14 @@ export async function listUsersHandler(
           ? achievementId
           : undefined,
         lodgeId: Number.isFinite(lodgeId) ? lodgeId : undefined,
-      }
+      },
     );
     // Resolve public picture URLs
     const withUrls = await Promise.all(
       rows.map(async (r) => ({
         ...r,
         pictureUrl: await getPublicUrl(r.picture ?? PROFILE_PLACEHOLDER),
-      }))
+      })),
     );
     return res.status(200).json({ users: withUrls });
   } catch (err) {
@@ -292,7 +289,7 @@ export async function listUsersHandler(
 export async function getPublicUserHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   try {
     const userId = Number(req.params.id);
@@ -303,9 +300,11 @@ export async function getPublicUserHandler(
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
     const achievements = await getUserAchievements(userId);
     const officials = await getUserOfficials(userId);
-    return res
-      .status(200)
-      .json({ user: { ...user, pictureUrl, officials }, achievements, officials });
+    return res.status(200).json({
+      user: { ...user, pictureUrl, officials },
+      achievements,
+      officials,
+    });
   } catch (err) {
     logger.error("Failed to get public user", err);
     return res.status(500).json({ error: "Failed to get user" });
@@ -314,7 +313,7 @@ export async function getPublicUserHandler(
 
 export async function setRolesHandler(
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -324,7 +323,11 @@ export async function setRolesHandler(
     if (!Number.isFinite(targetId))
       return res.status(400).json({ error: "Invalid target user id" });
 
-    const { roleIds } = req.body as SetRolesBody;
+    const parsed = setRolesSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res.status(400).json({ error: parsed.error.issues });
+    const { roleIds } = parsed.data as SetRolesBody;
+
     if (!Array.isArray(roleIds))
       return res
         .status(400)
@@ -358,7 +361,7 @@ export async function setRolesHandler(
 
 export async function getRolesHandler(
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -378,7 +381,7 @@ export async function getRolesHandler(
 
 export async function getLodgeHandler(
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -398,7 +401,7 @@ export async function getLodgeHandler(
 
 export async function setLodgeHandler(
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
 ) {
   try {
     const callerId = req.user?.userId;
@@ -408,12 +411,10 @@ export async function setLodgeHandler(
     if (!Number.isFinite(targetId))
       return res.status(400).json({ error: "Invalid target user id" });
 
-    const { lodgeId } = req.body as SetLodgeBody;
-    if (typeof lodgeId === "undefined") {
-      return res
-        .status(400)
-        .json({ error: "Missing lodgeId (use null to remove)" });
-    }
+    const parsed = setLodgeSchema.safeParse(req.body);
+    if (!parsed.success)
+      return res.status(400).json({ error: parsed.error.issues });
+    const { lodgeId } = parsed.data as SetLodgeBody;
 
     const numericLid = lodgeId === null ? null : Number(lodgeId);
     if (numericLid !== null && !Number.isFinite(numericLid))

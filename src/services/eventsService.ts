@@ -4,8 +4,8 @@ import { toDbRsvp, fromDbRsvp, RsvpStatus } from "../utils/rsvp";
 import * as eventsRepo from "../repositories/events.repo";
 import type {
   event_payments as EventPaymentRecord,
-  events as EventRecord,
-} from "../types";
+  EventRecord,
+} from "../schemas/eventsSchema";
 
 export async function getEventPrice(eventId: number): Promise<number> {
   return await eventsRepo.selectEventPrice(eventId);
@@ -15,7 +15,7 @@ export async function findOrCreateEventPaymentForUser(
   uid: number,
   eventId: number,
   amount?: number,
-  currency?: string | null
+  currency?: string | null,
 ): Promise<EventPaymentRecord | null> {
   // Try to find existing
   const existing = await eventsRepo.findEventPaymentByUidEid(uid, eventId);
@@ -42,14 +42,14 @@ export async function findOrCreateEventPaymentForUser(
 }
 
 export async function getEventPaymentById(
-  id: number
+  id: number,
 ): Promise<EventPaymentRecord | null> {
   const row = await eventsRepo.findEventPaymentById(id);
   return row as unknown as EventPaymentRecord | null;
 }
 
 export async function getEventPaymentByToken(
-  token: string
+  token: string,
 ): Promise<EventPaymentRecord | null> {
   const row = await eventsRepo.findEventPaymentByToken(token);
   return row as unknown as EventPaymentRecord | null;
@@ -59,7 +59,7 @@ export async function updateEventPaymentsByProviderRef(
   provider: string,
   providerRef: string,
   status: string,
-  metadata: Record<string, unknown> | null = null
+  metadata: Record<string, unknown> | null = null,
 ): Promise<void> {
   let invoiceToken: string | null = null;
   if (
@@ -73,28 +73,28 @@ export async function updateEventPaymentsByProviderRef(
     provider,
     providerRef,
     status,
-    invoiceToken ?? null
+    invoiceToken ?? null,
   );
 }
 
 export async function associateProviderRefForPayment(
   paymentId: number,
   provider: string,
-  providerRef: string
+  providerRef: string,
 ): Promise<void> {
   if (!Number.isFinite(paymentId) || paymentId <= 0) return;
   await eventsRepo.updateEventPaymentProviderRefById(
     paymentId,
     provider,
-    providerRef
+    providerRef,
   );
 }
 
-// Use canonical `EventRecord` from `@osvs/types` (see import above)
+// Use canonical `Event` from `@osvs/types` (see import above)
 
 export async function listEvents(
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<EventRecord[]> {
   const rows = await eventsRepo.listEvents(limit, offset);
   const arr = rows as unknown as Array<Record<string, unknown>>;
@@ -105,10 +105,7 @@ export async function listEvents(
       title: String(r.title ?? ""),
       description: String(r.description ?? ""),
       lodgeMeeting:
-        r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
-      event_payments: [],
-      events_attendances: [],
-      lodges_events: [],
+        r.lodgeMeeting == null ? false : Boolean(Number(r.lodgeMeeting)),
       price: Number(r.price ?? 0),
       startDate: String(r.startDate ?? ""),
       endDate: String(r.endDate ?? ""),
@@ -124,10 +121,7 @@ export async function getEventById(id: number): Promise<EventRecord | null> {
     title: String(r.title ?? ""),
     description: String(r.description ?? ""),
     lodgeMeeting:
-      r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
-    event_payments: [],
-    events_attendances: [],
-    lodges_events: [],
+      r.lodgeMeeting == null ? false : Boolean(Number(r.lodgeMeeting)),
     price: Number(r.price ?? 0),
     startDate: String(r.startDate ?? ""),
     endDate: String(r.endDate ?? ""),
@@ -154,7 +148,7 @@ export async function createEventWithLodges(
     startDate: string;
     endDate: string;
   },
-  lodgeIds: number[] | undefined
+  lodgeIds: number[] | undefined,
 ): Promise<number> {
   const conn = await pool.getConnection();
   try {
@@ -216,7 +210,7 @@ export async function updateEvent(
     price: number;
     startDate: string;
     endDate: string;
-  }>
+  }>,
 ): Promise<void> {
   await eventsRepo.updateEventRecord(id, payload as Record<string, unknown>);
 }
@@ -228,7 +222,7 @@ export async function deleteEvent(id: number): Promise<void> {
 // Link/unlink lodges to events. Implemented as simple INSERT/DELETE
 export async function linkLodgeToEvent(
   eventId: number,
-  lodgeId: number
+  lodgeId: number,
 ): Promise<void> {
   const conn = await pool.getConnection();
   try {
@@ -273,7 +267,7 @@ export async function linkLodgeToEvent(
 
 export async function unlinkLodgeFromEvent(
   eventId: number,
-  lodgeId: number
+  lodgeId: number,
 ): Promise<void> {
   const conn = await pool.getConnection();
   try {
@@ -281,7 +275,7 @@ export async function unlinkLodgeFromEvent(
     const rows = await eventsRepo.selectUsersToRemoveOnUnlink(
       lodgeId,
       eventId,
-      conn
+      conn,
     );
     const arr = rows as unknown as Array<Record<string, unknown>>;
     const uids = Array.isArray(arr)
@@ -312,7 +306,7 @@ export async function unlinkLodgeFromEvent(
 export async function listEventsForUser(
   userId: number,
   limit?: number,
-  offset?: number
+  offset?: number,
 ): Promise<EventRecord[]> {
   // List events visible to the user based on lodge membership
   const rows = await eventsRepo.listEventsForUser(userId, limit, offset);
@@ -324,10 +318,7 @@ export async function listEventsForUser(
       title: String(r.title ?? ""),
       description: String(r.description ?? ""),
       lodgeMeeting:
-        r.lodgeMeeting == null ? undefined : Boolean(Number(r.lodgeMeeting)),
-      event_payments: [],
-      events_attendances: [],
-      lodges_events: [],
+        r.lodgeMeeting == null ? false : Boolean(Number(r.lodgeMeeting)),
       price: Number(r.price ?? 0),
       startDate: String(r.startDate ?? ""),
       endDate: String(r.endDate ?? ""),
@@ -336,7 +327,7 @@ export async function listEventsForUser(
 }
 
 export async function listLodgesForEvent(
-  eventId: number
+  eventId: number,
 ): Promise<Array<{ id: number; name: string }>> {
   const rows = await eventsRepo.selectLodgesForEvent(eventId);
   const arr = rows as unknown as Array<Record<string, unknown>>;
@@ -348,7 +339,7 @@ export async function listLodgesForEvent(
 
 export async function isUserInvitedToEvent(
   userId: number,
-  eventId: number
+  eventId: number,
 ): Promise<boolean> {
   return await eventsRepo.isUserInvitedToEvent(eventId, userId);
 }
@@ -356,7 +347,7 @@ export async function isUserInvitedToEvent(
 export async function setUserRsvp(
   userId: number,
   eventId: number,
-  rsvp: RsvpStatus | number
+  rsvp: RsvpStatus | number,
 ): Promise<void> {
   let rsvpValue: number;
   if (typeof rsvp === "number") {
@@ -369,7 +360,7 @@ export async function setUserRsvp(
 
 export async function getUserRsvp(
   userId: number,
-  eventId: number
+  eventId: number,
 ): Promise<RsvpStatus | null> {
   const val = await eventsRepo.getUserRsvpFromDb(userId, eventId);
   return val === null || typeof val === "undefined"
@@ -378,7 +369,7 @@ export async function getUserRsvp(
 }
 
 export async function getEventStats(
-  eventId: number
+  eventId: number,
 ): Promise<{ invited: number; answered: number; going: number }> {
   const invited = await eventsRepo.countInvitedUsersForEvent(eventId);
   const rsvpCounts = await eventsRepo.countRsvpStatsForEvent(eventId);

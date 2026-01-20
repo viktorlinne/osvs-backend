@@ -1,11 +1,11 @@
 import pool from "../config/db";
 import type { PoolConnection } from "mysql2/promise";
-import type { Official } from "../types";
+import type { Official } from "../schemas/officialsSchema";
 
 async function exec(
   sql: string,
   params: unknown[] = [],
-  conn?: PoolConnection
+  conn?: PoolConnection,
 ): Promise<[unknown, unknown]> {
   if (conn) return conn.execute(sql, params);
   return pool.execute(sql, params);
