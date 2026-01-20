@@ -12,6 +12,7 @@ export type Lodge = {
   city: string;
   description?: string | null;
   email?: string | null;
+  picture?: string | null;
 };
 
 export type User = {
@@ -20,7 +21,7 @@ export type User = {
   email: string;
   passwordHash: string;
   createdAt: string; // ISO date
-  picture: string;
+  picture: string ;
   archive?: "Deceased" | "Retired" | "Removed" | null;
   firstname: string;
   lastname: string;
@@ -148,12 +149,14 @@ export type CreateLodgeBody = {
   city?: string;
   description?: string | null;
   email?: string;
+  picture?: string | null;
 };
 export type UpdateLodgeBody = {
   name?: string;
   city?: string | null;
   description?: string | null;
   email?: string | null;
+  picture?: string | null;
 };
 // Users DTOs
 export type UpdateUserProfileBody = Partial<{
