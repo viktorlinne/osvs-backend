@@ -11,12 +11,13 @@ SET
   FOREIGN_KEY_CHECKS = 0;
 
 -- =====================================================
--- BASE TABLES
+-- BASE LOOKUP TABLES
 -- =====================================================
 -- Roles
 CREATE TABLE `roles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `role` enum('Admin', 'Editor', 'Member') NOT NULL,
+  UNIQUE KEY `uq_roles_role` (`role`),
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -28,65 +29,8 @@ CREATE TABLE `lodges` (
   `description` text NOT NULL,
   `email` varchar(256) DEFAULT NULL,
   `picture` varchar(256) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Users
-CREATE TABLE `users` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(256) NOT NULL,
-  `email` varchar(256) NOT NULL,
-  `passwordHash` varchar(512) NOT NULL,
-  `createdAt` date NOT NULL,
-  `picture` varchar(256) DEFAULT NULL,
-  `archive` enum('Deceased', 'Retired', 'Removed') DEFAULT NULL,
-  `firstname` varchar(256) NOT NULL,
-  `lastname` varchar(256) NOT NULL,
-  `dateOfBirth` date NOT NULL,
-  `work` varchar(256) DEFAULT NULL,
-  `revokedAt` datetime DEFAULT NULL,
-  `mobile` varchar(256) NOT NULL,
-  `homeNumber` varchar(256) DEFAULT NULL,
-  `city` varchar(256) NOT NULL,
-  `address` varchar(256) NOT NULL,
-  `zipcode` varchar(256) NOT NULL,
-  `notes` text DEFAULT NULL,
-  `accommodationAvailable` tinyint(1) DEFAULT NULL,
-  UNIQUE KEY `uq_users_email` (`email`),
-  UNIQUE KEY `uq_users_username` (`username`),
-  PRIMARY KEY (`id`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Posts
-CREATE TABLE `posts` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(256) NOT NULL,
-  `description` varchar(256) NOT NULL,
-  `picture` varchar(256) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Events
-CREATE TABLE `events` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(256) NOT NULL,
-  `description` text NOT NULL,
-  `lodgeMeeting` tinyint(1),
-  `price` decimal(10, 2) NOT NULL,
-  `startDate` datetime NOT NULL,
-  `endDate` datetime NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Mails
-CREATE TABLE `mails` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `lid` int(11) NOT NULL,
-  `title` varchar(256) NOT NULL,
-  `content` text NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `fk_mails_lodge` (`lid`),
-  CONSTRAINT `fk_mails_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  UNIQUE KEY `uq_lodges_name` (`name`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Achievements
@@ -113,7 +57,8 @@ CREATE TABLE `achievements` (
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `officials` (
+-- Officials
+CREATE TABLE `officials` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` enum(
     'Ordensmästare',
@@ -148,15 +93,90 @@ CREATE TABLE IF NOT EXISTS `officials` (
   UNIQUE KEY `uq_officials_title` (`title`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+-- =====================================================
+-- MAIN ENTITIES
+-- =====================================================
+-- Users
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(256) NOT NULL,
+  `email` varchar(256) NOT NULL,
+  `passwordHash` varchar(512) NOT NULL,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png',
+  `archive` enum('Deceased', 'Retired', 'Removed') DEFAULT NULL,
+  `firstname` varchar(256) NOT NULL,
+  `lastname` varchar(256) NOT NULL,
+  `dateOfBirth` date NOT NULL,
+  `work` varchar(256) DEFAULT NULL,
+  `revokedAt` datetime DEFAULT NULL,
+  `mobile` varchar(20) NOT NULL,
+  `homeNumber` varchar(20) DEFAULT NULL,
+  `city` varchar(256) NOT NULL,
+  `address` varchar(256) NOT NULL,
+  `zipcode` varchar(10) NOT NULL,
+  `notes` text DEFAULT NULL,
+  `accommodationAvailable` tinyint(1) DEFAULT NULL,
+  UNIQUE KEY `uq_users_email` (`email`),
+  UNIQUE KEY `uq_users_username` (`username`),
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Posts
+CREATE TABLE `posts` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(256) NOT NULL,
+  `description` text NOT NULL,
+  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Events
+CREATE TABLE `events` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(256) NOT NULL,
+  `description` text NOT NULL,
+  `lodgeMeeting` tinyint(1) NOT NULL DEFAULT 0,
+  `price` decimal(10, 2) NOT NULL,
+  `startDate` datetime NOT NULL,
+  `endDate` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Event attendances (RSVP)
+CREATE TABLE `events_attendances` (
+  `uid` int(11) NOT NULL,
+  `eid` int(11) NOT NULL,
+  `rsvp` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`uid`, `eid`),
+  KEY `fk_events_attendances_event` (`eid`),
+  CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Mails
+CREATE TABLE `mails` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `lid` int(11) NOT NULL,
+  `title` varchar(256) NOT NULL,
+  `content` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_mails_lodge` (`lid`),
+  CONSTRAINT `fk_mails_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- =====================================================
+-- AUTHENTICATION TABLES
+-- =====================================================
 -- Revoked JWT JTIs (blacklist for logout) - store token id instead of full token
-CREATE TABLE IF NOT EXISTS `revoked_tokens` (
+CREATE TABLE `revoked_tokens` (
   `jti` varchar(128) NOT NULL,
   `expiresAt` datetime NOT NULL,
   PRIMARY KEY (`jti`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Refresh tokens for long-lived session renewal (rotate on use)
-CREATE TABLE IF NOT EXISTS `refresh_tokens` (
+CREATE TABLE `refresh_tokens` (
   `token_hash` varchar(128) NOT NULL,
   `uid` int(11) NOT NULL,
   `expiresAt` datetime NOT NULL,
@@ -170,7 +190,7 @@ CREATE TABLE IF NOT EXISTS `refresh_tokens` (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Password reset tokens (one-time use) — store hashed token
-CREATE TABLE IF NOT EXISTS `password_resets` (
+CREATE TABLE `password_resets` (
   `token_hash` varchar(128) NOT NULL,
   `uid` int(11) NOT NULL,
   `expiresAt` datetime NOT NULL,
@@ -180,15 +200,74 @@ CREATE TABLE IF NOT EXISTS `password_resets` (
   CONSTRAINT `fk_password_reset_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Event attendances (RSVP)
-CREATE TABLE IF NOT EXISTS `events_attendances` (
+-- =====================================================
+-- RELATION / JUNCTION TABLES
+-- =====================================================
+-- Users ↔ Roles
+CREATE TABLE `users_roles` (
   `uid` int(11) NOT NULL,
+  `rid` int(11) NOT NULL,
+  PRIMARY KEY (`uid`, `rid`),
+  KEY `fk_user_roles_role` (`rid`),
+  CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`rid`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Users ↔ Lodges
+CREATE TABLE `users_lodges` (
+  `uid` int(11) NOT NULL,
+  `lid` int(11) NOT NULL,
+  PRIMARY KEY (`uid`, `lid`),
+  KEY `fk_user_lodges_lodge_fixed` (`lid`),
+  CONSTRAINT `fk_user_lodges_lodge_fixed` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_user_lodges_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Users ↔ Achievements (which user has which achievement)
+CREATE TABLE `users_achievements` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `uid` int(11) NOT NULL,
+  `aid` int(11) NOT NULL,
+  `awardedAt` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `fk_users_achievements_achievement` (`aid`),
+  KEY `fk_users_achievements_user` (`uid`),
+  CONSTRAINT `fk_users_achievements_achievement` FOREIGN KEY (`aid`) REFERENCES `achievements` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_achievements_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+CREATE TABLE `users_officials` (
+  `uid` int(11) NOT NULL,
+  `oid` int(11) NOT NULL,
+  `appointedAt` datetime NOT NULL,
+  `unAppointedAt` datetime DEFAULT NULL,
+  PRIMARY KEY (`uid`, `oid`),
+  KEY `fk_users_officials_official` (`oid`),
+  CONSTRAINT `fk_users_officials_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_officials_official` FOREIGN KEY (`oid`) REFERENCES `officials` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Users ↔ Mails (inbox entries generated when a mail is sent to users)
+CREATE TABLE `users_mails` (
+  `uid` int(11) NOT NULL,
+  `mid` int(11) NOT NULL,
+  `sentAt` datetime NOT NULL,
+  `isRead` tinyint(1) NOT NULL DEFAULT 0,
+  `delivered` tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`uid`, `mid`),
+  KEY `fk_users_mails_mail` (`mid`),
+  CONSTRAINT `fk_users_mails_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_mails_mail` FOREIGN KEY (`mid`) REFERENCES `mails` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Lodges ↔ Events (link events to lodges)
+CREATE TABLE `lodges_events` (
+  `lid` int(11) NOT NULL,
   `eid` int(11) NOT NULL,
-  `rsvp` tinyint(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`uid`, `eid`),
-  KEY `fk_events_attendances_event` (`eid`),
-  CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  PRIMARY KEY (`lid`, `eid`),
+  KEY `fk_lodges_events_event` (`eid`),
+  CONSTRAINT `fk_lodges_events_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_lodges_events_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =====================================================
@@ -239,77 +318,7 @@ CREATE TABLE `event_payments` (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =====================================================
--- RELATION / JUNCTION TABLES
--- =====================================================
--- Users ↔ Roles
-CREATE TABLE `users_roles` (
-  `uid` int(11) NOT NULL,
-  `rid` int(11) NOT NULL,
-  PRIMARY KEY (`uid`, `rid`),
-  KEY `fk_user_roles_role` (`rid`),
-  CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`rid`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Users ↔ Lodges
-CREATE TABLE `users_lodges` (
-  `uid` int(11) NOT NULL,
-  `lid` int(11) NOT NULL,
-  PRIMARY KEY (`uid`, `lid`),
-  KEY `fk_user_lodges_lodge_fixed` (`lid`),
-  CONSTRAINT `fk_user_lodges_lodge_fixed` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_user_lodges_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Lodges ↔ Events (link events to lodges)
-CREATE TABLE `lodges_events` (
-  `lid` int(11) NOT NULL,
-  `eid` int(11) NOT NULL,
-  PRIMARY KEY (`lid`, `eid`),
-  KEY `fk_lodges_events_event` (`eid`),
-  CONSTRAINT `fk_lodges_events_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT `fk_lodges_events_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Users ↔ Achievements (which user has which achievement)
-CREATE TABLE `users_achievements` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `uid` int(11) NOT NULL,
-  `aid` int(11) NOT NULL,
-  `awardedAt` datetime NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `fk_users_achievements_achievement` (`aid`),
-  KEY `fk_users_achievements_user` (`uid`),
-  CONSTRAINT `fk_users_achievements_achievement` FOREIGN KEY (`aid`) REFERENCES `achievements` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_users_achievements_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
-CREATE TABLE `users_officials` (
-  `uid` int(11) NOT NULL,
-  `oid` int(11) NOT NULL,
-  `appointedAt` datetime NOT NULL,
-  `unAppointedAt` datetime DEFAULT NULL,
-  PRIMARY KEY (`uid`, `oid`),
-  KEY `fk_users_officials_official` (`oid`),
-  CONSTRAINT `fk_users_officials_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_users_officials_official` FOREIGN KEY (`oid`) REFERENCES `officials` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Users ↔ Mails (inbox entries generated when a mail is sent to users)
-CREATE TABLE IF NOT EXISTS `users_mails` (
-  `uid` int(11) NOT NULL,
-  `mid` int(11) NOT NULL,
-  `sentAt` datetime NOT NULL,
-  `isRead` tinyint(1) NOT NULL DEFAULT 0,
-  `delivered` tinyint(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`uid`, `mid`),
-  KEY `fk_users_mails_mail` (`mid`),
-  CONSTRAINT `fk_users_mails_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_users_mails_mail` FOREIGN KEY (`mid`) REFERENCES `mails` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- =====================================================
--- Seed data for local development / tests
+-- Seed data for local development
 -- =====================================================
 -- Roles
 INSERT INTO
@@ -384,132 +393,6 @@ UPDATE
 VALUES
   (`title`);
 
--- Users
-INSERT INTO
-  `users` (
-    `id`,
-    `username`,
-    `email`,
-    `passwordHash`,
-    `createdAt`,
-    `picture`,
-    `firstname`,
-    `lastname`,
-    `dateOfBirth`,
-    `work`,
-    `mobile`,
-    `homeNumber`,
-    `city`,
-    `address`,
-    `zipcode`,
-    `accommodationAvailable`,
-    `notes`
-  )
-VALUES
-  (
-    1,
-    'alice',
-    'alice@example.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
-    CURRENT_DATE(),
-    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
-    'Alice',
-    'Example',
-    '1985-06-15',
-    'Software Engineer',
-    '0701234567',
-    NULL,
-    'Stockholm',
-    'Storgatan 1',
-    '11122',
-    1,
-    ''
-  ),
-  (
-    2,
-    'bob',
-    'bob@example.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$rDHqFYtGQFkrtQB+z/qo1A$qMOLscJ+esVBDhUfeg3wN6IxI0bqllCMR80jRLmJBkE",
-    CURRENT_DATE(),
-    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
-    'Bob',
-    'Tester',
-    '1990-01-01',
-    'QA',
-    '0709876543',
-    NULL,
-    'Stockholm',
-    'Testvägen 2',
-    '22233',
-    0,
-    NULL
-  ),
-  (
-    3,
-    'viktorlinne',
-    'viktor.linne@gmail.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAA",
-    CURRENT_DATE(),
-    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
-    'Viktor',
-    'Linné',
-    '2002-01-18',
-    'Webadmin',
-    '0708788520',
-    NULL,
-    'Kungsbacka',
-    '',
-    '43490',
-    NULL,
-    NULL
-  ) ON DUPLICATE KEY
-UPDATE
-  `username` =
-VALUES
-  (`username`),
-  `email` =
-VALUES
-  (`email`),
-  `passwordHash` =
-VALUES
-  (`passwordHash`),
-  `picture` =
-VALUES
-  (`picture`),
-  `firstname` =
-VALUES
-  (`firstname`),
-  `lastname` =
-VALUES
-  (`lastname`),
-  `dateOfBirth` =
-VALUES
-  (`dateOfBirth`),
-  `work` =
-VALUES
-  (`work`),
-  `mobile` =
-VALUES
-  (`mobile`),
-  `homeNumber` =
-VALUES
-  (`homeNumber`),
-  `city` =
-VALUES
-  (`city`),
-  `address` =
-VALUES
-  (`address`),
-  `zipcode` =
-VALUES
-  (`zipcode`),
-  `accommodationAvailable` =
-VALUES
-  (`accommodationAvailable`),
-  `notes` =
-VALUES
-  (`notes`);
-
 -- Lodges
 INSERT INTO
   `lodges` (
@@ -565,12 +448,154 @@ UPDATE
   `name` =
 VALUES
   (`name`),
+  `city` =
+VALUES
+  (`city`),
   `description` =
 VALUES
   (`description`),
   `email` =
 VALUES
-  (`email`);
+  (`email`),
+  `picture` =
+VALUES
+  (`picture`);
+
+-- Users
+INSERT INTO
+  `users` (
+    `id`,
+    `username`,
+    `email`,
+    `passwordHash`,
+    `picture`,
+    `archive`,
+    `firstname`,
+    `lastname`,
+    `dateOfBirth`,
+    `work`,
+    `revokedAt`,
+    `mobile`,
+    `homeNumber`,
+    `city`,
+    `address`,
+    `zipcode`,
+    `notes`,
+    `accommodationAvailable`
+  )
+VALUES
+  (
+    1,
+    'alice',
+    'alice@example.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
+    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
+    NULL,
+    'Alice',
+    'Example',
+    '1985-06-15',
+    'Software Engineer',
+    NULL,
+    '0701234567',
+    NULL,
+    'Stockholm',
+    'Storgatan 1',
+    '11122',
+    '',
+    1
+  ),
+  (
+    2,
+    'bob',
+    'bob@example.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
+    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
+    NULL,
+    'Bob',
+    'Tester',
+    '1990-01-01',
+    'QA',
+    NULL,
+    '0709876543',
+    NULL,
+    'Stockholm',
+    'Testvägen 2',
+    '22233',
+    NULL,
+    0
+  ),
+  (
+    3,
+    'viktorlinne',
+    'viktor.linne@gmail.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
+    "https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png",
+    NULL,
+    'Viktor',
+    'Linné',
+    '2002-01-18',
+    'Webadmin',
+    NULL,
+    '0708788520',
+    NULL,
+    'Kungsbacka',
+    'Motionsvägen 74',
+    '43490',
+    NULL,
+    NULL
+  ) ON DUPLICATE KEY
+UPDATE
+  `username` =
+VALUES
+  (`username`),
+  `email` =
+VALUES
+  (`email`),
+  `passwordHash` =
+VALUES
+  (`passwordHash`),
+  `picture` =
+VALUES
+  (`picture`),
+  `archive` =
+VALUES
+  (`archive`),
+  `firstname` =
+VALUES
+  (`firstname`),
+  `lastname` =
+VALUES
+  (`lastname`),
+  `dateOfBirth` =
+VALUES
+  (`dateOfBirth`),
+  `work` =
+VALUES
+  (`work`),
+  `revokedAt` =
+VALUES
+  (`revokedAt`),
+  `mobile` =
+VALUES
+  (`mobile`),
+  `homeNumber` =
+VALUES
+  (`homeNumber`),
+  `city` =
+VALUES
+  (`city`),
+  `address` =
+VALUES
+  (`address`),
+  `zipcode` =
+VALUES
+  (`zipcode`),
+  `notes` =
+VALUES
+  (`notes`),
+  `accommodationAvailable` =
+VALUES
+  (`accommodationAvailable`);
 
 -- Users ↔ Roles (predictable state)
 DELETE FROM
@@ -609,11 +634,11 @@ WHERE
   `uid` IN (1, 2, 3);
 
 INSERT INTO
-  `users_officials` (`uid`, `oid`, `appointedAt`)
+  `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
 VALUES
-  (1, 1, '2025-12-01 10:00:00'),
-  (1, 2, '2025-12-01 10:00:00'),
-  (2, 2, '2025-12-01 10:00:00');
+  (1, 1, '2025-12-01 10:00:00', NULL),
+  (1, 2, '2025-12-01 10:00:00', NULL),
+  (2, 2, '2025-12-01 10:00:00', NULL);
 
 -- Users ↔ Lodges
 DELETE FROM
@@ -678,7 +703,7 @@ VALUES
 VALUES
   (`endDate`);
 
--- Lodges ↔ Events
+-- Lodges ↔ Events (predictable state)
 DELETE FROM
   `lodges_events`
 WHERE
@@ -690,6 +715,19 @@ VALUES
   (1, 1),
   (2, 2);
 
+-- Event attendances (RSVP)
+DELETE FROM
+  `events_attendances`
+WHERE
+  `uid` IN (1, 2, 3);
+
+INSERT INTO
+  `events_attendances` (`uid`, `eid`, `rsvp`)
+VALUES
+  (1, 1, 1),
+  (2, 1, 0),
+  (3, 2, 1);
+
 -- Posts
 INSERT INTO
   `posts` (`id`, `title`, `description`, `picture`)
@@ -698,31 +736,13 @@ VALUES
     1,
     'Welcome to OSVS',
     'This is the first post on our new platform!',
-    'posts/postPlaceholder.png'
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png'
   ),
   (
     2,
     'Upcoming Event',
     'Join us for our annual gathering next month.',
-    'posts/postPlaceholder.png'
-  ),
-  (
-    3,
-    'Upcoming Event',
-    'Join us for our annual gathering next month.',
-    'posts/postPlaceholder.png'
-  ),
-  (
-    4,
-    'Upcoming Event',
-    'Join us for our annual gathering next month.',
-    'posts/postPlaceholder.png'
-  ),
-  (
-    5,
-    'Upcoming Event',
-    'Join us for our annual gathering next month.',
-    'posts/postPlaceholder.png'
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png'
   ) ON DUPLICATE KEY
 UPDATE
   `title` =
@@ -761,6 +781,136 @@ VALUES
   `content` =
 VALUES
   (`content`);
+
+-- Users ↔ Mails (inbox entries)
+DELETE FROM
+  `users_mails`
+WHERE
+  `uid` IN (1, 2, 3);
+
+INSERT INTO
+  `users_mails` (`uid`, `mid`, `sentAt`, `isRead`, `delivered`)
+VALUES
+  (1, 1, '2026-01-10 09:00:00', 1, 1),
+  (2, 1, '2026-01-10 09:00:00', 0, 1),
+  (3, 1, '2026-01-10 09:00:00', 0, 1),
+  (1, 2, '2026-01-20 12:00:00', 0, 1);
+
+-- Membership payments (yearly) - predictable state for these users/years
+DELETE FROM
+  `membership_payments`
+WHERE
+  `uid` IN (1, 2, 3)
+  AND `year` IN (2025, 2026);
+
+INSERT INTO
+  `membership_payments` (
+    `uid`,
+    `amount`,
+    `year`,
+    `status`,
+    `provider`,
+    `provider_ref`,
+    `currency`,
+    `invoice_token`,
+    `expiresAt`,
+    `metadata`
+  )
+VALUES
+  (
+    1,
+    600.00,
+    2026,
+    'Paid',
+    'Manual',
+    'seed-uid1-2026',
+    'SEK',
+    'inv_seed_uid1_2026',
+    '2026-12-31 23:59:59',
+    JSON_OBJECT('seed', true)
+  ),
+  (
+    2,
+    600.00,
+    2026,
+    'Pending',
+    'Manual',
+    'seed-uid2-2026',
+    'SEK',
+    'inv_seed_uid2_2026',
+    '2026-12-31 23:59:59',
+    JSON_OBJECT('seed', true)
+  ),
+  (
+    3,
+    600.00,
+    2026,
+    'Paid',
+    'Manual',
+    'seed-uid3-2026',
+    'SEK',
+    'inv_seed_uid3_2026',
+    '2026-12-31 23:59:59',
+    JSON_OBJECT('seed', true)
+  );
+
+-- Event payments - predictable state for these users/events
+DELETE FROM
+  `event_payments`
+WHERE
+  `uid` IN (1, 2, 3)
+  AND `eid` IN (1, 2);
+
+INSERT INTO
+  `event_payments` (
+    `uid`,
+    `eid`,
+    `amount`,
+    `status`,
+    `provider`,
+    `provider_ref`,
+    `currency`,
+    `invoice_token`,
+    `expiresAt`,
+    `metadata`
+  )
+VALUES
+  (
+    1,
+    1,
+    275.00,
+    'Paid',
+    'Manual',
+    'seed-uid1-eid1',
+    'SEK',
+    'inv_seed_uid1_eid1',
+    '2026-02-14 17:59:59',
+    JSON_OBJECT('seed', true)
+  ),
+  (
+    2,
+    1,
+    275.00,
+    'Pending',
+    'Manual',
+    'seed-uid2-eid1',
+    'SEK',
+    'inv_seed_uid2_eid1',
+    '2026-02-14 17:59:59',
+    JSON_OBJECT('seed', true)
+  ),
+  (
+    3,
+    2,
+    0.00,
+    'Paid',
+    'Manual',
+    'seed-uid3-eid2',
+    'SEK',
+    'inv_seed_uid3_eid2',
+    '2026-06-20 09:59:59',
+    JSON_OBJECT('seed', true)
+  );
 
 -- =====================================================
 -- RE-ENABLE FOREIGN KEY CHECKS

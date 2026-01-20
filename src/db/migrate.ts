@@ -12,7 +12,6 @@ dotenv.config();
 function findSchemaPath(): string {
   const cwd = process.cwd();
   const candidates = [
-    path.resolve(cwd, "src/db/schema.sql"),
     path.resolve(cwd, "dist/db/schema.sql"),
     path.resolve(cwd, "src/db/schema.sql"),
   ];
@@ -29,7 +28,7 @@ async function migrate() {
     const sql = fs.readFileSync(schemaPath, "utf8");
     logger.info(
       { schemaPath },
-      "Running migration using dedicated connection..."
+      "Running migration using dedicated connection...",
     );
 
     conn = await mysql.createConnection({
@@ -41,27 +40,39 @@ async function migrate() {
 
     // Drop all tables in reverse order of foreign key dependencies (dev-friendly)
     const dropSQL = `
-      CREATE DATABASE IF NOT EXISTS osvs DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
-      USE osvs;
-      SET FOREIGN_KEY_CHECKS = 0;
-      DROP TABLE IF EXISTS event_payments;
-      DROP TABLE IF EXISTS events_attendances;
-      DROP TABLE IF EXISTS membership_payments;
-      DROP TABLE IF EXISTS users_achievements;
-      DROP TABLE IF EXISTS achievements;
-      DROP TABLE IF EXISTS users_mails;
-      DROP TABLE IF EXISTS lodges_events;
-      DROP TABLE IF EXISTS users_lodges;
-      DROP TABLE IF EXISTS users_roles;
-      DROP TABLE IF EXISTS users_officials;
-      DROP TABLE IF EXISTS mails;
-      DROP TABLE IF EXISTS events;
-      DROP TABLE IF EXISTS posts;
-      DROP TABLE IF EXISTS users;
-      DROP TABLE IF EXISTS lodges;
-      DROP TABLE IF EXISTS roles;
-      DROP TABLE IF EXISTS officials;
-      SET FOREIGN_KEY_CHECKS = 1;
+    CREATE DATABASE IF NOT EXISTS osvs DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
+    USE osvs;
+    SET FOREIGN_KEY_CHECKS = 0;
+    
+    DROP TABLE IF EXISTS event_payments;
+    DROP TABLE IF EXISTS membership_payments;
+    
+    DROP TABLE IF EXISTS users_mails;
+    DROP TABLE IF EXISTS mails;
+    
+    DROP TABLE IF EXISTS events_attendances;
+    DROP TABLE IF EXISTS lodges_events;
+    DROP TABLE IF EXISTS events;
+    
+    DROP TABLE IF EXISTS users_achievements;
+    DROP TABLE IF EXISTS users_officials;
+    DROP TABLE IF EXISTS users_lodges;
+    DROP TABLE IF EXISTS users_roles;
+    
+    DROP TABLE IF EXISTS password_resets;
+    DROP TABLE IF EXISTS refresh_tokens;
+    DROP TABLE IF EXISTS revoked_tokens;
+    
+    DROP TABLE IF EXISTS posts;
+    DROP TABLE IF EXISTS users;
+    
+    DROP TABLE IF EXISTS achievements;
+    DROP TABLE IF EXISTS officials;
+    DROP TABLE IF EXISTS lodges;
+    DROP TABLE IF EXISTS roles;
+    
+    SET FOREIGN_KEY_CHECKS = 1;
+    
     `;
 
     await conn.query(dropSQL);
