@@ -29,14 +29,14 @@ import type {
   ForgotPasswordBody,
   ResetPasswordBody,
   RegisterBody,
-} from "../schemas/authSchema";
+} from "@osvs/schemas";
 import { PASSWORD_RESET_TOKEN_MS } from "../config/constants";
 import { uploadToStorage, deleteProfilePicture } from "../utils/fileUpload";
 
 export async function login(
   req: RequestWithBody<LoginBody>,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   const { email, password } = req.body;
   if (!email || !password)
@@ -51,12 +51,13 @@ export async function login(
 export async function refresh(
   req: RequestWithCookies,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   const refresh = req.cookies
     ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
     : undefined;
-  if (!refresh) return res.status(401).json({ error: "Saknar uppdateringstoken" });
+  if (!refresh)
+    return res.status(401).json({ error: "Saknar uppdateringstoken" });
   const out = await sessionService.refreshFromCookie(res, String(refresh));
   if (!out) return res.status(401).json({ error: "Saknar uppdateringstokenF" });
   return res.json(out);
@@ -65,7 +66,7 @@ export async function refresh(
 export async function logout(
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   await sessionService.logoutFromRequest(req, res);
   return res.status(200).json({ message: "Logged out from this device" });
@@ -74,7 +75,7 @@ export async function logout(
 export async function forgotPassword(
   req: RequestWithBody<ForgotPasswordBody>,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "email required" });
@@ -104,7 +105,7 @@ export async function forgotPassword(
 export async function resetPassword(
   req: RequestWithBody<ResetPasswordBody>,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   const { token, password } = req.body;
   if (!token || !password)
@@ -136,7 +137,7 @@ export async function resetPassword(
 export async function register(
   req: RequestWithBody<RegisterBody> & { file?: Express.Multer.File },
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   const {
     username,
@@ -227,7 +228,7 @@ export async function register(
         picture: pictureKey,
         notes: (notes as string) ?? null,
       },
-      numericLodgeId
+      numericLodgeId,
     );
   } catch (err) {
     // If we uploaded a picture but user creation failed, clean it up
@@ -237,7 +238,7 @@ export async function register(
       } catch (delErr) {
         logger.error(
           "Failed to cleanup uploaded picture after registration error",
-          delErr
+          delErr,
         );
       }
     }
@@ -254,7 +255,7 @@ export async function register(
 export async function me(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   if (!req.user?.userId)
     return res.status(401).json({ error: "Invalid token payload" });
@@ -267,13 +268,18 @@ export async function me(
   const pictureUrl = publicUser.picture
     ? await getPublicUrl(publicUser.picture)
     : null;
-  return res.json({ user: { ...publicUser, pictureUrl }, roles, achievements, officials });
+  return res.json({
+    user: { ...publicUser, pictureUrl },
+    roles,
+    achievements,
+    officials,
+  });
 }
 
 export async function revokeAll(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): Promise<Response | void> {
   const uid = req.user?.userId;
   if (!uid) return res.status(401).json({ error: "Invalid token payload" });

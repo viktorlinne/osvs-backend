@@ -1,7 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import * as lodgeService from "../services";
-import { createLodgeSchema, updateLodgeSchema } from "../schemas/lodgesSchema";
+import { createLodgeSchema, updateLodgeSchema } from "@osvs/schemas";
 
 export async function listLodgesHandler(
   _req: AuthenticatedRequest,

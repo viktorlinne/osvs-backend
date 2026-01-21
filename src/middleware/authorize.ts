@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { RoleValue } from "../schemas/rolesSchema";
+import type { RoleValue } from "@osvs/schemas";
 import { getUserRoles } from "../services";
 import logger from "../utils/logger";
 

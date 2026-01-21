@@ -4,13 +4,14 @@ import type {
   ListEventsQuery,
   CreateEventBody,
   UpdateEventBody,
-} from "../schemas/eventsSchema";
-import { rsvpSchema } from "../schemas/eventsSchema";
+  RSVPBody,
+} from "@osvs/schemas";
+import { rsvpSchema } from "@osvs/schemas";
 import logger from "../utils/logger";
 import * as eventsService from "../services";
 import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
-import { LinkLodgeBody, linkLodgeSchema } from "../schemas/lodgesSchema";
+import { LinkLodgeBody, linkLodgeSchema } from "@osvs/schemas";
 
 export async function listEventsHandler(
   _req: AuthenticatedRequest,

@@ -1,8 +1,8 @@
 import pool from "../config/db";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import type { PoolConnection } from "mysql2/promise";
-import type { Lodge } from "../schemas/lodgesSchema";
-import { lodgeSchema } from "../schemas/lodgesSchema";
+import type { Lodge } from "@osvs/schemas";
+import { lodgeSchema } from "@osvs/schemas";
 import parseRow from "../utils/parseRow";
 
 export async function listLodges(): Promise<Lodge[]> {

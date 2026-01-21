@@ -1,10 +1,17 @@
 import type { NextFunction, Response, Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { UpdateUserProfileBody, ListUsersQuery } from "../schemas/usersSchema";
-import { addAchievementSchema } from "../schemas/achievementsSchema";
-import type { SetRolesBody } from "../schemas/rolesSchema";
-import { setRolesSchema } from "../schemas/rolesSchema";
-import type { SetLodgeBody } from "../schemas/lodgesSchema";
+import type {
+  UpdateUserProfileBody,
+  ListUsersQuery,
+  SetRolesBody,
+  SetLodgeBody,
+  AddAchievementBody,
+} from "@osvs/schemas";
+import {
+  addAchievementSchema,
+  setRolesSchema,
+  setLodgeSchema,
+} from "@osvs/schemas";
 import {
   uploadToStorage,
   deleteProfilePicture,
@@ -23,7 +30,7 @@ import {
 } from "../services";
 import { toPublicUser } from "../utils/serialize";
 import { getUserLodge, setUserLodge } from "../services";
-import { setLodgeSchema } from "../schemas/lodgesSchema";
+// (schemas imported above)
 import logger from "../utils/logger";
 import { PROFILE_PLACEHOLDER } from "../config/constants";
 

@@ -1,8 +1,13 @@
 import pool from "../config/db";
-import type { UserRecord, CreateUserInput, PublicUser } from "../schemas/usersSchema";
-import type { Achievement } from "../schemas/achievementsSchema";
-import type { Role, RoleValue } from "../schemas/rolesSchema";
-import { RoleValues } from "../schemas/rolesSchema";
+import type {
+  UserRecord,
+  CreateUserInput,
+  PublicUser,
+  Achievement,
+  Role,
+  RoleValue,
+} from "@osvs/schemas";
+import { RoleValues } from "@osvs/schemas";
 import { toPublicUser } from "../utils/serialize";
 import { normalizeToSqlDate } from "../utils/dates";
 import { ValidationError, ConflictError } from "../utils/errors";

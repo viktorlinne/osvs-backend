@@ -1,7 +1,9 @@
 import { sendMail } from "./brevoService";
 import * as mailsRepo from "../repositories/mails.repo";
-import type { Mail as MailRecord } from "../schemas/mailsSchema";
-import type { UsersMail as UsersMailRecord } from "../schemas/mailsSchema";
+import type {
+  Mail as MailRecord,
+  UsersMail as UsersMailRecord,
+} from "@osvs/schemas";
 
 export async function createMail(payload: {
   lid: number;

@@ -5,7 +5,7 @@ import * as eventsRepo from "../repositories/events.repo";
 import type {
   event_payments as EventPaymentRecord,
   EventRecord,
-} from "../schemas/eventsSchema";
+} from "@osvs/schemas";
 
 export async function getEventPrice(eventId: number): Promise<number> {
   return await eventsRepo.selectEventPrice(eventId);

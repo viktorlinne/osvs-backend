@@ -1,6 +1,6 @@
 import pool from "../config/db";
 import type { PoolConnection } from "mysql2/promise";
-import type { Official } from "../schemas/officialsSchema";
+import type { Official } from "@osvs/schemas";
 
 async function exec(
   sql: string,

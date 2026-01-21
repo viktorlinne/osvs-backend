@@ -1,7 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { CreateMailBody } from "../schemas/mailsSchema";
-import { createMailSchema } from "../schemas/mailsSchema";
+import type { CreateMailBody } from "@osvs/schemas";
+import { createMailSchema } from "@osvs/schemas";
 import * as mailsService from "../services";
 
 export async function createMailHandler(

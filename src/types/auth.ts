@@ -1,6 +1,6 @@
 import { Request } from "express";
-import type { RoleValue } from "../schemas/rolesSchema";
-import { isValidRole } from "../schemas/rolesSchema";
+import type { RoleValue } from "@osvs/schemas";
+import { isValidRole } from "@osvs/schemas";
 
 /**
  * JWT payload type

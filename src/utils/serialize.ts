@@ -1,4 +1,4 @@
-import type { UserRecord, PublicUser } from "../schemas/usersSchema";
+import type { UserRecord, PublicUser } from "@osvs/schemas";
 
 /** Format a JS Date or string to a local YYYY-MM-DD date-only string. */
 export function formatDateOnly(d: unknown): string | unknown {

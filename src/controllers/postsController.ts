@@ -1,7 +1,11 @@
 import type { NextFunction, Response } from "express";
 import type { Express } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { ListPostsQuery, CreatePostBody, UpdatePostBody } from "../schemas/postsSchema";
+import type {
+  ListPostsQuery,
+  CreatePostBody,
+  UpdatePostBody,
+} from "@osvs/schemas";
 import * as postsService from "../services";
 import {
   uploadToStorage,
@@ -14,7 +18,7 @@ import { getCached, setCached, delPattern } from "../infra/cache";
 export async function listPostsHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const query = _req.query as ListPostsQuery;
   const rawLimit = Number(query.limit ?? 20);
@@ -38,10 +42,12 @@ export async function listPostsHandler(
         id: r.id,
         title: r.title,
         // Use a shared post placeholder when no picture is set
-        pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
+        pictureUrl: await getPublicUrl(
+          r.picture ?? "posts/postPlaceholder.png",
+        ),
         // avoid returning large description in list responses
         description: r.description ? String(r.description).slice(0, 200) : "",
-      }))
+      })),
     );
 
     // store cache (best-effort)
@@ -49,17 +55,23 @@ export async function listPostsHandler(
     return res.status(200).json({ posts: withUrls });
   } catch (err) {
     const requestId =
-      res.locals.requestId ?? (_req as unknown as { requestId?: string }).requestId;
+      res.locals.requestId ??
+      (_req as unknown as { requestId?: string }).requestId;
     logger.error({ msg: "Failed to list posts", err, requestId });
-    return res.status(500).json({ error: "InternalError", message: "Misslyckades att lista inlägg", requestId });
+    return res
+      .status(500)
+      .json({
+        error: "InternalError",
+        message: "Misslyckades att lista inlägg",
+        requestId,
+      });
   }
-  
 }
 
 export async function getPostHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const postId = Number(req.params.id);
   if (!Number.isFinite(postId))
@@ -69,7 +81,7 @@ export async function getPostHandler(
   if (!post) return res.status(404).json({ error: "Inlägg hittades inte" });
 
   const pictureUrl = await getPublicUrl(
-    post.picture ?? "posts/postPlaceholder.png"
+    post.picture ?? "posts/postPlaceholder.png",
   );
   return res.status(200).json({ post: { ...post, pictureUrl } });
 }
@@ -77,7 +89,7 @@ export async function getPostHandler(
 export async function createPostHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   const { title, description } = req.body as CreatePostBody;
   if (!title || !description)
@@ -92,7 +104,8 @@ export async function createPostHandler(
       prefix: "post_",
       size: { width: 800, height: 600 },
     });
-    if (!key) return res.status(500).json({ error: "Misslyckades att lagra bilden" });
+    if (!key)
+      return res.status(500).json({ error: "Misslyckades att lagra bilden" });
     pictureKey = key;
   }
 
@@ -105,7 +118,7 @@ export async function createPostHandler(
 export async function updatePostHandler(
   req: AuthenticatedRequest & { file?: Express.Multer.File },
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ) {
   let newKey: string | null = null;
   try {
@@ -125,7 +138,8 @@ export async function updatePostHandler(
         prefix: "post_",
         size: { width: 800, height: 600 },
       });
-      if (!key) return res.status(500).json({ error: "Misslyckades att lagra bilden" });
+      if (!key)
+        return res.status(500).json({ error: "Misslyckades att lagra bilden" });
       newKey = key;
     }
 
@@ -133,7 +147,7 @@ export async function updatePostHandler(
       postId,
       title ?? null,
       description ?? null,
-      newKey
+      newKey,
     );
 
     // Invalidate list caches after an update

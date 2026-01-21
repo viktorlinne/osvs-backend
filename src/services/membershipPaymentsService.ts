@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { membershipRepo } from "../repositories";
-import type { membership_payments as MembershipPayment } from "../schemas/paymentsSchema";
+import type { membership_payments as MembershipPayment } from "@osvs/schemas";
 
 export interface CreateMembershipPaymentOpts {
   uid: number;
@@ -10,7 +10,7 @@ export interface CreateMembershipPaymentOpts {
 }
 
 export async function createMembershipPayment(
-  opts: CreateMembershipPaymentOpts
+  opts: CreateMembershipPaymentOpts,
 ): Promise<MembershipPayment | null> {
   const { uid, year } = opts;
   const amount = typeof opts.amount === "number" ? opts.amount : 600;
@@ -35,7 +35,7 @@ export async function getById(id: number): Promise<MembershipPayment | null> {
 }
 
 export async function getByToken(
-  token: string
+  token: string,
 ): Promise<MembershipPayment | null> {
   const row = await membershipRepo.findByToken(token);
   return (row as unknown as MembershipPayment) ?? null;
@@ -45,7 +45,7 @@ export async function updateByProviderRef(
   provider: string,
   providerRef: string,
   status: string,
-  metadata: Record<string, unknown> | null = null
+  metadata: Record<string, unknown> | null = null,
 ): Promise<void> {
   // Update matching row(s) by invoice_token OR provider_ref.
   // This covers the case where the PaymentIntent metadata contains an invoice_token
@@ -65,14 +65,14 @@ export async function updateByProviderRef(
     providerRef,
     status,
     metadataStr,
-    invoiceToken ?? null
+    invoiceToken ?? null,
   );
 }
 
 export async function createMembershipPaymentIfMissing(
   uid: number,
   year: number,
-  amount?: number
+  amount?: number,
 ): Promise<MembershipPayment | null> {
   // Check if an invoice for this user and year already exists
   const rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
@@ -87,7 +87,7 @@ export async function createMembershipPaymentIfMissing(
 export async function createMembershipPaymentsIfMissingBulk(
   uids: number[],
   year: number,
-  amount?: number
+  amount?: number,
 ): Promise<MembershipPayment[]> {
   if (!Array.isArray(uids) || uids.length === 0) return [];
   const amt = typeof amount === "number" ? amount : 600;

@@ -1,7 +1,7 @@
 import pool from "../config/db";
 import { deleteProfilePicture } from "../utils/fileUpload";
 import * as postsRepo from "../repositories/posts.repo";
-import type { Post as PostRecord } from "../schemas/postsSchema";
+import type { Post as PostRecord } from "@osvs/schemas";
 
 export async function listPosts(
   limit?: number,
