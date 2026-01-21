@@ -6,6 +6,8 @@ import type {
   CreatePostBody,
   UpdatePostBody,
 } from "@osvs/schemas";
+import { createPostSchema } from "@osvs/schemas";
+import { formatZodIssues } from "../utils/formatZod";
 import * as postsService from "../services";
 import {
   uploadToStorage,
@@ -14,6 +16,7 @@ import {
 } from "../utils/fileUpload";
 import logger from "../utils/logger";
 import { getCached, setCached, delPattern } from "../infra/cache";
+import { sendError } from "../utils/response";
 
 export async function listPostsHandler(
   _req: AuthenticatedRequest,
@@ -58,13 +61,11 @@ export async function listPostsHandler(
       res.locals.requestId ??
       (_req as unknown as { requestId?: string }).requestId;
     logger.error({ msg: "Failed to list posts", err, requestId });
-    return res
-      .status(500)
-      .json({
-        error: "InternalError",
-        message: "Misslyckades att lista inlägg",
-        requestId,
-      });
+    return res.status(500).json({
+      error: "InternalError",
+      message: "Misslyckades att lista inlägg",
+      requestId,
+    });
   }
 }
 
@@ -75,10 +76,10 @@ export async function getPostHandler(
 ) {
   const postId = Number(req.params.id);
   if (!Number.isFinite(postId))
-    return res.status(400).json({ error: "Ogiltigt inläggs-ID" });
+    return sendError(res, 400, "Ogiltigt inläggs-ID");
 
   const post = await postsService.getPostById(postId);
-  if (!post) return res.status(404).json({ error: "Inlägg hittades inte" });
+  if (!post) return sendError(res, 404, "Inlägg hittades inte");
 
   const pictureUrl = await getPublicUrl(
     post.picture ?? "posts/postPlaceholder.png",
@@ -91,9 +92,10 @@ export async function createPostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const { title, description } = req.body as CreatePostBody;
-  if (!title || !description)
-    return res.status(400).json({ error: "Saknar titel eller beskrivning" });
+  const parsed = createPostSchema.safeParse(req.body);
+  if (!parsed.success)
+    return sendError(res, 400, formatZodIssues(parsed.error.issues));
+  const { title, description } = parsed.data as CreatePostBody;
 
   // Upload image (optional) and process it as a post image (resized + webp)
   const file = req.file;
@@ -104,8 +106,7 @@ export async function createPostHandler(
       prefix: "post_",
       size: { width: 800, height: 600 },
     });
-    if (!key)
-      return res.status(500).json({ error: "Misslyckades att lagra bilden" });
+    if (!key) return sendError(res, 500, "Misslyckades att lagra bilden");
     pictureKey = key;
   }
 
@@ -124,11 +125,11 @@ export async function updatePostHandler(
   try {
     const postId = Number(req.params.id);
     if (!Number.isFinite(postId))
-      return res.status(400).json({ error: "Ogiltigt inläggs-ID" });
+      return sendError(res, 400, "Ogiltigt inläggs-ID");
 
     const { title, description } = req.body as UpdatePostBody;
     if (!title && !description && !req.file) {
-      return res.status(400).json({ error: "Inget att uppdatera" });
+      return sendError(res, 400, "Inget att uppdatera");
     }
 
     // If new file uploaded, process it as post image
@@ -138,8 +139,7 @@ export async function updatePostHandler(
         prefix: "post_",
         size: { width: 800, height: 600 },
       });
-      if (!key)
-        return res.status(500).json({ error: "Misslyckades att lagra bilden" });
+      if (!key) return sendError(res, 500, "Misslyckades att lagra bilden");
       newKey = key;
     }
 

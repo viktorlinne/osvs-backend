@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/node";
 import type { AuthenticatedRequest, JWTPayload } from "../types/auth";
 import { isValidRole } from "@osvs/schemas";
 import logger from "../utils/logger";
+import { sendError } from "../utils/response";
 import type { Logger } from "pino";
 import { isJtiRevoked, findById } from "../services";
 import { getAccessTokenFromReq } from "../utils/authTokens";
@@ -23,7 +24,7 @@ export async function authMiddleware(
   );
 
   if (!token) {
-    return res.status(401).json({ error: "Vänligen logga in" });
+    return sendError(res, 401, "Vänligen logga in");
   }
   try {
     const secret = process.env.JWT_SECRET ?? "dev-secret";
@@ -47,7 +48,7 @@ export async function authMiddleware(
         const revoked = await isJtiRevoked(jti);
         if (revoked) {
           logger.warn({ msg: "Revoked token used", jti: "[redacted]" });
-          return res.status(401).json({ error: "Token revoked" });
+          return sendError(res, 401, "Token revoked");
         }
       }
     } catch (revErr) {
@@ -74,7 +75,7 @@ export async function authMiddleware(
                 msg: "Token issued before user-wide revoke",
                 userId: userIdCandidate,
               });
-              return res.status(401).json({ error: "Inloggning utgången" });
+              return sendError(res, 401, "Inloggning utgången");
             }
           }
         }
@@ -96,7 +97,7 @@ export async function authMiddleware(
       !Array.isArray(decodedObj.roles)
     ) {
       logger.warn({ msg: "Invalid JWT payload shape", payload: decoded });
-      return res.status(401).json({ error: "Invalid token payload" });
+      return sendError(res, 401, "Invalid token payload");
     }
 
     const userId = decodedObj.userId as number;
@@ -142,7 +143,7 @@ export async function authMiddleware(
     return next();
   } catch (e) {
     logger.warn({ msg: "JWT verification failed", err: e });
-    return res.status(401).json({ error: "Invalid token" });
+    return sendError(res, 401, "Invalid token");
   }
 }
 

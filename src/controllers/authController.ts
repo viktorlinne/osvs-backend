@@ -18,6 +18,7 @@ import {
 } from "../services";
 import { REFRESH_COOKIE } from "../config/constants";
 import logger from "../utils/logger";
+import { sendError } from "../utils/response";
 import { clearAuthCookies } from "../utils/authTokens";
 import crypto from "crypto";
 import { getPublicUrl } from "../utils/fileUpload";
@@ -40,11 +41,10 @@ export async function login(
 ): Promise<Response | void> {
   const { email, password } = req.body;
   if (!email || !password)
-    return res.status(400).json({ error: "email and password required" });
+    return sendError(res, 400, "email and password required");
 
   const out = await sessionService.loginWithEmail(email, password, res);
-  if (!out)
-    return res.status(401).json({ error: "Felaktiga inloggningsuppgifter" });
+  if (!out) return sendError(res, 401, "Felaktiga inloggningsuppgifter");
   return res.json(out);
 }
 
@@ -56,10 +56,9 @@ export async function refresh(
   const refresh = req.cookies
     ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
     : undefined;
-  if (!refresh)
-    return res.status(401).json({ error: "Saknar uppdateringstoken" });
+  if (!refresh) return sendError(res, 401, "Saknar uppdateringstoken");
   const out = await sessionService.refreshFromCookie(res, String(refresh));
-  if (!out) return res.status(401).json({ error: "Saknar uppdateringstokenF" });
+  if (!out) return sendError(res, 401, "Saknar uppdateringstokenF");
   return res.json(out);
 }
 
@@ -78,7 +77,7 @@ export async function forgotPassword(
   _next: NextFunction,
 ): Promise<Response | void> {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ error: "email required" });
+  if (!email) return sendError(res, 400, "email required");
   const user = await findByEmail(email);
   if (!user || !user.id) {
     // Do not reveal whether the email exists — respond 204 to be safe
@@ -109,13 +108,12 @@ export async function resetPassword(
 ): Promise<Response | void> {
   const { token, password } = req.body;
   if (!token || !password)
-    return res.status(400).json({ error: "token and password required" });
+    return sendError(res, 400, "token and password required");
   const stored = await findPasswordResetToken(token);
-  if (!stored)
-    return res.status(400).json({ error: "Invalid or expired token" });
+  if (!stored) return sendError(res, 400, "Invalid or expired token");
   if (stored.expiresAt < new Date()) {
     await consumePasswordResetToken(token);
-    return res.status(400).json({ error: "Invalid or expired token" });
+    return sendError(res, 400, "Invalid or expired token");
   }
 
   const hash = await hashPassword(password);
@@ -157,29 +155,29 @@ export async function register(
   } = req.body ?? {};
 
   // Validate required fields — routes normally validate, but enforce here too
-  if (
-    !username ||
-    !email ||
-    !password ||
-    !firstname ||
-    !lastname ||
-    !dateOfBirth ||
-    !mobile ||
-    !city ||
-    !address ||
-    !zipcode
-  ) {
-    return res
-      .status(400)
-      .json({ error: "Missing required registration fields" });
-  }
+  const requiredFields: Array<[string, unknown]> = [
+    ["username", username],
+    ["email", email],
+    ["password", password],
+    ["firstname", firstname],
+    ["lastname", lastname],
+    ["dateOfBirth", dateOfBirth],
+    ["mobile", mobile],
+    ["city", city],
+    ["address", address],
+    ["zipcode", zipcode],
+  ];
+  const missing = requiredFields
+    .filter(([, v]) => v === undefined || v === null || v === "")
+    .map(([k]) => `${k}: required`);
+  if (missing.length > 0) return sendError(res, 400, missing);
 
   // `lodgeId` is optional during registration; validate only when provided
   let numericLodgeId: number | undefined;
   if (typeof lodgeId !== "undefined" && lodgeId !== null) {
     numericLodgeId = Number(lodgeId);
     if (!Number.isFinite(numericLodgeId)) {
-      return res.status(400).json({ error: "Invalid lodgeId" });
+      return sendError(res, 400, "Invalid lodgeId");
     }
   } else {
     numericLodgeId = undefined;
@@ -187,7 +185,7 @@ export async function register(
 
   // Require a profile picture file (frontend enforces this, backend must too)
   if (!req.file) {
-    return res.status(400).json({ error: "Profile picture is required" });
+    return sendError(res, 400, "Profile picture is required");
   }
 
   const hash = await hashPassword(password as string);
@@ -202,9 +200,7 @@ export async function register(
       size: { width: 200, height: 200 },
     });
     if (!newKey) {
-      return res
-        .status(500)
-        .json({ error: "Failed to upload profile picture" });
+      return sendError(res, 500, "Failed to upload profile picture");
     }
     pictureKey = newKey;
   }
@@ -245,7 +241,7 @@ export async function register(
     throw err;
   }
 
-  if (!user) return res.status(500).json({ error: "Failed to create user" });
+  if (!user) return sendError(res, 500, "Failed to create user");
   const roles = user.id ? await getUserRoles(user.id) : [];
   const publicUser = user; // `createUser` already returns a PublicUser
   const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
@@ -257,10 +253,9 @@ export async function me(
   res: Response,
   _next: NextFunction,
 ): Promise<Response | void> {
-  if (!req.user?.userId)
-    return res.status(401).json({ error: "Invalid token payload" });
+  if (!req.user?.userId) return sendError(res, 401, "Invalid token payload");
   const user = await findById(req.user.userId);
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return sendError(res, 404, "User not found");
   const roles = user.id ? await getUserRoles(user.id) : [];
   const achievements = user.id ? await getUserAchievements(user.id) : [];
   const officials = user.id ? await getUserOfficials(user.id) : [];
@@ -282,7 +277,7 @@ export async function revokeAll(
   _next: NextFunction,
 ): Promise<Response | void> {
   const uid = req.user?.userId;
-  if (!uid) return res.status(401).json({ error: "Invalid token payload" });
+  if (!uid) return sendError(res, 401, "Invalid token payload");
   try {
     await revokeAllSessions(uid);
   } catch (err) {

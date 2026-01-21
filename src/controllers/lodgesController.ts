@@ -2,6 +2,8 @@ import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import * as lodgeService from "../services";
 import { createLodgeSchema, updateLodgeSchema } from "@osvs/schemas";
+import { formatZodIssues } from "../utils/formatZod";
+import { sendError } from "../utils/response";
 
 export async function listLodgesHandler(
   _req: AuthenticatedRequest,
@@ -18,10 +20,9 @@ export async function getLodgeHandler(
   _next: NextFunction,
 ) {
   const id = Number(req.params.id);
-  if (!Number.isFinite(id))
-    return res.status(400).json({ error: "Invalid lodge id" });
+  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid lodge id");
   const lodge = await lodgeService.findLodgeById(id);
-  if (!lodge) return res.status(404).json({ error: "Not found" });
+  if (!lodge) return sendError(res, 404, "Not found");
   return res.status(200).json({ lodge });
 }
 
@@ -32,7 +33,7 @@ export async function createLodgeHandler(
 ) {
   const parsed = createLodgeSchema.safeParse(req.body);
   if (!parsed.success)
-    return res.status(400).json({ error: parsed.error.issues });
+    return sendError(res, 400, formatZodIssues(parsed.error.issues));
   const { name, city, description, email, picture } = parsed.data;
   const id = await lodgeService.createLodge(
     name,
@@ -50,12 +51,11 @@ export async function updateLodgeHandler(
   _next: NextFunction,
 ) {
   const id = Number(req.params.id);
-  if (!Number.isFinite(id))
-    return res.status(400).json({ error: "Invalid lodge id" });
+  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid lodge id");
   const raw = req.body as Record<string, unknown>;
   const parsed = updateLodgeSchema.safeParse(raw);
   if (!parsed.success)
-    return res.status(400).json({ error: parsed.error.issues });
+    return sendError(res, 400, formatZodIssues(parsed.error.issues));
   const { name, city, description, email, picture } = parsed.data;
   await lodgeService.updateLodge(
     id,

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
+import { sendError } from "../utils/response";
 // validators removed; controllers perform necessary checks
 import authMiddleware from "../middleware/auth";
 import * as authController from "../controllers/authController";
@@ -15,7 +16,8 @@ const loginLimiter = rateLimit({
   max: 15,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "För många inloggningsförsök, försök igen senare." },
+  handler: (_req, res) =>
+    sendError(res, 429, "För många inloggningsförsök, försök igen senare."),
 });
 
 // Limit registration attempts to prevent abuse
@@ -24,9 +26,12 @@ const registerLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: {
-    error: "För många konton skapade från denna IP, försök igen senare.",
-  },
+  handler: (_req, res) =>
+    sendError(
+      res,
+      429,
+      "För många konton skapade från denna IP, försök igen senare.",
+    ),
 });
 
 // Auth schemas are imported from ./schemas/auth
@@ -83,7 +88,7 @@ router.post(
   authMiddleware,
   requireRole("Admin", "Editor"),
   uploadProfilePicture,
-  wrapAsync(authController.register)
+  wrapAsync(authController.register),
 );
 
 // Request login with email and password

@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "../types/auth";
 import type { RoleValue } from "@osvs/schemas";
 import { getUserRoles } from "../services";
 import logger from "../utils/logger";
+import { sendError } from "../utils/response";
 
 /**
  * requireRole: ensures the authenticated user (req.user) has one of the required
@@ -17,7 +18,7 @@ export function requireRole(...requiredRoles: RoleValue[]) {
   ) => {
     try {
       const payload = req.user;
-      if (!payload) return res.status(401).json({ error: "Unauthorized" });
+      if (!payload) return sendError(res, 401, "Unauthorized");
       const userId = payload.userId;
       logger.info(
         { userId, requiredRoles },
@@ -27,12 +28,12 @@ export function requireRole(...requiredRoles: RoleValue[]) {
       const has = requiredRoles.some((r) => roles.includes(r));
       logger.info({ userId, roles, has }, "authorize: roles fetched");
       if (!has) {
-        return res.status(403).json({ error: "Forbidden" });
+        return sendError(res, 403, "Forbidden");
       }
       return next();
     } catch (err) {
       logger.warn("Authorization check failed", err);
-      return res.status(500).json({ error: "Authorization check failed" });
+      return sendError(res, 500, "Authorization check failed");
     }
   };
 }
@@ -50,7 +51,7 @@ export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
   ) => {
     try {
       const payload = req.user;
-      if (!payload) return res.status(401).json({ error: "Unauthorized" });
+      if (!payload) return sendError(res, 401, "Unauthorized");
 
       const paramId = (req.params && (req.params.id ?? req.params.userId)) as
         | string
@@ -69,13 +70,13 @@ export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
 
       // If no targetId provided and caller doesn't have role, complain
       if (typeof targetId === "undefined" || Number.isNaN(targetId)) {
-        return res.status(400).json({ error: "Missing target user id" });
+        return sendError(res, 400, "Missing target user id");
       }
 
-      return res.status(403).json({ error: "Forbidden" });
+      return sendError(res, 403, "Forbidden");
     } catch (err) {
       logger.warn("Authorization check failed", err);
-      return res.status(500).json({ error: "Authorization check failed" });
+      return sendError(res, 500, "Authorization check failed");
     }
   };
 }

@@ -1,6 +1,7 @@
 import type { Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import { membershipRepo } from "../repositories";
+import { sendError } from "../utils/response";
 
 export async function createCheckoutSessionHandler() {}
 
@@ -15,7 +16,7 @@ export async function getMyMembershipsHandler(
   res: Response,
 ) {
   const uid = req.user?.userId;
-  if (!uid) return res.status(401).json({ error: "Unauthorized" });
+  if (!uid) return sendError(res, 401, "Unauthorized");
 
   try {
     const yearQuery = req.query.year;
@@ -28,16 +29,13 @@ export async function getMyMembershipsHandler(
       rows = await membershipRepo.findPaymentsForUser(uid);
     } else {
       const year = Number(yearQuery ?? NaN);
-      if (!Number.isFinite(year))
-        return res.status(400).json({ error: "Invalid year" });
+      if (!Number.isFinite(year)) return sendError(res, 400, "Invalid year");
       rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
     }
 
     return res.json(rows ?? []);
   } catch {
-    return res
-      .status(500)
-      .json({ error: "Failed to list membership payments" });
+    return sendError(res, 500, "Failed to list membership payments");
   }
 }
 

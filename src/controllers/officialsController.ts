@@ -5,6 +5,7 @@ import {
   getUserOfficials,
   setUserOfficials,
 } from "../services/officialsService";
+import { sendError } from "../utils/response";
 
 export async function listOfficialsHandler(
   _req: Request,
@@ -15,7 +16,7 @@ export async function listOfficialsHandler(
     const rows = await listOfficials();
     return res.status(200).json({ officials: rows });
   } catch {
-    return res.status(500).json({ error: "Failed to list officials" });
+    return sendError(res, 500, "Failed to list officials");
   }
 }
 
@@ -26,11 +27,11 @@ export async function getMyOfficialsHandler(
 ) {
   try {
     const uid = req.user?.userId;
-    if (!uid) return res.status(401).json({ error: "Unauthorized" });
+    if (!uid) return sendError(res, 401, "Unauthorized");
     const rows = await getUserOfficials(uid);
     return res.status(200).json({ officials: rows });
   } catch {
-    return res.status(500).json({ error: "Failed to get officials" });
+    return sendError(res, 500, "Failed to get officials");
   }
 }
 
@@ -41,12 +42,11 @@ export async function getMemberOfficialsHandler(
 ) {
   try {
     const id = Number(req.params.id);
-    if (!Number.isFinite(id))
-      return res.status(400).json({ error: "Invalid id" });
+    if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
     const rows = await getUserOfficials(id);
     return res.status(200).json({ officials: rows });
   } catch {
-    return res.status(500).json({ error: "Failed to get member officials" });
+    return sendError(res, 500, "Failed to get member officials");
   }
 }
 
@@ -57,8 +57,7 @@ export async function setMemberOfficialsHandler(
 ) {
   try {
     const id = Number(req.params.id);
-    if (!Number.isFinite(id))
-      return res.status(400).json({ error: "Invalid id" });
+    if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
     const body = req.body as { officialIds?: unknown };
     const officialIds = Array.isArray(body?.officialIds)
       ? body.officialIds.map((v) => Number(v)).filter((n) => Number.isFinite(n))
@@ -67,7 +66,7 @@ export async function setMemberOfficialsHandler(
     const rows = await getUserOfficials(id);
     return res.status(200).json({ success: true, officials: rows });
   } catch {
-    return res.status(500).json({ error: "Failed to set member officials" });
+    return sendError(res, 500, "Failed to set member officials");
   }
 }
 

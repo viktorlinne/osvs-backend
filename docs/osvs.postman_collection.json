@@ -770,6 +770,99 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Invalid Inputs",
+      "item": [
+        {
+          "name": "Register - invalid email & weak password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"bad-user\",\n  \"email\": \"not-an-email\",\n  \"password\": \"123\",\n  \"firstname\": \"\",\n  \"lastname\": \"\",\n  \"dateOfBirth\": \"not-a-date\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/auth/register",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Lodge - empty name, invalid picture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"description\": \"Test\",\n  \"address\": 123,\n  \"picture\": \"not-a-url\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/lodges",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "lodges"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Post - missing title",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"No title provided\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/posts",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "posts"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User - invalid zipcode (letters)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Test\",\n  \"zipcode\": \"ABCDE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/users/{{userId}}",
+              "host": ["{{baseURL}}"],
+              "path": ["api", "users", "{{userId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
