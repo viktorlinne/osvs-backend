@@ -22,7 +22,7 @@ CREATE TABLE `lodges` (
   `city` varchar(256) NOT NULL,
   `description` text NOT NULL,
   `email` varchar(256) DEFAULT NULL,
-  `picture` varchar(256) DEFAULT NULL,
+  `picture` varchar(256) DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/coatOfArmsPlaceholder.webp',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_lodges_name` (`name`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -110,7 +110,7 @@ CREATE TABLE `users` (
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(10) NOT NULL,
   `notes` text DEFAULT NULL,
-  `accommodationAvailable` tinyint(1) DEFAULT NULL,
+  `accommodationAvailable` tinyint(1) DEFAULT 0,
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_username` (`username`),
   PRIMARY KEY (`id`)
@@ -146,17 +146,6 @@ CREATE TABLE `events_attendances` (
   KEY `fk_events_attendances_event` (`eid`),
   CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Mails
-CREATE TABLE `mails` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `lid` int(11) NOT NULL,
-  `title` varchar(256) NOT NULL,
-  `content` text NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `fk_mails_lodge` (`lid`),
-  CONSTRAINT `fk_mails_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =====================================================
@@ -241,19 +230,6 @@ CREATE TABLE `users_officials` (
   CONSTRAINT `fk_users_officials_official` FOREIGN KEY (`oid`) REFERENCES `officials` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Users ↔ Mails (inbox entries generated when a mail is sent to users)
-CREATE TABLE `users_mails` (
-  `uid` int(11) NOT NULL,
-  `mid` int(11) NOT NULL,
-  `sentAt` datetime NOT NULL,
-  `isRead` tinyint(1) NOT NULL DEFAULT 0,
-  `delivered` tinyint(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`uid`, `mid`),
-  KEY `fk_users_mails_mail` (`mid`),
-  CONSTRAINT `fk_users_mails_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_users_mails_mail` FOREIGN KEY (`mid`) REFERENCES `mails` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
 -- Lodges ↔ Events (link events to lodges)
 CREATE TABLE `lodges_events` (
   `lid` int(11) NOT NULL,
@@ -285,7 +261,7 @@ CREATE TABLE `membership_payments` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_membership_uid_year` (`uid`, `year`),
   KEY `fk_membership_payments_user` (`uid`),
-  CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Event payments
@@ -741,47 +717,6 @@ VALUES
   `picture` =
 VALUES
   (`picture`);
-
--- Mails
-INSERT INTO
-  `mails` (`id`, `lid`, `title`, `content`)
-VALUES
-  (
-    1,
-    1,
-    'Welcome Newsletter',
-    'Welcome to Stamlogen — we´re glad you joined!'
-  ),
-  (
-    2,
-    1,
-    'Event Reminder',
-    'Reminder: Founders Meeting on 2026-02-14. Please RSVP.'
-  ) ON DUPLICATE KEY
-UPDATE
-  `lid` =
-VALUES
-  (`lid`),
-  `title` =
-VALUES
-  (`title`),
-  `content` =
-VALUES
-  (`content`);
-
--- Users ↔ Mails (inbox entries)
-DELETE FROM
-  `users_mails`
-WHERE
-  `uid` IN (1, 2, 3);
-
-INSERT INTO
-  `users_mails` (`uid`, `mid`, `sentAt`, `isRead`, `delivered`)
-VALUES
-  (1, 1, '2026-01-10 09:00:00', 1, 1),
-  (2, 1, '2026-01-10 09:00:00', 0, 1),
-  (3, 1, '2026-01-10 09:00:00', 0, 1),
-  (1, 2, '2026-01-20 12:00:00', 0, 1);
 
 -- Membership payments (yearly) - predictable state for these users/years
 DELETE FROM
