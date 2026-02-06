@@ -24,14 +24,25 @@ export async function listPostsHandler(
     : 20;
   const offset =
     Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
+  const lodgeFilterInput = query.lodgeId;
+  const lodgeIds = (Array.isArray(lodgeFilterInput)
+    ? lodgeFilterInput
+    : lodgeFilterInput != null
+      ? [lodgeFilterInput]
+      : []
+  )
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+  const normalizedLodgeIds = lodgeIds.length ? lodgeIds : undefined;
+  const cacheKey = `posts:limit:${limit}:offset:${offset}:lodges:${
+    normalizedLodgeIds?.join("_") ?? "all"
+  }`;
   try {
-    const rows = await postsService.listPosts(limit, offset);
-    // Cache key includes pagination so front-end can page deterministically
-    const cacheKey = `posts:limit:${limit}:offset:${offset}`;
     const cached = await getCached(cacheKey);
     if (cached && Array.isArray(cached as unknown[])) {
       return res.status(200).json({ posts: cached });
     }
+    const rows = await postsService.listPosts(limit, offset, normalizedLodgeIds);
     // Resolve public URLs for pictures if present
     const withUrls = await Promise.all(
       rows.map(async (r) => ({
@@ -79,7 +90,8 @@ export async function createPostHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const { title, description } = req.body as CreatePostBody;
+  const { title, description, lodgeIds: lodgeInput } = req.body as CreatePostBody;
+  const lodgeIds = parseNumericIds(lodgeInput);
   if (!title || !description)
     return res.status(400).json({ error: "Saknar titel eller beskrivning" });
 
@@ -96,7 +108,12 @@ export async function createPostHandler(
     pictureKey = key;
   }
 
-  const id = await postsService.createPost(title, description, pictureKey);
+  const id = await postsService.createPost(
+    title,
+    description,
+    pictureKey,
+    lodgeIds
+  );
   // invalidate list caches
   void delPattern("posts:*");
   return res.status(201).json({ success: true, id });
@@ -113,8 +130,11 @@ export async function updatePostHandler(
     if (!Number.isFinite(postId))
       return res.status(400).json({ error: "Ogiltigt inläggs-ID" });
 
-    const { title, description } = req.body as UpdatePostBody;
-    if (!title && !description && !req.file) {
+    const body = req.body as UpdatePostBody & Record<string, unknown>;
+    const { title, description } = body;
+    const hasLodgeInput = Object.prototype.hasOwnProperty.call(body, "lodgeIds");
+    const lodgeIds = hasLodgeInput ? parseNumericIds(body.lodgeIds) : undefined;
+    if (!title && !description && !req.file && !hasLodgeInput) {
       return res.status(400).json({ error: "Inget att uppdatera" });
     }
 
@@ -133,7 +153,9 @@ export async function updatePostHandler(
       postId,
       title ?? null,
       description ?? null,
-      newKey
+      newKey,
+      lodgeIds,
+      hasLodgeInput
     );
 
     // Invalidate list caches after an update
@@ -151,4 +173,23 @@ export async function updatePostHandler(
     }
     throw err;
   }
+}
+
+function parseNumericIds(input: unknown): number[] {
+  if (input == null) return [];
+  const rawValues = Array.isArray(input) ? input : [input];
+  const flattened = rawValues.flatMap((value) => {
+    if (typeof value === "string") {
+      return value
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+    }
+    return [value];
+  });
+  const normalized = flattened
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .map((value) => Math.floor(value));
+  return Array.from(new Set(normalized));
 }

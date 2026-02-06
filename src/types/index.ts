@@ -42,6 +42,7 @@ export type Post = {
   title: string;
   description: string;
   picture?: string | null;
+  lodges?: Array<Pick<Lodge, "id" | "name">>;
 };
 
 export type Event = {
@@ -208,8 +209,13 @@ export type RSVPBody = { status?: string };
 export type ListPostsQuery = {
   limit?: string | number;
   offset?: string | number;
+  lodgeId?: string | number | Array<string | number>;
 };
-export type CreatePostBody = { title?: string; description?: string };
+export type CreatePostBody = {
+  title?: string;
+  description?: string;
+  lodgeIds?: string | number | Array<string | number>;
+};
 export type UpdatePostBody = Partial<CreatePostBody>;
 
 // Mails DTOs
