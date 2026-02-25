@@ -24,14 +24,6 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    volumes:
-      - redis-data:/data
-    ports:
-      - "6379:6379"
-
   app:
     build: .
     restart: unless-stopped
@@ -42,11 +34,9 @@ services:
     environment:
       # override host/address values for Docker network
       DB_HOST: db
-      REDIS_URL: redis://redis:6379
       PORT: 4000
     depends_on:
       - db
-      - redis
     volumes:
       - ./public/uploads:/app/public/uploads
     healthcheck:
@@ -61,4 +51,3 @@ services:
 
 volumes:
   db-data:
-  redis-data:

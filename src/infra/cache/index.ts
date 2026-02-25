@@ -1,10 +1,36 @@
-import redis from "./redisClient";
+type CacheEntry = {
+  value: string;
+  expiresAt: number | null;
+};
+
+const cache = new Map<string, CacheEntry>();
+
+function nowMs(): number {
+  return Date.now();
+}
+
+function isExpired(entry: CacheEntry): boolean {
+  return entry.expiresAt !== null && entry.expiresAt <= nowMs();
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function patternToRegex(pattern: string): RegExp {
+  const escaped = escapeRegex(pattern).replace(/\\\*/g, ".*");
+  return new RegExp(`^${escaped}$`);
+}
 
 export async function getCached(key: string): Promise<unknown | null> {
   try {
-    const raw = await redis.get(key);
-    if (!raw) return null;
-    return JSON.parse(raw) as unknown;
+    const entry = cache.get(key);
+    if (!entry) return null;
+    if (isExpired(entry)) {
+      cache.delete(key);
+      return null;
+    }
+    return JSON.parse(entry.value) as unknown;
   } catch {
     // swallow cache errors to avoid failing requests
     return null;
@@ -18,7 +44,10 @@ export async function setCached(
 ): Promise<void> {
   try {
     const raw = JSON.stringify(value);
-    await redis.set(key, raw, { EX: ttlSeconds });
+    const safeTtlSeconds = Number.isFinite(ttlSeconds) ? ttlSeconds : 60;
+    const expiresAt =
+      safeTtlSeconds > 0 ? nowMs() + safeTtlSeconds * 1000 : null;
+    cache.set(key, { value: raw, expiresAt });
   } catch {
     // ignore cache write errors
   }
@@ -26,7 +55,7 @@ export async function setCached(
 
 export async function delCached(key: string): Promise<void> {
   try {
-    await redis.del(key);
+    cache.delete(key);
   } catch {
     // ignore
   }
@@ -34,46 +63,12 @@ export async function delCached(key: string): Promise<void> {
 
 export async function delPattern(pattern: string): Promise<void> {
   try {
-    // Use SCAN to avoid blocking Redis on large keyspaces
-    // Support different redis client return shapes and avoid spread typing issues
-    let cursor: string | number = 0;
-    do {
-      type RedisScanner = {
-        scan: (
-          c: string | number,
-          opts: { MATCH?: string; COUNT?: number }
-        ) => Promise<unknown>;
-      };
-      const raw: unknown = await (redis as unknown as RedisScanner).scan(
-        cursor,
-        {
-          MATCH: pattern,
-          COUNT: 100,
-        }
-      );
-      let keys: string[] = [];
-      if (Array.isArray(raw)) {
-        const arr = raw as unknown[];
-        cursor = (arr[0] ?? 0) as string | number;
-        keys = (arr[1] as string[]) ?? [];
-      } else if (raw && typeof raw === "object") {
-        const obj = raw as Record<string, unknown>;
-        cursor = (obj.cursor ?? (obj[0] as unknown) ?? 0) as string | number;
-        keys = (obj.keys as string[]) ?? (obj[1] as string[]) ?? [];
-      } else {
-        break;
+    const matcher = patternToRegex(pattern);
+    for (const key of cache.keys()) {
+      if (matcher.test(key)) {
+        cache.delete(key);
       }
-
-      for (const k of keys) {
-        try {
-          await redis.del(k);
-        } catch {
-          // ignore individual delete errors
-        }
-      }
-
-      if (typeof cursor === "string") cursor = Number(cursor);
-    } while (Number(cursor) !== 0);
+    }
   } catch {
     // ignore
   }
