@@ -1,4 +1,4 @@
-import type { NextFunction, Response, Express } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import type {
   UpdateUserProfileBody,
@@ -34,7 +34,7 @@ import { sendError } from "../utils/response";
 import { PROFILE_PLACEHOLDER } from "../config/constants";
 
 export async function updatePictureHandler(
-  req: AuthenticatedRequest & { file?: Express.Multer.File },
+  req: AuthenticatedRequest & { file?: Request["file"] },
   res: Response,
   _next: NextFunction,
 ) {
@@ -84,7 +84,7 @@ export async function updatePictureHandler(
 }
 
 export async function updateOtherPictureHandler(
-  req: AuthenticatedRequest & { file?: Express.Multer.File },
+  req: AuthenticatedRequest & { file?: Request["file"] },
   res: Response,
   _next: NextFunction,
 ) {

@@ -1,6 +1,3 @@
-export type ListLodgesQuery = {
-};
-
 export type CreateLodgeBody = {
   name?: string;
   city?: string;

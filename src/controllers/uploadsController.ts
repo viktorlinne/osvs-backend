@@ -21,7 +21,7 @@ export async function claimUploadHandler(
     // If it's a full Supabase public URL, extract bucket + object key
     // Expected pattern: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{objectKey}
     try {
-      const url = new URL(maybe);
+      const url = new globalThis.URL(maybe);
       const path = String(url.pathname || "");
       const match = path.match(/\/storage\/v1\/object\/public\/(.+?)\/(.+)/);
       if (match) {

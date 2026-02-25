@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction, Express } from "express";
+import type { Request, Response, NextFunction } from "express";
 import type { RequestWithBody, RequestWithCookies } from "../types/requests";
 import {
   sessionService,
@@ -133,7 +133,7 @@ export async function resetPassword(
 }
 
 export async function register(
-  req: RequestWithBody<RegisterBody> & { file?: Express.Multer.File },
+  req: RequestWithBody<RegisterBody> & { file?: Request["file"] },
   res: Response,
   _next: NextFunction,
 ): Promise<Response | void> {

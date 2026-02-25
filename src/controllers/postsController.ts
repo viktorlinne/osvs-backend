@@ -1,5 +1,4 @@
-import type { NextFunction, Response } from "express";
-import type { Express } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { ListPostsQuery, UpdatePostBody } from "../types";
 import { parseNumericIds, validateCreatePostBody } from "../validators";
@@ -82,7 +81,7 @@ export async function getPostHandler(
 }
 
 export async function createPostHandler(
-  req: AuthenticatedRequest & { file?: Express.Multer.File },
+  req: AuthenticatedRequest & { file?: Request["file"] },
   res: Response,
   _next: NextFunction,
 ) {
@@ -109,7 +108,7 @@ export async function createPostHandler(
 }
 
 export async function updatePostHandler(
-  req: AuthenticatedRequest & { file?: Express.Multer.File },
+  req: AuthenticatedRequest & { file?: Request["file"] },
   res: Response,
   _next: NextFunction,
 ) {

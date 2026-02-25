@@ -1,5 +1,5 @@
 import multer from "multer";
-import type { Express } from "express";
+import type { Request } from "express";
 import sharp from "sharp";
 import logger from "./logger";
 import { supabaseStorageAdapter } from "../infra/storage/supabase";
@@ -16,9 +16,11 @@ const storageAdapter: StorageAdapter = supabaseStorageAdapter;
 const memory = multer.memoryStorage();
 
 // File filter: only allow images
+type UploadedFile = NonNullable<Request["file"]>;
+
 const fileFilter = (
-  _req: Express.Request,
-  file: Express.Multer.File,
+  _req: Request,
+  file: UploadedFile,
   cb: multer.FileFilterCallback
 ) => {
   const allowedMimes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -53,7 +55,7 @@ export type UploadOptions = {
 };
 
 export async function uploadToStorage(
-  file: Express.Multer.File | undefined,
+  file: Request["file"],
   opts?: UploadOptions
 ): Promise<string | null> {
   if (!file || !file.buffer) return null;
