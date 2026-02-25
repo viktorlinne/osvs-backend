@@ -1,6 +1,4 @@
 export type ListLodgesQuery = {
-  limit?: string | number;
-  offset?: string | number;
 };
 
 export type CreateLodgeBody = {
@@ -46,16 +44,12 @@ export type SetLodgeBody = {
 };
 
 export type ListUsersQuery = {
-  limit?: string | number;
-  offset?: string | number;
   name?: string;
   achievementId?: string | number;
   lodgeId?: string | number;
 };
 
 export type ListEventsQuery = {
-  limit?: string | number;
-  offset?: string | number;
   lodgeId?: string | number;
 };
 
@@ -82,8 +76,6 @@ export type RSVPBody = {
 export type RsvpApiStatus = string;
 
 export type ListPostsQuery = {
-  limit?: string | number;
-  offset?: string | number;
   lodgeId?: string | number | Array<string | number>;
 };
 

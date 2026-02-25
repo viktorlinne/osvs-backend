@@ -4,11 +4,9 @@ import * as postsRepo from "../repositories/posts.repo";
 import type { Post as PostRecord } from "../types";
 
 export async function listPosts(
-  limit?: number,
-  offset?: number,
   lodgeIds?: number[],
 ): Promise<PostRecord[]> {
-  return await postsRepo.listPosts(limit, offset, lodgeIds);
+  return await postsRepo.listPosts(lodgeIds);
 }
 
 export async function createPost(

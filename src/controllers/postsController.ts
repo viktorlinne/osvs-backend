@@ -19,13 +19,6 @@ export async function listPostsHandler(
   _next: NextFunction,
 ) {
   const query = _req.query as ListPostsQuery;
-  const rawLimit = Number(query.limit ?? 20);
-  const rawOffset = Number(query.offset ?? 0);
-  const limit = Number.isFinite(rawLimit)
-    ? Math.min(Math.max(1, rawLimit), 100)
-    : 20;
-  const offset =
-    Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
 
   const lodgeFilterInput = query.lodgeId;
   const lodgeIds = (Array.isArray(lodgeFilterInput)
@@ -38,9 +31,7 @@ export async function listPostsHandler(
     .filter((value) => Number.isFinite(value));
   const normalizedLodgeIds = lodgeIds.length ? lodgeIds : undefined;
 
-  const cacheKey = `posts:limit:${limit}:offset:${offset}:lodges:${
-    normalizedLodgeIds?.join("_") ?? "all"
-  }`;
+  const cacheKey = `posts:lodges:${normalizedLodgeIds?.join("_") ?? "all"}`;
 
   try {
     const cached = await getCached(cacheKey);
@@ -48,7 +39,7 @@ export async function listPostsHandler(
       return res.status(200).json({ posts: cached });
     }
 
-    const rows = await postsService.listPosts(limit, offset, normalizedLodgeIds);
+    const rows = await postsService.listPosts(normalizedLodgeIds);
     const withUrls = await Promise.all(
       rows.map(async (r) => ({
         id: r.id,

@@ -87,15 +87,6 @@ router.post(
  *     summary: List public users
  *     security:
  *       - cookieAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *       - in: query
- *         name: offset
- *         schema:
- *           type: integer
  *     responses:
  *       200:
  *         description: Array of public users

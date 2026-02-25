@@ -6,8 +6,6 @@ import type { Post as PostRecord } from "../types";
 type SqlExecutor = Pick<PoolConnection, "execute">;
 
 export async function listPosts(
-  limit?: number,
-  offset?: number,
   lodgeIds?: number[],
 ): Promise<PostRecord[]> {
   const normalizedLodgeIds = Array.isArray(lodgeIds)
@@ -32,15 +30,6 @@ export async function listPosts(
   }
 
   sql += " ORDER BY p.id DESC";
-
-  if (typeof limit === "number" && Number.isFinite(limit)) {
-    const safeLimit = Math.max(0, Math.floor(limit));
-    sql += ` LIMIT ${safeLimit}`;
-    if (typeof offset === "number" && Number.isFinite(offset)) {
-      const safeOffset = Math.max(0, Math.floor(offset));
-      sql += ` OFFSET ${safeOffset}`;
-    }
-  }
 
   const [rows] = await pool.execute(sql, params);
   const arr = rows as unknown as Array<Record<string, unknown>>;

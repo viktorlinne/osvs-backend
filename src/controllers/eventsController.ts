@@ -13,21 +13,13 @@ export async function listEventsHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const query = _req.query as ListEventsQuery;
-  const rawLimit = Number(query.limit ?? 20);
-  const rawOffset = Number(query.offset ?? 0);
-  const limit = Number.isFinite(rawLimit)
-    ? Math.min(Math.max(1, rawLimit), 100)
-    : 20;
-  const offset =
-    Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
-  const cacheKey = `events:limit:${limit}:offset:${offset}`;
+  const cacheKey = "events:all";
   const cached = await getCached(cacheKey);
   if (cached && Array.isArray(cached as unknown[])) {
     return res.status(200).json({ events: cached });
   }
 
-  const rows = await eventsService.listEvents(limit, offset);
+  const rows = await eventsService.listEvents();
   const dto = rows.map((r) => ({
     id: r.id,
     title: r.title,
@@ -195,15 +187,7 @@ export async function listForUserHandler(
 ) {
   const uid = req.user?.userId;
   if (!uid) return sendError(res, 401, "Unauthorized");
-  const query = req.query as ListEventsQuery;
-  const rawLimit = Number(query.limit ?? 20);
-  const rawOffset = Number(query.offset ?? 0);
-  const limit = Number.isFinite(rawLimit)
-    ? Math.min(Math.max(1, rawLimit), 100)
-    : 20;
-  const offset =
-    Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.floor(rawOffset) : 0;
-  const rows = await eventsService.listEventsForUser(uid, limit, offset);
+  const rows = await eventsService.listEventsForUser(uid);
   const dto = rows.map((r) => ({
     id: r.id,
     title: r.title,

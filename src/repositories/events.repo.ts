@@ -13,17 +13,9 @@ export type EventRecord = {
   endDate: string;
 };
 
-export async function listEvents(limit?: number, offset?: number) {
+export async function listEvents() {
   let sql =
     "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events ORDER BY startDate DESC";
-  if (typeof limit === "number" && Number.isFinite(limit)) {
-    const safeLimit = Math.max(0, Math.floor(limit));
-    sql += ` LIMIT ${safeLimit}`;
-    if (typeof offset === "number" && Number.isFinite(offset)) {
-      const safeOffset = Math.max(0, Math.floor(offset));
-      sql += ` OFFSET ${safeOffset}`;
-    }
-  }
   const [rows] = await pool.execute(sql);
   return rows as unknown as Array<Record<string, unknown>>;
 }
@@ -204,8 +196,6 @@ export async function deleteLodgeEvent(
 
 export async function listEventsForUser(
   userId: number,
-  limit?: number,
-  offset?: number,
 ) {
   const sql = `
     SELECT DISTINCT e.id, e.title, e.description, e.lodgeMeeting, e.price, e.startDate, e.endDate
@@ -216,16 +206,7 @@ export async function listEventsForUser(
     ORDER BY e.startDate ASC
   `;
   const params: Array<unknown> = [userId];
-  let finalSql = sql;
-  if (typeof limit === "number" && Number.isFinite(limit)) {
-    const safeLimit = Math.max(0, Math.floor(limit));
-    finalSql += ` LIMIT ${safeLimit}`;
-    if (typeof offset === "number" && Number.isFinite(offset)) {
-      const safeOffset = Math.max(0, Math.floor(offset));
-      finalSql += ` OFFSET ${safeOffset}`;
-    }
-  }
-  const [rows] = await pool.execute(finalSql, params);
+  const [rows] = await pool.execute(sql, params);
   return rows as unknown as Array<Record<string, unknown>>;
 }
 

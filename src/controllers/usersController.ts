@@ -256,23 +256,17 @@ export async function listUsersHandler(
 ) {
   try {
     const q = _req.query as ListUsersQuery;
-    const limit = Number(q.limit ?? 100);
-    const offset = Number(q.offset ?? 0);
     const name = typeof q.name === "string" ? q.name.trim() : undefined;
     const achievementId = q.achievementId ? Number(q.achievementId) : undefined;
     const lodgeId = q.lodgeId ? Number(q.lodgeId) : undefined;
 
-    const rows = await listPublicUsers(
-      Number.isFinite(limit) ? limit : 100,
-      Number.isFinite(offset) ? offset : 0,
-      {
-        name: name || undefined,
-        achievementId: Number.isFinite(achievementId)
-          ? achievementId
-          : undefined,
-        lodgeId: Number.isFinite(lodgeId) ? lodgeId : undefined,
-      },
-    );
+    const rows = await listPublicUsers({
+      name: name || undefined,
+      achievementId: Number.isFinite(achievementId)
+        ? achievementId
+        : undefined,
+      lodgeId: Number.isFinite(lodgeId) ? lodgeId : undefined,
+    });
     // Resolve public picture URLs
     const withUrls = await Promise.all(
       rows.map(async (r) => ({

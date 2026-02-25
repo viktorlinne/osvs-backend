@@ -289,8 +289,6 @@ export async function listRoles() {
 }
 
 export async function listUsers(
-  limit = 100,
-  offset = 0,
   filters?: { name?: string; achievementId?: number; lodgeId?: number },
 ) {
   // Build dynamic SQL with optional filters
@@ -318,17 +316,8 @@ export async function listUsers(
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-  let sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
+  const sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
     FROM users u ${whereSql} ORDER BY u.id DESC`;
-
-  if (typeof limit === "number" && Number.isFinite(limit)) {
-    const safeLimit = Math.max(0, Math.floor(limit));
-    sql += ` LIMIT ${safeLimit}`;
-    if (typeof offset === "number" && Number.isFinite(offset)) {
-      const safeOffset = Math.max(0, Math.floor(offset));
-      sql += ` OFFSET ${safeOffset}`;
-    }
-  }
 
   const [rows] = await exec(sql, params);
   return rows as unknown as Array<Record<string, unknown>>;

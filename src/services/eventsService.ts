@@ -93,10 +93,8 @@ export async function associateProviderRefForPayment(
 // Use canonical `Event` from `@osvs/types` (see import above)
 
 export async function listEvents(
-  limit?: number,
-  offset?: number,
 ): Promise<EventRecord[]> {
-  const rows = await eventsRepo.listEvents(limit, offset);
+  const rows = await eventsRepo.listEvents();
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr
@@ -305,11 +303,9 @@ export async function unlinkLodgeFromEvent(
 
 export async function listEventsForUser(
   userId: number,
-  limit?: number,
-  offset?: number,
 ): Promise<EventRecord[]> {
   // List events visible to the user based on lodge membership
-  const rows = await eventsRepo.listEventsForUser(userId, limit, offset);
+  const rows = await eventsRepo.listEventsForUser(userId);
   const arr = rows as unknown as Array<Record<string, unknown>>;
   if (!Array.isArray(arr)) return [];
   return arr

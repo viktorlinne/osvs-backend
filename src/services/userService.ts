@@ -236,11 +236,9 @@ export async function listRoles(): Promise<Role[]> {
 }
 
 export async function listPublicUsers(
-  limit = 100,
-  offset = 0,
   filters?: { name?: string; achievementId?: number; lodgeId?: number },
 ) {
-  const rows = await userRepo.listUsers(limit, offset, filters);
+  const rows = await userRepo.listUsers(filters);
   if (!Array.isArray(rows)) return [];
   return rows
     .filter(isValidUserRecord)
