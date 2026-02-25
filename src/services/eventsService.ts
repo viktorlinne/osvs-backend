@@ -3,9 +3,9 @@ import { randomBytes } from "crypto";
 import { toDbRsvp, fromDbRsvp, RsvpStatus } from "../utils/rsvp";
 import * as eventsRepo from "../repositories/events.repo";
 import type {
-  event_payments as EventPaymentRecord,
+  EventPaymentRecord,
   EventRecord,
-} from "@osvs/schemas";
+} from "../types";
 
 export async function getEventPrice(eventId: number): Promise<number> {
   return await eventsRepo.selectEventPrice(eventId);

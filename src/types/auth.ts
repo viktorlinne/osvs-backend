@@ -1,10 +1,7 @@
 import { Request } from "express";
-import type { RoleValue } from "@osvs/schemas";
-import { isValidRole } from "@osvs/schemas";
+import type { RoleValue } from "./domain";
+import { isValidRole } from "./domain";
 
-/**
- * JWT payload type
- */
 export interface JWTPayload {
   userId: number;
   roles: RoleValue[];
@@ -13,9 +10,6 @@ export interface JWTPayload {
   jti?: string;
 }
 
-/**
- * Extended Express Request with authenticated user
- */
 export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
   userRoles?: RoleValue[];

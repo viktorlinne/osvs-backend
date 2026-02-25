@@ -1,9 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { CreateMailBody } from "@osvs/schemas";
-import { createMailSchema } from "@osvs/schemas";
-import { formatZodIssues } from "../utils/formatZod";
 import * as mailsService from "../services";
+import { validateCreateMailBody } from "../validators";
 import { sendError } from "../utils/response";
 
 export async function createMailHandler(
@@ -13,11 +11,11 @@ export async function createMailHandler(
 ) {
   const caller = req.user?.userId;
   if (!caller) return sendError(res, 401, "Unauthorized");
-  const parsed = createMailSchema.safeParse(req.body);
-  if (!parsed.success)
-    return sendError(res, 400, formatZodIssues(parsed.error.issues));
-  const { lid, title, content } = parsed.data as CreateMailBody;
-  if (!lid || !title || !content) return sendError(res, 400, "Missing fields");
+
+  const parsed = validateCreateMailBody(req.body);
+  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+
+  const { lid, title, content } = parsed.data;
   const id = await mailsService.createMail({
     lid: Number(lid),
     title: String(title),

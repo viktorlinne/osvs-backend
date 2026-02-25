@@ -1,6 +1,6 @@
 import pool from "../config/db";
 import type { ResultSetHeader } from "mysql2";
-import type { Mail as MailRecord } from "@osvs/schemas";
+import type { Mail as MailRecord } from "../types";
 
 export async function insertMail(payload: {
   lid: number;

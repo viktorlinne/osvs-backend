@@ -1,8 +1,7 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import * as lodgeService from "../services";
-import { createLodgeSchema, updateLodgeSchema } from "@osvs/schemas";
-import { formatZodIssues } from "../utils/formatZod";
+import { validateCreateLodgeBody, validateUpdateLodgeBody } from "../validators";
 import { sendError } from "../utils/response";
 
 export async function listLodgesHandler(
@@ -31,15 +30,15 @@ export async function createLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const parsed = createLodgeSchema.safeParse(req.body);
-  if (!parsed.success)
-    return sendError(res, 400, formatZodIssues(parsed.error.issues));
+  const parsed = validateCreateLodgeBody(req.body);
+  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+
   const { name, city, description, email, picture } = parsed.data;
   const id = await lodgeService.createLodge(
     name,
     city,
     description ?? null,
-    email,
+    email ?? null,
     picture ?? null,
   );
   return res.status(201).json({ success: true, id });
@@ -52,11 +51,13 @@ export async function updateLodgeHandler(
 ) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return sendError(res, 400, "Invalid lodge id");
+
   const raw = req.body as Record<string, unknown>;
-  const parsed = updateLodgeSchema.safeParse(raw);
-  if (!parsed.success)
-    return sendError(res, 400, formatZodIssues(parsed.error.issues));
+  const parsed = validateUpdateLodgeBody(raw);
+  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+
   const { name, city, description, email, picture } = parsed.data;
+
   await lodgeService.updateLodge(
     id,
     Object.prototype.hasOwnProperty.call(raw, "name") ? (name ?? null) : null,
@@ -69,6 +70,7 @@ export async function updateLodgeHandler(
       ? (picture ?? null)
       : null,
   );
+
   return res.status(200).json({ success: true });
 }
 

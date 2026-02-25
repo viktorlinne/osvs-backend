@@ -1,7 +1,7 @@
 import pool from "../config/db";
 import { officialsRepo } from "../repositories";
 import * as userRepo from "../repositories/user.repo";
-import type { Official } from "@osvs/schemas";
+import type { Official } from "../types";
 
 export async function listOfficials(): Promise<Official[]> {
   const rows = await officialsRepo.listOfficials();

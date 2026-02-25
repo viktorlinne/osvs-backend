@@ -1,12 +1,24 @@
 import pool from "../config/db";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import type { PoolConnection } from "mysql2/promise";
-import type { Lodge } from "@osvs/schemas";
-import { lodgeSchema } from "@osvs/schemas";
-import parseRow from "../utils/parseRow";
+import type { Lodge } from "../types";
+
+function toLodge(row: RowDataPacket): Lodge | null {
+  const id = Number(row.id);
+  if (!Number.isFinite(id)) return null;
+
+  return {
+    id,
+    name: String(row.name ?? ""),
+    city: String(row.city ?? ""),
+    description: String(row.description ?? ""),
+    email: row.email == null ? null : String(row.email),
+    picture: row.picture == null ? null : String(row.picture),
+  };
+}
 
 export async function listLodges(): Promise<Lodge[]> {
-  let sql =
+  const sql =
     "SELECT id, name, city, description, email, picture FROM lodges ORDER BY id ASC";
 
   const [rows] = await pool.execute<RowDataPacket[]>(sql);
@@ -14,38 +26,21 @@ export async function listLodges(): Promise<Lodge[]> {
   if (!Array.isArray(arr)) return [];
 
   const result: Lodge[] = [];
-  for (const r of arr) {
-    const candidate = {
-      id: Number(r.id),
-      name: r.name ?? "",
-      city: r.city ?? "",
-      description: r.description ?? "",
-      email: r.email ?? "",
-      picture: r.picture ?? "",
-    } as unknown;
-    const parsed = parseRow(lodgeSchema, candidate, { id: r.id, log: true });
-    if (parsed) result.push(parsed);
+  for (const row of arr) {
+    const lodge = toLodge(row);
+    if (lodge) result.push(lodge);
   }
   return result;
 }
 
 export async function findLodgeById(id: number): Promise<Lodge | null> {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.execute<RowDataPacket[]>(
     "SELECT id, name, city, description, email, picture FROM lodges WHERE id = ? LIMIT 1",
     [id],
   );
   const arr = rows as RowDataPacket[];
   if (!Array.isArray(arr) || arr.length === 0) return null;
-  const r = arr[0];
-  const candidate = {
-    id: Number(r.id),
-    name: r.name ?? "",
-    city: r.city ?? "",
-    description: r.description ?? "",
-    email: r.email ?? "",
-    picture: r.picture ?? "",
-  } as unknown;
-  return parseRow(lodgeSchema, candidate, { id: r.id, log: true });
+  return toLodge(arr[0]);
 }
 
 export async function createLodge(
@@ -85,7 +80,7 @@ export async function updateLodge(
   ]);
 }
 
-export async function getUserLodge(userId: number) {
+export async function getUserLodge(userId: number): Promise<Lodge | null> {
   const sql = `
     SELECT l.id, l.name, l.city, l.description, l.email, l.picture
     FROM lodges l
@@ -93,19 +88,10 @@ export async function getUserLodge(userId: number) {
     WHERE ul.uid = ?
     LIMIT 1
   `;
-  const [rows] = await pool.execute(sql, [userId]);
+  const [rows] = await pool.execute<RowDataPacket[]>(sql, [userId]);
   const arr = rows as RowDataPacket[];
   if (!Array.isArray(arr) || arr.length === 0) return null;
-  const r = arr[0];
-  const candidate = {
-    id: Number(r.id),
-    name: r.name ?? "",
-    city: r.city ?? "",
-    description: r.description ?? "",
-    email: r.email ?? "",
-    picture: r.picture ?? "",
-  } as unknown;
-  return parseRow(lodgeSchema, candidate, { id: r.id, log: true });
+  return toLodge(arr[0]);
 }
 
 export async function deleteUserLodges(userId: number, conn?: PoolConnection) {
@@ -135,6 +121,5 @@ export default {
   insertUserLodge,
 };
 
-// Backwards-compatible aliases expected by services
 export const insertLodge = createLodge;
 export const updateLodgeRecord = updateLodge;

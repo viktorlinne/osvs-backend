@@ -2,7 +2,7 @@ import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import * as Sentry from "@sentry/node";
 import type { AuthenticatedRequest, JWTPayload } from "../types/auth";
-import { isValidRole } from "@osvs/schemas";
+import { isValidRole } from "../types/auth";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import type { Logger } from "pino";

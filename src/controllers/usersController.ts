@@ -3,15 +3,13 @@ import type { AuthenticatedRequest } from "../types/auth";
 import type {
   UpdateUserProfileBody,
   ListUsersQuery,
-  SetRolesBody,
-  SetLodgeBody,
-} from "@osvs/schemas";
+} from "../types";
 import {
-  addAchievementSchema,
-  setRolesSchema,
-  setLodgeSchema,
-} from "@osvs/schemas";
-import { formatZodIssues } from "../utils/formatZod";
+  validateAddAchievementBody,
+  validateSetLodgeBody,
+  validateSetRolesBody,
+  validateUpdateUserProfileBody,
+} from "../validators";
 import {
   uploadToStorage,
   deleteProfilePicture,
@@ -150,8 +148,9 @@ export async function updateMeHandler(
     const uid = req.user?.userId;
     if (!uid) return sendError(res, 401, "Invalid token payload");
 
-    // `validateBody` middleware ensures `req.body` matches schema
-    const payload = req.body as UpdateUserProfileBody;
+    const parsed = validateUpdateUserProfileBody(req.body);
+    if (!parsed.ok) return sendError(res, 400, parsed.errors);
+    const payload = parsed.data as UpdateUserProfileBody;
 
     await updateUserProfile(uid, payload);
 
@@ -181,7 +180,9 @@ export async function updateUserHandler(
     if (!Number.isFinite(targetId))
       return sendError(res, 400, "Invalid target user id");
 
-    const payload = req.body as UpdateUserProfileBody;
+    const parsed = validateUpdateUserProfileBody(req.body);
+    if (!parsed.ok) return sendError(res, 400, parsed.errors);
+    const payload = parsed.data as UpdateUserProfileBody;
 
     await updateUserProfile(targetId, payload);
 
@@ -210,15 +211,10 @@ export async function addAchievementHandler(
     if (!Number.isFinite(targetId))
       return sendError(res, 400, "Invalid target user id");
 
-    const parsed = addAchievementSchema.safeParse(req.body);
-    if (!parsed.success)
-      return sendError(res, 400, formatZodIssues(parsed.error.issues));
-    const { achievementId } = parsed.data;
-
-    const awardedAt = (req.body as Record<string, unknown>).awardedAt;
+    const parsed = validateAddAchievementBody(req.body);
+    if (!parsed.ok) return sendError(res, 400, parsed.errors);
+    const { achievementId, awardedAt } = parsed.data;
     const when = awardedAt ? new Date(String(awardedAt)) : undefined;
-    if (when && Number.isNaN(when.getTime()))
-      return sendError(res, 400, "Invalid awardedAt date");
 
     const newId = await setUserAchievement(
       targetId,
@@ -327,26 +323,10 @@ export async function setRolesHandler(
     if (!Number.isFinite(targetId))
       return sendError(res, 400, "Invalid target user id");
 
-    const parsed = setRolesSchema.safeParse(req.body);
-    if (!parsed.success)
-      return sendError(res, 400, formatZodIssues(parsed.error.issues));
-    const { roleIds } = parsed.data as SetRolesBody;
-
-    if (!Array.isArray(roleIds))
-      return sendError(res, 400, "roleIds must be an array of numbers");
-
+    const parsed = validateSetRolesBody(req.body);
+    if (!parsed.ok) return sendError(res, 400, parsed.errors);
+    const { roleIds } = parsed.data;
     const numericIds = roleIds.map((r) => Number(r));
-
-    if (
-      numericIds.length === 0 ||
-      numericIds.some((n) => !Number.isFinite(n) || !Number.isInteger(n))
-    ) {
-      return sendError(
-        res,
-        400,
-        "roleIds must contain at least one integer id",
-      );
-    }
 
     try {
       const { setUserRoles } = await import("../services/userService");
@@ -415,10 +395,9 @@ export async function setLodgeHandler(
     if (!Number.isFinite(targetId))
       return sendError(res, 400, "Invalid target user id");
 
-    const parsed = setLodgeSchema.safeParse(req.body);
-    if (!parsed.success)
-      return sendError(res, 400, formatZodIssues(parsed.error.issues));
-    const { lodgeId } = parsed.data as SetLodgeBody;
+    const parsed = validateSetLodgeBody(req.body);
+    if (!parsed.ok) return sendError(res, 400, parsed.errors);
+    const { lodgeId } = parsed.data;
 
     const numericLid = lodgeId === null ? null : Number(lodgeId);
     if (numericLid !== null && !Number.isFinite(numericLid))

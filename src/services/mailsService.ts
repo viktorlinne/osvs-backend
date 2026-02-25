@@ -3,7 +3,7 @@ import * as mailsRepo from "../repositories/mails.repo";
 import type {
   Mail as MailRecord,
   UsersMail as UsersMailRecord,
-} from "@osvs/schemas";
+} from "../types";
 
 export async function createMail(payload: {
   lid: number;

@@ -21,13 +21,8 @@ CREATE TABLE `lodges` (
   `name` varchar(256) NOT NULL,
   `city` varchar(256) NOT NULL,
   `description` text NOT NULL,
-<<<<<<< HEAD
-  `email` varchar(256) NOT NULL,
-  `picture` varchar(256) NOT NULL,
-=======
   `email` varchar(256) DEFAULT NULL,
   `picture` varchar(256) DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/coatOfArmsPlaceholder.webp',
->>>>>>> 1429d2680002376f163fed953673fb42c0e31c5c
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_lodges_name` (`name`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -115,11 +110,7 @@ CREATE TABLE `users` (
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(10) NOT NULL,
   `notes` text DEFAULT NULL,
-<<<<<<< HEAD
-  `accommodationAvailable` tinyint(1) NOT NULL DEFAULT 0,
-=======
   `accommodationAvailable` tinyint(1) DEFAULT 0,
->>>>>>> 1429d2680002376f163fed953673fb42c0e31c5c
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_username` (`username`),
   PRIMARY KEY (`id`)

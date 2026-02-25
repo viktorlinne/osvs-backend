@@ -6,8 +6,8 @@ import type {
   Achievement,
   Role,
   RoleValue,
-} from "@osvs/schemas";
-import { RoleValues } from "@osvs/schemas";
+} from "../types";
+import { RoleValues } from "../types";
 import { toPublicUser } from "../utils/serialize";
 import { normalizeToSqlDate } from "../utils/dates";
 import { ValidationError, ConflictError } from "../utils/errors";

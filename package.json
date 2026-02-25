@@ -29,7 +29,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.366.0",
     "@aws-sdk/s3-request-presigner": "^3.366.0",
-    "@osvs/schemas": "file:../packages/schemas",
     "@sentry/node": "^7.51.0",
     "@sentry/tracing": "^7.51.0",
     "@supabase/supabase-js": "^2.90.1",
@@ -50,8 +49,7 @@
     "sharp": "^0.32.6",
     "sib-api-v3-sdk": "^8.5.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^4.6.3",
-    "zod": "^4.3.5"
+    "swagger-ui-express": "^4.6.3"
   },
   "devDependencies": {
     "@prisma/client": "^4.16.2",

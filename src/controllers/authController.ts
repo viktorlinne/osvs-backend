@@ -30,7 +30,7 @@ import type {
   ForgotPasswordBody,
   ResetPasswordBody,
   RegisterBody,
-} from "@osvs/schemas";
+} from "../types";
 import { PASSWORD_RESET_TOKEN_MS } from "../config/constants";
 import { uploadToStorage, deleteProfilePicture } from "../utils/fileUpload";
 

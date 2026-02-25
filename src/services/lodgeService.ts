@@ -1,6 +1,6 @@
 import pool from "../config/db";
 import * as lodgeRepo from "../repositories/lodge.repo";
-import type { Lodge } from "@osvs/schemas";
+import type { Lodge } from "../types";
 
 export async function listLodges(): Promise<Lodge[]> {
   return await lodgeRepo.listLodges();

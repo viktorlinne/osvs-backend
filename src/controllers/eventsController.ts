@@ -1,18 +1,12 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type {
-  ListEventsQuery,
-  CreateEventBody,
-  UpdateEventBody,
-} from "@osvs/schemas";
-import { rsvpSchema } from "@osvs/schemas";
+import type { ListEventsQuery, CreateEventBody, UpdateEventBody } from "../types";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import * as eventsService from "../services";
 import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
-import { LinkLodgeBody, linkLodgeSchema } from "@osvs/schemas";
-import { formatZodIssues } from "../utils/formatZod";
+import { validateLinkLodgeBody, validateRsvpBody } from "../validators";
 
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
@@ -71,14 +65,23 @@ export async function createEventHandler(
     endDate,
     lodgeIds,
   } = req.body as CreateEventBody;
+
   if (!title || !description || !startDate || !endDate) {
     return sendError(res, 400, "Missing required fields");
   }
+
+  const normalizedLodgeIds = Array.isArray(lodgeIds)
+    ? lodgeIds
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value > 0)
+        .map((value) => Math.floor(value))
+    : [];
+
   let id: number;
-  if (Array.isArray(lodgeIds) && lodgeIds.length > 0) {
+  if (normalizedLodgeIds.length > 0) {
     id = await eventsService.createEventWithLodges(
       { title, description, lodgeMeeting, price, startDate, endDate },
-      lodgeIds,
+      normalizedLodgeIds,
     );
   } else {
     id = await eventsService.createEvent({
@@ -90,6 +93,7 @@ export async function createEventHandler(
       endDate,
     });
   }
+
   void delPattern("events:*");
   return res.status(201).json({ success: true, id });
 }
@@ -102,7 +106,27 @@ export async function updateEventHandler(
   const id = Number(req.params.id);
   logger.info({ id }, "eventsController: updateEventHandler called");
   if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
-  const payload = req.body as UpdateEventBody;
+  const raw = req.body as UpdateEventBody;
+  const payload: Partial<{
+    title: string;
+    description: string;
+    lodgeMeeting: boolean | null;
+    price: number;
+    startDate: string;
+    endDate: string;
+  }> = {};
+
+  if (typeof raw.title === "string") payload.title = raw.title;
+  if (typeof raw.description === "string") payload.description = raw.description;
+  if (typeof raw.lodgeMeeting === "boolean" || raw.lodgeMeeting === null) {
+    payload.lodgeMeeting = raw.lodgeMeeting;
+  }
+  if (typeof raw.price === "number" && Number.isFinite(raw.price)) {
+    payload.price = raw.price;
+  }
+  if (typeof raw.startDate === "string") payload.startDate = raw.startDate;
+  if (typeof raw.endDate === "string") payload.endDate = raw.endDate;
+
   await eventsService.updateEvent(id, payload);
   void delPattern("events:*");
   return res.status(200).json({ success: true });
@@ -126,12 +150,14 @@ export async function linkLodgeHandler(
   _next: NextFunction,
 ) {
   const id = Number(req.params.id);
-  const parsed = linkLodgeSchema.safeParse(req.body);
-  if (!parsed.success)
-    return sendError(res, 400, formatZodIssues(parsed.error.issues));
-  const { lodgeId } = parsed.data as LinkLodgeBody;
-  if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId)))
+  const parsed = validateLinkLodgeBody(req.body);
+  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+
+  const { lodgeId } = parsed.data;
+  if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId))) {
     return sendError(res, 400, "Invalid ids");
+  }
+
   await eventsService.linkLodgeToEvent(id, Number(lodgeId));
   void delPattern("events:*");
   return res.status(200).json({ success: true });
@@ -143,17 +169,20 @@ export async function unlinkLodgeHandler(
   _next: NextFunction,
 ) {
   const id = Number(req.params.id);
-  let bodyLodge: number | string | undefined = undefined;
+
+  let bodyLodge: number | string | undefined;
   if (req.body && Object.keys(req.body).length > 0) {
-    const parsed = linkLodgeSchema.safeParse(req.body);
-    if (!parsed.success)
-      return sendError(res, 400, formatZodIssues(parsed.error.issues));
-    bodyLodge = (parsed.data as LinkLodgeBody).lodgeId;
+    const parsed = validateLinkLodgeBody(req.body);
+    if (!parsed.ok) return sendError(res, 400, parsed.errors);
+    bodyLodge = parsed.data.lodgeId;
   }
+
   const queryLodge = (req.query as ListEventsQuery)?.lodgeId;
   const lodgeId = Number(bodyLodge ?? queryLodge);
-  if (!Number.isFinite(id) || !Number.isFinite(lodgeId))
+  if (!Number.isFinite(id) || !Number.isFinite(lodgeId)) {
     return sendError(res, 400, "Invalid ids");
+  }
+
   await eventsService.unlinkLodgeFromEvent(id, lodgeId);
   void delPattern("events:*");
   return res.status(200).json({ success: true });
@@ -219,20 +248,18 @@ export async function rsvpHandler(
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
 
-    const parsed = rsvpSchema.safeParse(req.body);
-    if (!parsed.success)
-      return sendError(res, 400, formatZodIssues(parsed.error.issues));
+    const parsed = validateRsvpBody(req.body);
+    if (!parsed.ok) return sendError(res, 400, parsed.errors);
     const { status } = parsed.data;
 
     const ev = await eventsService.getEventById(id);
     if (!ev) return sendError(res, 404, "Event not found");
 
-    // Prevent RSVPing for past events
     const now = new Date();
-    if (new Date(ev.startDate) <= now)
+    if (new Date(ev.startDate) <= now) {
       return sendError(res, 400, "Cannot RSVP for past or started events");
+    }
 
-    // Ensure user is invited via lodge membership
     const invited = await eventsService.isUserInvitedToEvent(uid, id);
     if (!invited) return sendError(res, 403, "Not invited to this event");
 

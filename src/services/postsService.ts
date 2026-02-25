@@ -1,15 +1,12 @@
 import pool from "../config/db";
 import { deleteProfilePicture } from "../utils/fileUpload";
 import * as postsRepo from "../repositories/posts.repo";
-import type { Post as PostRecord } from "@osvs/schemas";
+import type { Post as PostRecord } from "../types";
 
 export async function listPosts(
   limit?: number,
   offset?: number,
-<<<<<<< HEAD
-=======
-  lodgeIds?: number[]
->>>>>>> 1429d2680002376f163fed953673fb42c0e31c5c
+  lodgeIds?: number[],
 ): Promise<PostRecord[]> {
   return await postsRepo.listPosts(limit, offset, lodgeIds);
 }
@@ -18,30 +15,13 @@ export async function createPost(
   title: string,
   description: string,
   pictureKey?: string | null,
-<<<<<<< HEAD
+  lodgeIds?: number[],
 ): Promise<number> {
-  return await postsRepo.insertPost(title, description, pictureKey);
-}
-
-export async function getPostById(postId: number): Promise<PostRecord | null> {
-  return await postsRepo.findPostById(postId);
-}
-
-export async function updatePostAtomic(
-  postId: number,
-  title: string | null,
-  description: string | null,
-  newPictureKey: string | null,
-): Promise<void> {
-=======
-  lodgeIds?: number[]
-): Promise<number> {
->>>>>>> 1429d2680002376f163fed953673fb42c0e31c5c
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const postId = await postsRepo.insertPost(title, description, pictureKey, conn);
-    if (lodgeIds && lodgeIds.length > 0) {
+    if (Array.isArray(lodgeIds) && lodgeIds.length > 0) {
       await postsRepo.replacePostLodges(postId, lodgeIds, conn);
     }
     await conn.commit();
@@ -71,7 +51,7 @@ export async function updatePostAtomic(
   description: string | null,
   newPictureKey: string | null,
   lodgeIds?: number[],
-  replaceLodges = false
+  replaceLodges = false,
 ): Promise<void> {
   const conn = await pool.getConnection();
   let oldKey: string | null = null;
