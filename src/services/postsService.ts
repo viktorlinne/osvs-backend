@@ -6,14 +6,19 @@ import type { Post as PostRecord } from "@osvs/schemas";
 export async function listPosts(
   limit?: number,
   offset?: number,
+<<<<<<< HEAD
+=======
+  lodgeIds?: number[]
+>>>>>>> 1429d2680002376f163fed953673fb42c0e31c5c
 ): Promise<PostRecord[]> {
-  return await postsRepo.listPosts(limit, offset);
+  return await postsRepo.listPosts(limit, offset, lodgeIds);
 }
 
 export async function createPost(
   title: string,
   description: string,
   pictureKey?: string | null,
+<<<<<<< HEAD
 ): Promise<number> {
   return await postsRepo.insertPost(title, description, pictureKey);
 }
@@ -28,30 +33,74 @@ export async function updatePostAtomic(
   description: string | null,
   newPictureKey: string | null,
 ): Promise<void> {
+=======
+  lodgeIds?: number[]
+): Promise<number> {
+>>>>>>> 1429d2680002376f163fed953673fb42c0e31c5c
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const oldKey = await postsRepo.selectPostPicture(postId, conn);
-    await postsRepo.updatePost(postId, title, description, newPictureKey, conn);
-
-    await conn.commit();
-    conn.release();
-
-    if (newPictureKey !== null && oldKey && oldKey !== newPictureKey) {
-      try {
-        await deleteProfilePicture(oldKey);
-      } catch {
-        // best-effort cleanup
-      }
+    const postId = await postsRepo.insertPost(title, description, pictureKey, conn);
+    if (lodgeIds && lodgeIds.length > 0) {
+      await postsRepo.replacePostLodges(postId, lodgeIds, conn);
     }
+    await conn.commit();
+    return postId;
   } catch (err) {
     try {
       await conn.rollback();
     } catch {
       // ignore
     }
-    conn.release();
     throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+export async function getPostById(postId: number): Promise<PostRecord | null> {
+  const post = await postsRepo.findPostById(postId);
+  if (!post) return null;
+  const lodges = await postsRepo.selectPostLodges(postId);
+  return lodges.length ? { ...post, lodges } : post;
+}
+
+export async function updatePostAtomic(
+  postId: number,
+  title: string | null,
+  description: string | null,
+  newPictureKey: string | null,
+  lodgeIds?: number[],
+  replaceLodges = false
+): Promise<void> {
+  const conn = await pool.getConnection();
+  let oldKey: string | null = null;
+  try {
+    await conn.beginTransaction();
+    oldKey = await postsRepo.selectPostPicture(postId, conn);
+    await postsRepo.updatePost(postId, title, description, newPictureKey, conn);
+    if (replaceLodges) {
+      await postsRepo.replacePostLodges(postId, lodgeIds ?? [], conn);
+    }
+
+    await conn.commit();
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      // ignore
+    }
+    throw err;
+  } finally {
+    conn.release();
+  }
+
+  if (newPictureKey !== null && oldKey && oldKey !== newPictureKey) {
+    try {
+      await deleteProfilePicture(oldKey);
+    } catch {
+      // best-effort cleanup
+    }
   }
 }
 
