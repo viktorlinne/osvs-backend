@@ -22,6 +22,10 @@ export {
   isUserInvitedToEvent,
   setUserRsvp,
   getUserRsvp,
+  getUserBookFood,
+  setUserBookFood,
+  listEventAttendances,
+  patchEventAttendanceByAdmin,
   getEventStats,
 } from "./events/rsvp";
 
@@ -49,6 +53,10 @@ import {
   isUserInvitedToEvent,
   setUserRsvp,
   getUserRsvp,
+  getUserBookFood,
+  setUserBookFood,
+  listEventAttendances,
+  patchEventAttendanceByAdmin,
   getEventStats,
 } from "./events/rsvp";
 
@@ -72,6 +80,9 @@ export default {
   isUserInvitedToEvent,
   setUserRsvp,
   getUserRsvp,
+  getUserBookFood,
+  setUserBookFood,
+  listEventAttendances,
+  patchEventAttendanceByAdmin,
   getEventStats,
 };
-

@@ -119,9 +119,21 @@ export type EventRecord = {
   title: string;
   description: string;
   lodgeMeeting?: boolean | null;
+  food?: boolean | null;
   price: number;
   startDate: string;
   endDate: string;
+};
+
+export type EventAttendanceRow = {
+  uid: number;
+  firstname: string;
+  lastname: string;
+  rsvp: boolean;
+  bookFood: boolean;
+  attended: boolean;
+  paymentStatus: "Pending" | "Paid" | "Failed" | "Refunded" | null;
+  paymentPaid: boolean;
 };
 
 export type MembershipPayment = {

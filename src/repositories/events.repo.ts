@@ -8,6 +8,7 @@ export type EventRecord = {
   title: string;
   description: string;
   lodgeMeeting: number | null;
+  food: number | null;
   price: number;
   startDate: string;
   endDate: string;
@@ -19,6 +20,21 @@ type LodgeRow = { id?: unknown; name?: unknown };
 type CountRow = { cnt?: unknown };
 type RsvpStatsRow = { answered?: unknown; going?: unknown };
 type RsvpRow = { rsvp?: unknown };
+type BookFoodRow = { bookFood?: unknown };
+type AttendanceStateRow = {
+  rsvp?: unknown;
+  bookFood?: unknown;
+  attended?: unknown;
+};
+type EventAttendanceListRow = {
+  uid?: unknown;
+  firstname?: unknown;
+  lastname?: unknown;
+  rsvp?: unknown;
+  bookFood?: unknown;
+  attended?: unknown;
+  paymentStatus?: unknown;
+};
 
 function asRows<T>(rows: unknown): T[] {
   return Array.isArray(rows) ? (rows as T[]) : [];
@@ -28,16 +44,21 @@ function getExecutor(conn?: PoolConnection) {
   return conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
 }
 
+function deriveFoodFromPrice(price: unknown): number {
+  const amount = Number(price);
+  return Number.isFinite(amount) && amount > 0 ? 1 : 0;
+}
+
 export async function listEvents(): Promise<EventRow[]> {
   const sql =
-    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events ORDER BY startDate DESC";
+    "SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events ORDER BY startDate DESC";
   const [rows] = await pool.execute(sql);
   return asRows<EventRow>(rows);
 }
 
 export async function findEventById(id: number): Promise<EventRow | null> {
   const [rows] = await pool.execute(
-    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events WHERE id = ? LIMIT 1",
+    "SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events WHERE id = ? LIMIT 1",
     [id],
   );
   const arr = asRows<EventRow>(rows);
@@ -56,13 +77,19 @@ export async function insertEvent(
   conn?: PoolConnection,
 ) {
   const executor = getExecutor(conn);
+  const price =
+    typeof payload.price === "number" && Number.isFinite(payload.price)
+      ? payload.price
+      : 0;
+  const food = deriveFoodFromPrice(price);
   const sql =
-    "INSERT INTO events (title, description, lodgeMeeting, price, startDate, endDate) VALUES (?, ?, ?, ?, ?, ?)";
+    "INSERT INTO events (title, description, lodgeMeeting, food, price, startDate, endDate) VALUES (?, ?, ?, ?, ?, ?, ?)";
   const params = [
     payload.title,
     payload.description,
     payload.lodgeMeeting ? 1 : 0,
-    payload.price ?? 0,
+    food,
+    price,
     payload.startDate,
     payload.endDate,
   ];
@@ -89,8 +116,11 @@ export async function updateEventRecord(
     params.push(payload.lodgeMeeting ? 1 : 0);
   }
   if (typeof payload.price !== "undefined") {
+    const price = Number(payload.price);
     sets.push("price = ?");
-    params.push(payload.price);
+    params.push(price);
+    sets.push("food = ?");
+    params.push(deriveFoodFromPrice(price));
   }
   if (typeof payload.startDate !== "undefined") {
     sets.push("startDate = ?");
@@ -214,7 +244,7 @@ export async function deleteLodgeEvent(
 
 export async function listEventsForUser(userId: number): Promise<EventRow[]> {
   const sql = `
-    SELECT DISTINCT e.id, e.title, e.description, e.lodgeMeeting, e.price, e.startDate, e.endDate
+    SELECT DISTINCT e.id, e.title, e.description, e.lodgeMeeting, e.food, e.price, e.startDate, e.endDate
     FROM events e
     JOIN lodges_events le ON le.eid = e.id
     JOIN users_lodges ul ON ul.lid = le.lid
@@ -291,6 +321,103 @@ export async function getUserRsvpFromDb(userId: number, eventId: number) {
   const arr = asRows<RsvpRow>(rows);
   if (arr.length === 0) return null;
   return Number(arr[0].rsvp);
+}
+
+export async function getUserBookFoodFromDb(userId: number, eventId: number) {
+  const [rows] = await pool.execute(
+    "SELECT bookFood FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
+    [userId, eventId],
+  );
+  const arr = asRows<BookFoodRow>(rows);
+  if (arr.length === 0) return null;
+  return Number(arr[0].bookFood);
+}
+
+export async function getEventAttendanceFromDb(userId: number, eventId: number) {
+  const [rows] = await pool.execute(
+    "SELECT rsvp, bookFood, attended FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
+    [userId, eventId],
+  );
+  const arr = asRows<AttendanceStateRow>(rows);
+  return arr[0] ?? null;
+}
+
+export async function upsertUserBookFood(
+  userId: number,
+  eventId: number,
+  bookFoodValue: number,
+  conn?: PoolConnection,
+) {
+  const executor = getExecutor(conn);
+  const sql =
+    "INSERT INTO events_attendances (uid, eid, rsvp, bookFood) VALUES (?, ?, 1, ?) ON DUPLICATE KEY UPDATE bookFood = VALUES(bookFood)";
+  await executor(sql, [userId, eventId, bookFoodValue]);
+}
+
+export async function upsertEventAttendance(
+  userId: number,
+  eventId: number,
+  fields: { rsvp: number; bookFood: number; attended: number },
+  conn?: PoolConnection,
+) {
+  const executor = getExecutor(conn);
+  const sql =
+    "INSERT INTO events_attendances (uid, eid, rsvp, bookFood, attended) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE rsvp = VALUES(rsvp), bookFood = VALUES(bookFood), attended = VALUES(attended)";
+  await executor(sql, [
+    userId,
+    eventId,
+    fields.rsvp,
+    fields.bookFood,
+    fields.attended,
+  ]);
+}
+
+export async function selectEventAttendances(
+  eventId: number,
+): Promise<EventAttendanceListRow[]> {
+  const sql = `
+    SELECT
+      invited.uid AS uid,
+      u.firstname AS firstname,
+      u.lastname AS lastname,
+      COALESCE(ea.rsvp, 0) AS rsvp,
+      COALESCE(ea.bookFood, 0) AS bookFood,
+      COALESCE(ea.attended, 0) AS attended,
+      ep.status AS paymentStatus
+    FROM (
+      SELECT DISTINCT ul.uid
+      FROM lodges_events le
+      JOIN users_lodges ul ON ul.lid = le.lid
+      WHERE le.eid = ?
+    ) invited
+    JOIN users u ON u.matrikelnummer = invited.uid
+    LEFT JOIN events_attendances ea
+      ON ea.uid = invited.uid AND ea.eid = ?
+    LEFT JOIN event_payments ep
+      ON ep.uid = invited.uid AND ep.eid = ?
+    ORDER BY u.firstname ASC, u.lastname ASC, invited.uid ASC
+  `;
+  const [rows] = await pool.execute(sql, [eventId, eventId, eventId]);
+  return asRows<EventAttendanceListRow>(rows);
+}
+
+export async function upsertEventPaymentStatus(
+  userId: number,
+  eventId: number,
+  amount: number,
+  status: "Pending" | "Paid",
+  conn?: PoolConnection,
+) {
+  const executor = getExecutor(conn);
+  const sql = `
+    INSERT INTO event_payments (uid, eid, amount, status, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, NOW(), NOW())
+    ON DUPLICATE KEY UPDATE
+      amount = VALUES(amount),
+      status = VALUES(status),
+      updatedAt = NOW()
+  `;
+  await executor(sql, [userId, eventId, amount, status]);
 }
 
 // Event payments helpers
@@ -391,6 +518,12 @@ export default {
   isUserInvitedToEvent,
   upsertUserRsvp,
   getUserRsvpFromDb,
+  getUserBookFoodFromDb,
+  getEventAttendanceFromDb,
+  upsertUserBookFood,
+  upsertEventAttendance,
+  selectEventAttendances,
+  upsertEventPaymentStatus,
   countInvitedUsersForEvent,
   countRsvpStatsForEvent,
   findEventPaymentByUidEid,
@@ -401,4 +534,3 @@ export default {
   updateEventPaymentsByProviderRef,
   selectLodgesForEvent,
 };
-

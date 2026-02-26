@@ -72,6 +72,17 @@ export type RSVPBody = {
 
 export type RsvpApiStatus = string;
 
+export type FoodBookingBody = {
+  bookFood?: boolean;
+};
+
+export type PatchEventAttendanceBody = Partial<{
+  rsvp: boolean;
+  bookFood: boolean;
+  attended: boolean;
+  paymentPaid: boolean;
+}>;
+
 export type ListPostsQuery = {
   lodgeId?: string | number | Array<string | number>;
   title?: string;

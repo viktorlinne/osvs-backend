@@ -6,7 +6,12 @@ import { sendError } from "../utils/response";
 import * as eventsService from "../services/eventsService";
 import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
-import { validateLinkLodgeBody, validateRsvpBody } from "../validators";
+import {
+  validateFoodBookingBody,
+  validateLinkLodgeBody,
+  validatePatchAttendanceBody,
+  validateRsvpBody,
+} from "../validators";
 import {
   parseNumericParam,
   requireAuthMatrikelnummer,
@@ -30,6 +35,7 @@ export async function listEventsHandler(
     title: r.title,
     startDate: r.startDate,
     endDate: r.endDate,
+    food: r.food ?? false,
     price: r.price,
   }));
   void setCached(cacheKey, dto);
@@ -200,6 +206,7 @@ export async function listForUserHandler(
     title: r.title,
     startDate: r.startDate,
     endDate: r.endDate,
+    food: r.food ?? false,
     price: r.price,
   }));
   return res.status(200).json({ events: dto });
@@ -276,4 +283,96 @@ export async function getUserRsvpHandler(
 
   const status = await eventsService.getUserRsvp(uid, id);
   return res.status(200).json({ rsvp: status });
+}
+
+export async function getUserFoodHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  if (!uid) return;
+
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
+
+  const ev = await eventsService.getEventById(id);
+  if (!ev) return sendError(res, 404, "Event not found");
+
+  const invited = await eventsService.isUserInvitedToEvent(uid, id);
+  if (!invited) return sendError(res, 403, "Not invited to this event");
+
+  if (!ev.food) return res.status(200).json({ bookFood: null });
+  const bookFood = await eventsService.getUserBookFood(uid, id);
+  return res.status(200).json({ bookFood });
+}
+
+export async function bookFoodHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  if (!uid) return;
+
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
+
+  const parsed = unwrapValidation(res, validateFoodBookingBody(req.body));
+  if (!parsed) return;
+
+  const ev = await eventsService.getEventById(id);
+  if (!ev) return sendError(res, 404, "Event not found");
+  if (!ev.food) return sendError(res, 400, "Food booking is not enabled for this event");
+
+  const now = new Date();
+  if (new Date(ev.startDate) <= now) {
+    return sendError(res, 400, "Cannot book food for past or started events");
+  }
+
+  const invited = await eventsService.isUserInvitedToEvent(uid, id);
+  if (!invited) return sendError(res, 403, "Not invited to this event");
+
+  const rsvp = await eventsService.getUserRsvp(uid, id);
+  if (rsvp !== "going") {
+    return sendError(res, 400, "RSVP must be 'going' to book food");
+  }
+
+  const bookFood = await eventsService.setUserBookFood(uid, id, parsed.bookFood);
+  return res.status(200).json({ success: true, bookFood });
+}
+
+export async function listEventAttendancesHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
+
+  const ev = await eventsService.getEventById(id);
+  if (!ev) return sendError(res, 404, "Event not found");
+
+  const attendances = await eventsService.listEventAttendances(id);
+  return res.status(200).json({ attendances });
+}
+
+export async function patchEventAttendanceHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
+  const uid = parseNumericParam(res, req.params.uid, "Invalid uid");
+  if (uid === null) return;
+
+  const ev = await eventsService.getEventById(id);
+  if (!ev) return sendError(res, 404, "Event not found");
+
+  const parsed = unwrapValidation(res, validatePatchAttendanceBody(req.body));
+  if (!parsed) return;
+
+  const row = await eventsService.patchEventAttendanceByAdmin(id, uid, parsed);
+  return res.status(200).json({ success: true, row });
 }

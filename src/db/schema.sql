@@ -147,6 +147,7 @@ CREATE TABLE `events` (
   `title` varchar(256) NOT NULL,
   `description` text NOT NULL,
   `lodgeMeeting` tinyint(1) NOT NULL DEFAULT 0,
+  `food` tinyint(1) NOT NULL DEFAULT 0,
   `price` decimal(10, 2) NOT NULL,
   `startDate` datetime NOT NULL,
   `endDate` datetime NOT NULL,
@@ -158,6 +159,8 @@ CREATE TABLE `events_attendances` (
   `uid` int(11) NOT NULL,
   `eid` int(11) NOT NULL,
   `rsvp` tinyint(1) NOT NULL DEFAULT 0,
+  `bookFood` tinyint(1) NOT NULL DEFAULT 0,
+  `attended` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`uid`, `eid`),
   KEY `fk_events_attendances_event` (`eid`),
   CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -314,7 +317,7 @@ CREATE TABLE `event_payments` (
   KEY `fk_event_payments_user` (`uid`),
   KEY `fk_event_payments_event` (`eid`),
   CONSTRAINT `fk_event_payments_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT `fk_event_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON UPDATE CASCADE
+  CONSTRAINT `fk_event_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =====================================================
@@ -639,8 +642,9 @@ WHERE
 INSERT INTO
   `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
 VALUES
-  (1, 1, '2025-12-01 10:00:00', NULL),
-  (1, 2, '2025-12-01 10:00:00', NULL),
+  (1, 1, '2025-01-01 10:00:00', NULL),
+  (1, 2, '2024-01-01 10:00:00', '2024-12-31 23:59:59'),
+  (1, 2, '2025-01-01 10:00:00', NULL),
   (2, 2, '2025-12-01 10:00:00', NULL);
 
 -- Users ↔ Lodges
@@ -676,6 +680,7 @@ INSERT INTO
     `title`,
     `description`,
     `lodgeMeeting`,
+    `food`,
     `price`,
     `startDate`,
     `endDate`
@@ -686,18 +691,20 @@ VALUES
     'Founders Meeting',
     'Annual founders meeting and dinner.',
     1,
+    1,
     275.00,
-    '2026-02-14 18:00:00',
-    '2026-02-14 21:00:00'
+    '2026-11-14 18:00:00',
+    '2026-11-14 21:00:00'
   ),
   (
     2,
     'Summer Gathering',
     'Open summer gathering with activities.',
     0,
+    0,
     0.00,
-    '2026-06-20 10:00:00',
-    '2026-06-20 18:00:00'
+    '2026-12-20 10:00:00',
+    '2026-12-20 18:00:00'
   ) ON DUPLICATE KEY
 UPDATE
   `title` =
@@ -709,6 +716,9 @@ VALUES
   `lodgeMeeting` =
 VALUES
   (`lodgeMeeting`),
+  `food` =
+VALUES
+  (`food`),
   `price` =
 VALUES
   (`price`),
@@ -723,7 +733,7 @@ VALUES
 DELETE FROM
   `lodges_events`
 WHERE
-  (lid, eid) IN ((1, 1), (2, 2));
+  `eid` IN (1, 2);
 
 INSERT INTO
   `lodges_events` (`lid`, `eid`)
@@ -735,7 +745,7 @@ VALUES
 DELETE FROM
   `lodges_posts`
 WHERE
-  (lid, pid) IN ((1, 1), (2, 2));
+  `pid` IN (1, 2);
 
 INSERT INTO
   `lodges_posts` (`lid`, `pid`)
@@ -754,11 +764,11 @@ WHERE
   `uid` IN (1, 2, 3);
 
 INSERT INTO
-  `events_attendances` (`uid`, `eid`, `rsvp`)
+  `events_attendances` (`uid`, `eid`, `rsvp`, `bookFood`, `attended`)
 VALUES
-  (1, 1, 1),
-  (2, 1, 0),
-  (3, 2, 1);
+  (1, 1, 1, 1, 0),
+  (2, 1, 0, 0, 0),
+  (3, 2, 1, 0, 0);
 
 -- Posts
 INSERT INTO
@@ -875,7 +885,7 @@ VALUES
     'seed-uid1-eid1',
     'SEK',
     'inv_seed_uid1_eid1',
-    '2026-02-14 17:59:59',
+    '2026-11-14 17:59:59',
     JSON_OBJECT('seed', true)
   ),
   (
@@ -887,19 +897,7 @@ VALUES
     'seed-uid2-eid1',
     'SEK',
     'inv_seed_uid2_eid1',
-    '2026-02-14 17:59:59',
-    JSON_OBJECT('seed', true)
-  ),
-  (
-    3,
-    2,
-    0.00,
-    'Paid',
-    'Manual',
-    'seed-uid3-eid2',
-    'SEK',
-    'inv_seed_uid3_eid2',
-    '2026-06-20 09:59:59',
+    '2026-11-14 17:59:59',
     JSON_OBJECT('seed', true)
   );
 

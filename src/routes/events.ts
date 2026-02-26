@@ -14,6 +14,10 @@ import {
   getEventStatsHandler,
   rsvpHandler,
   getUserRsvpHandler,
+  getUserFoodHandler,
+  bookFoodHandler,
+  listEventAttendancesHandler,
+  patchEventAttendanceHandler,
 } from "../controllers/eventsController";
 import { wrapAsync } from "../middleware/asyncHandler";
 
@@ -193,5 +197,18 @@ router.post("/:id/rsvp", authMiddleware, wrapAsync(rsvpHandler));
 
 // Get current user's RSVP for an event
 router.get("/:id/rsvp", authMiddleware, wrapAsync(getUserRsvpHandler));
+
+// Food booking for current user
+router.get("/:id/food", authMiddleware, wrapAsync(getUserFoodHandler));
+router.post("/:id/food", authMiddleware, wrapAsync(bookFoodHandler));
+
+// Attendances table for invited users + admin patch endpoint
+router.get("/:id/attendances", authMiddleware, wrapAsync(listEventAttendancesHandler));
+router.patch(
+  "/:id/attendances/:uid",
+  authMiddleware,
+  requireRole("Admin"),
+  wrapAsync(patchEventAttendanceHandler),
+);
 
 export default router;

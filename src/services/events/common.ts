@@ -9,9 +9,9 @@ export function mapEventRow(row: EventRow): EventRecord {
     description: String(row.description ?? ""),
     lodgeMeeting:
       row.lodgeMeeting == null ? false : Boolean(Number(row.lodgeMeeting)),
+    food: row.food == null ? false : Boolean(Number(row.food)),
     price: Number(row.price ?? 0),
     startDate: String(row.startDate ?? ""),
     endDate: String(row.endDate ?? ""),
   };
 }
-
