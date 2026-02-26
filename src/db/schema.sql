@@ -87,6 +87,23 @@ CREATE TABLE `officials` (
   UNIQUE KEY `uq_officials_title` (`title`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+-- Allergies
+CREATE TABLE `allergies` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` enum(
+    'Gluten',
+    'Laktos',
+    'Egg',
+    'Fisk',
+    'Skaldjur',
+    'Nötter',
+    'Soja',
+    'Sädeskorn'
+  ) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_allergies_title` (`title`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 -- =====================================================
 -- MAIN ENTITIES
 -- =====================================================
@@ -109,7 +126,6 @@ CREATE TABLE `users` (
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(10) NOT NULL,
   `notes` text DEFAULT NULL,
-  `allergies` text DEFAULT NULL,
   `accommodationAvailable` tinyint(1) DEFAULT 0,
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_matrikelnummer` (`matrikelnummer`),
@@ -208,6 +224,7 @@ CREATE TABLE `users_achievements` (
   CONSTRAINT `fk_users_achievements_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+-- Users ↔ Officials (which user has which official position, with appointment and optional unappointment date for history)
 CREATE TABLE `users_officials` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
@@ -221,6 +238,16 @@ CREATE TABLE `users_officials` (
   KEY `fk_users_officials_official` (`oid`),
   CONSTRAINT `fk_users_officials_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_users_officials_official` FOREIGN KEY (`oid`) REFERENCES `officials` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+CREATE TABLE `users_allergies` (
+  `uid` int(11) NOT NULL,
+  `alid` int(11) NOT NULL,
+  PRIMARY KEY (`uid`, `alid`),
+  KEY `fk_users_allergies_user` (`uid`),
+  KEY `fk_users_allergies_allergy` (`alid`),
+  CONSTRAINT `fk_users_allergies_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_allergies_allergy` FOREIGN KEY (`alid`) REFERENCES `allergies` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Lodges ↔ Events (link events to lodges)
@@ -361,6 +388,23 @@ VALUES
   (25, 'Borgfogde'),
   (26, 'Förtroendeutskottet'),
   (27, 'Kurator') ON DUPLICATE KEY
+UPDATE
+  `title` =
+VALUES
+  (`title`);
+
+-- Allergies
+INSERT INTO
+  `allergies` (`id`, `title`)
+VALUES
+  (1, 'Gluten'),
+  (2, 'Laktos'),
+  (3, 'Egg'),
+  (4, 'Fisk'),
+  (5, 'Skaldjur'),
+  (6, 'Nötter'),
+  (7, 'Soja'),
+  (8, 'Sädeskorn') ON DUPLICATE KEY
 UPDATE
   `title` =
 VALUES
@@ -611,6 +655,19 @@ VALUES
   (1, 1),
   (2, 2),
   (3, 1);
+
+-- Users ↔ Allergies
+DELETE FROM
+  `users_allergies`
+WHERE
+  `uid` IN (1, 2, 3);
+
+INSERT INTO
+  `users_allergies` (`uid`, `alid`)
+VALUES
+  (1, 1),
+  (2, 2),
+  (3, 3);
 
 -- Events
 INSERT INTO

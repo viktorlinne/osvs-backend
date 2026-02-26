@@ -1,5 +1,6 @@
 import type {
   Achievement,
+  Allergy,
   OfficialHistory,
   PublicUser,
   Role,
@@ -46,6 +47,13 @@ export async function getUserAchievements(
       title: String(r.title ?? ""),
     }))
     .filter((it) => Number.isFinite(it.id) && Number.isFinite(it.aid)) as Achievement[];
+}
+
+export async function getUserAllergies(userId: number): Promise<Allergy[]> {
+  const rows = await userRepo.selectUserAllergies(userId);
+  return rows
+    .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
+    .filter((r) => Number.isFinite(r.id)) as Allergy[];
 }
 
 export async function getUserOfficials(userId: number) {

@@ -31,6 +31,11 @@ export type Achievement = {
   awardedAt?: string | null;
 };
 
+export type Allergy = {
+  id: number;
+  title: string;
+};
+
 export type Official = {
   id: number;
   title: string;

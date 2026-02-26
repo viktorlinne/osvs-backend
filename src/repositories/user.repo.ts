@@ -25,6 +25,7 @@ type PictureRow = { picture?: unknown };
 type AchievementRow = { id?: unknown; aid?: unknown; awardedAt?: unknown; title?: unknown };
 type RoleListRow = { id?: unknown; role?: unknown };
 type AchievementListRow = { id?: unknown; title?: unknown };
+type AllergyRow = { id?: unknown; title?: unknown };
 type OfficialRow = { id?: unknown; title?: unknown };
 type OfficialHistoryRow = {
   id?: unknown;
@@ -289,6 +290,50 @@ export async function listAchievements() {
     .filter((r) => Number.isFinite(r.id));
 }
 
+export async function selectUserAllergies(userId: number) {
+  const sql = `
+    SELECT a.id, a.title
+    FROM users_allergies ua
+    JOIN allergies a ON a.id = ua.alid
+    WHERE ua.uid = ?
+    ORDER BY a.id ASC
+  `;
+  const [rows] = await exec(sql, [userId]);
+  return asRows<AllergyRow>(rows)
+    .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
+    .filter((r) => Number.isFinite(r.id));
+}
+
+export async function setUserAllergies(
+  userId: number,
+  allergyIds: number[],
+  conn?: PoolConnection,
+) {
+  const normalizedIds = Array.from(
+    new Set(
+      (Array.isArray(allergyIds) ? allergyIds : [])
+        .map((id) => Number(id))
+        .filter((id): id is number => Number.isFinite(id)),
+    ),
+  );
+
+  await exec("DELETE FROM users_allergies WHERE uid = ?", [userId], conn);
+
+  if (normalizedIds.length === 0) return;
+
+  const placeholders = normalizedIds.map(() => "(?, ?)").join(",");
+  const params: number[] = [];
+  for (const allergyId of normalizedIds) {
+    params.push(userId, allergyId);
+  }
+
+  await exec(
+    `INSERT INTO users_allergies (uid, alid) VALUES ${placeholders}`,
+    params,
+    conn,
+  );
+}
+
 export async function listRoles() {
   const [rows] = await exec("SELECT id, role FROM roles ORDER BY id ASC");
   return asRows<RoleListRow>(rows)
@@ -459,6 +504,8 @@ export default {
   listUsers,
   getUserPublicById,
   listAchievements,
+  selectUserAllergies,
+  setUserAllergies,
   selectUserOfficials,
   selectUserOfficialsHistory,
   setUserOfficials,

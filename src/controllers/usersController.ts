@@ -19,6 +19,7 @@ import {
   updatePicture,
   setUserAchievement,
   getUserAchievements,
+  getUserAllergies,
   getUserOfficials,
   getUserOfficialsHistory,
   getUserRoles,
@@ -314,11 +315,19 @@ export async function getPublicUserHandler(
     if (!user) return sendError(res, 404, "User not found");
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
     const achievements = await getUserAchievements(matrikelnummer);
+    const allergies = await getUserAllergies(matrikelnummer);
     const officials = await getUserOfficials(matrikelnummer);
     const officialHistory = await getUserOfficialsHistory(matrikelnummer);
     return res.status(200).json({
-      user: { ...user, pictureUrl, officials, officialHistory },
+      user: {
+        ...user,
+        pictureUrl,
+        allergies,
+        officials,
+        officialHistory,
+      },
       achievements,
+      allergies,
       officials,
       officialHistory,
     });

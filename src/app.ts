@@ -29,6 +29,7 @@ import eventsRouter from "./routes/events";
 import paymentsRouter from "./routes/payments";
 import achievementsRouter from "./routes/achievements";
 import officialsRouter from "./routes/officials";
+import allergiesRouter from "./routes/allergies";
 
 dotenv.config();
 
@@ -160,6 +161,8 @@ app.use("/api/events", eventsRouter);
 app.use("/api/achievements", achievementsRouter);
 // Officials routes
 app.use("/api/officials", officialsRouter);
+// Allergies routes
+app.use("/api/allergies", allergiesRouter);
 // Payments routes
 app.use("/api/payments", paymentsRouter);
 

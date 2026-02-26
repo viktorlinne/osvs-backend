@@ -7,6 +7,7 @@ import {
   findById,
   getUserRoles,
   getUserAchievements,
+  getUserAllergies,
   getUserOfficials,
   getUserOfficialsHistory,
 } from "../services/userService";
@@ -192,6 +193,9 @@ export async function me(
   const achievements = user.matrikelnummer
     ? await getUserAchievements(user.matrikelnummer)
     : [];
+  const allergies = user.matrikelnummer
+    ? await getUserAllergies(user.matrikelnummer)
+    : [];
   const officials = user.matrikelnummer
     ? await getUserOfficials(user.matrikelnummer)
     : [];
@@ -204,9 +208,16 @@ export async function me(
     : null;
 
   return res.json({
-    user: { ...publicUser, pictureUrl, officials, officialHistory },
+    user: {
+      ...publicUser,
+      pictureUrl,
+      allergies,
+      officials,
+      officialHistory,
+    },
     roles,
     achievements,
+    allergies,
     officials,
     officialHistory,
   });
