@@ -14,11 +14,7 @@ export default function scrubRequestBody(
       if (typeof copy.passwordHash === "string")
         copy.passwordHash = "[REDACTED]";
       // attach redacted copy for loggers to use, do NOT replace req.body
-      const host = req as unknown as {
-        redactedBody?: unknown;
-        [k: string]: unknown;
-      };
-      host.redactedBody = copy;
+      req.redactedBody = copy;
     }
   } catch {
     // ignore

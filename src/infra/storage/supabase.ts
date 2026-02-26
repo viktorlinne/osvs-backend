@@ -42,30 +42,37 @@ if (!client) {
   supabaseStorageAdapter = {
     async upload(key: string, data: Buffer, contentType: string) {
       const bucket = resolveBucketFromKey(key);
-      const res: any = await supabase.storage.from(bucket).upload(key.replace(`${bucket}/`, ""), data, {
-        contentType,
-        upsert: false,
-      });
-      if (res?.error) throw res.error;
+      const objectKey = key.replace(`${bucket}/`, "");
+      const res = await supabase.storage
+        .from(bucket)
+        .upload(objectKey, data, {
+          contentType,
+          upsert: false,
+        });
+      if (res.error) throw res.error;
       return { key } as StorageUploadResult;
     },
 
     async delete(key: string) {
       const bucket = resolveBucketFromKey(key);
-      const res: any = await supabase.storage.from(bucket).remove([key.replace(`${bucket}/`, "")]);
-      if (res?.error) throw res.error;
+      const objectKey = key.replace(`${bucket}/`, "");
+      const res = await supabase.storage.from(bucket).remove([objectKey]);
+      if (res.error) throw res.error;
     },
 
     async getUrl(key: string) {
       const bucket = resolveBucketFromKey(key);
       const objectKey = key.replace(`${bucket}/`, "");
-      const pub: any = await supabase.storage.from(bucket).getPublicUrl(objectKey);
-      if (pub && pub.error) {
-        const s: any = await supabase.storage.from(bucket).createSignedUrl(objectKey, signedUrlExpires);
-        if (s?.error) throw s.error;
-        return s?.data?.signedUrl ?? s?.signedUrl ?? "";
+      const pub = supabase.storage.from(bucket).getPublicUrl(objectKey);
+      const publicUrl = pub.data?.publicUrl ?? "";
+      if (!publicUrl) {
+        const signed = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(objectKey, signedUrlExpires);
+        if (signed.error) throw signed.error;
+        return signed.data?.signedUrl ?? "";
       }
-      return pub?.data?.publicUrl ?? "";
+      return publicUrl;
     },
   };
 }

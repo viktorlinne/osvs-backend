@@ -1,4 +1,10 @@
 import pool from "../config/db";
+import type { RowDataPacket } from "mysql2";
+
+type PasswordResetRow = RowDataPacket & {
+  uid?: unknown;
+  expiresAt?: unknown;
+};
 
 export async function insertPasswordResetToken(
   hash: string,
@@ -15,16 +21,15 @@ export async function findPasswordResetTokenByHash(
 ): Promise<{ uid: number; expiresAt: Date } | null> {
   const sql =
     "SELECT uid, expiresAt FROM password_resets WHERE token_hash = ? LIMIT 1";
-  const [rows] = await pool.execute(sql, [hash]);
-  const arr = rows as unknown as Array<{ uid?: unknown; expiresAt?: unknown }>;
-  if (!Array.isArray(arr) || arr.length === 0) return null;
-  const r = arr[0];
+  const [rows] = await pool.execute<PasswordResetRow[]>(sql, [hash]);
+  if (rows.length === 0) return null;
+  const r = rows[0];
   if (
     typeof r.uid !== "number" ||
     (!(r.expiresAt instanceof Date) && typeof r.expiresAt !== "string")
   )
     return null;
-  return { uid: r.uid as number, expiresAt: new Date(r.expiresAt as string) };
+  return { uid: r.uid, expiresAt: new Date(r.expiresAt) };
 }
 
 export async function deletePasswordResetTokenByHash(hash: string) {

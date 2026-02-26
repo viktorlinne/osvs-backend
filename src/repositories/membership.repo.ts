@@ -17,6 +17,13 @@ export interface MembershipPayment {
   updatedAt?: string;
 }
 
+type MembershipPaymentRow = Record<string, unknown>;
+type ExistingUserPaymentRow = { uid?: unknown };
+
+function asRows<T>(rows: unknown): T[] {
+  return Array.isArray(rows) ? (rows as T[]) : [];
+}
+
 export async function insertMembershipPayment(opts: {
   uid: number;
   amount: number;
@@ -28,33 +35,34 @@ export async function insertMembershipPayment(opts: {
   const sql = `INSERT INTO membership_payments
   (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt)
   VALUES (?, ?, ?, 'Pending', ?, ?, ?, NOW(), NOW())`;
-  const [res] = (await pool.execute<ResultSetHeader>(sql, [
+  const [res] = await pool.execute<ResultSetHeader>(sql, [
     opts.uid,
     opts.amount,
     opts.year,
     opts.provider ?? null,
     opts.invoice_token,
     opts.expiresAt,
-  ])) as unknown as [ResultSetHeader, unknown];
-  const insertId = (res as ResultSetHeader).insertId ?? 0;
-  return Number(insertId);
+  ]);
+  return Number(res.insertId ?? 0);
 }
 
-export async function findById(id: number) {
+export async function findById(id: number): Promise<MembershipPaymentRow | null> {
   const [rows] = await pool.execute(
     "SELECT * FROM membership_payments WHERE id = ?",
-    [id]
+    [id],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<MembershipPaymentRow>(rows);
   return arr[0] ?? null;
 }
 
-export async function findByToken(token: string) {
+export async function findByToken(
+  token: string,
+): Promise<MembershipPaymentRow | null> {
   const [rows] = await pool.execute(
     "SELECT * FROM membership_payments WHERE invoice_token = ?",
-    [token]
+    [token],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<MembershipPaymentRow>(rows);
   return arr[0] ?? null;
 }
 
@@ -63,7 +71,7 @@ export async function updateByProviderRef(
   providerRef: string,
   status: string,
   metadataStr: string | null,
-  invoiceToken: string | null
+  invoiceToken: string | null,
 ) {
   await pool.execute(
     "UPDATE membership_payments SET status = ?, provider = ?, provider_ref = ?, metadata = ? WHERE invoice_token = ? OR provider_ref = ?",
@@ -74,18 +82,23 @@ export async function updateByProviderRef(
       metadataStr,
       invoiceToken ?? null,
       providerRef,
-    ]
+    ],
   );
 }
 
-export async function findExistingForUsers(year: number, uids: number[]) {
+export async function findExistingForUsers(
+  year: number,
+  uids: number[],
+): Promise<Array<{ uid: number }>> {
   if (!Array.isArray(uids) || uids.length === 0) return [];
   const placeholders = uids.map(() => "?").join(",");
   const [rows] = await pool.execute(
     `SELECT uid FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
-    [year, ...uids]
+    [year, ...uids],
   );
-  return rows as unknown as Array<{ uid: number }>;
+  return asRows<ExistingUserPaymentRow>(rows)
+    .map((r) => ({ uid: Number(r.uid) }))
+    .filter((r) => Number.isFinite(r.uid));
 }
 
 export async function bulkInsertIfMissing(values: Array<Array<unknown>>) {
@@ -93,29 +106,34 @@ export async function bulkInsertIfMissing(values: Array<Array<unknown>>) {
   try {
     await pool.query(
       "INSERT IGNORE INTO membership_payments (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt) VALUES ?",
-      [values]
+      [values],
     );
   } catch {
     // ignore
   }
 }
 
-export async function findPaymentsForUsers(year: number, uids: number[]) {
+export async function findPaymentsForUsers(
+  year: number,
+  uids: number[],
+): Promise<MembershipPaymentRow[]> {
   if (!Array.isArray(uids) || uids.length === 0) return [];
   const placeholders = uids.map(() => "?").join(",");
   const [rows] = await pool.execute(
     `SELECT * FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
-    [year, ...uids]
+    [year, ...uids],
   );
-  return rows as unknown as Array<Record<string, unknown>>;
+  return asRows<MembershipPaymentRow>(rows);
 }
 
-export async function findPaymentsForUser(uid: number) {
+export async function findPaymentsForUser(
+  uid: number,
+): Promise<MembershipPaymentRow[]> {
   const [rows] = await pool.execute(
     "SELECT * FROM membership_payments WHERE uid = ? ORDER BY year DESC",
-    [uid]
+    [uid],
   );
-  return rows as unknown as Array<Record<string, unknown>>;
+  return asRows<MembershipPaymentRow>(rows);
 }
 
 export default {
@@ -128,3 +146,4 @@ export default {
   findPaymentsForUsers,
   findPaymentsForUser,
 };
+

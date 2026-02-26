@@ -5,8 +5,8 @@ import type { AuthenticatedRequest, JWTPayload } from "../types/auth";
 import { isValidRole } from "../types/auth";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
-import type { Logger } from "pino";
-import { isJtiRevoked, findById } from "../services";
+import { isJtiRevoked } from "../services/tokenService";
+import { findById } from "../services/userService";
 import { getAccessTokenFromReq } from "../utils/authTokens";
 
 export async function authMiddleware(
@@ -65,7 +65,7 @@ export async function authMiddleware(
           ? decodedObjForUser.iat
           : undefined;
       if (typeof userIdCandidate === "number") {
-        const dbUser = await findById(userIdCandidate as number);
+        const dbUser = await findById(userIdCandidate);
         if (dbUser && dbUser.revokedAt) {
           const revokedAt = new Date(dbUser.revokedAt as string);
           if (tokenIat && typeof tokenIat === "number") {
@@ -101,10 +101,7 @@ export async function authMiddleware(
     }
 
     const userId = decodedObj.userId as number;
-    const rolesRaw = decodedObj.roles as unknown[];
-    const roles = Array.isArray(rolesRaw)
-      ? (rolesRaw.filter((r) => typeof r === "string") as string[])
-      : [];
+    const roles = decodedObj.roles.filter(isValidRole);
 
     // assign typed payload
     const payload: JWTPayload = {
@@ -116,15 +113,12 @@ export async function authMiddleware(
     };
 
     req.user = payload;
+    req.userRoles = payload.roles;
+    req.roleCache = { roles: payload.roles, loadedAt: Date.now() };
 
     // attach user info to request logger (if available)
-    const reqWithLog = req as unknown as { log?: Logger };
-    if (
-      reqWithLog.log &&
-      typeof (reqWithLog.log as unknown as { child?: unknown }).child ===
-        "function"
-    ) {
-      reqWithLog.log = reqWithLog.log.child({
+    if (req.log && typeof req.log.child === "function") {
+      req.log = req.log.child({
         userId: payload.userId,
         roles: payload.roles,
       });

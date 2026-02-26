@@ -1,6 +1,22 @@
 import pool from "../config/db";
+import logger from "../utils/logger";
 
 type ExecResult = { affectedRows?: number };
+
+type RevokedTokenRow = { jti?: unknown };
+
+type RefreshTokenRow = {
+  uid?: number | string;
+  expiresAt?: string | Date | null;
+  isRevoked?: number | boolean | null;
+  replacedBy?: string | null;
+  createdAt?: string | Date | null;
+  lastUsed?: string | Date | null;
+};
+
+function asRows<T>(rows: unknown): T[] {
+  return Array.isArray(rows) ? (rows as T[]) : [];
+}
 
 export async function insertRevokedJti(hash: string, expiresAt: Date) {
   const sql =
@@ -11,45 +27,43 @@ export async function insertRevokedJti(hash: string, expiresAt: Date) {
 export async function isJtiRevoked(hash: string) {
   const sql = "SELECT jti FROM revoked_tokens WHERE jti = ? LIMIT 1";
   const [rows] = await pool.execute(sql, [hash]);
-  const arr = rows as unknown as Array<{ jti?: unknown }>;
-  return Array.isArray(arr) && arr.length > 0;
+  const arr = asRows<RevokedTokenRow>(rows);
+  return arr.length > 0;
 }
 
 export async function cleanupExpiredRevocations() {
   const sql = "DELETE FROM revoked_tokens WHERE expiresAt < NOW()";
-  const [result] = (await pool.execute(sql)) as unknown as [
-    ExecResult,
-    unknown
-  ];
+  const [result] = await pool.execute(sql);
+  const execResult = result as ExecResult;
   const deleted =
-    typeof result?.affectedRows === "number" ? result.affectedRows : 0;
-  const logger = (await import("../utils/logger")).default;
+    typeof execResult?.affectedRows === "number"
+      ? execResult.affectedRows
+      : 0;
   logger.info({ deleted }, "Cleanup: removed expired revoked_tokens rows");
 }
 
 export async function cleanupExpiredRefreshTokens() {
   const sql = "DELETE FROM refresh_tokens WHERE expiresAt < NOW()";
-  const [result] = (await pool.execute(sql)) as unknown as [
-    ExecResult,
-    unknown
-  ];
+  const [result] = await pool.execute(sql);
+  const execResult = result as ExecResult;
   const deleted =
-    typeof result?.affectedRows === "number" ? result.affectedRows : 0;
-  const logger = (await import("../utils/logger")).default;
+    typeof execResult?.affectedRows === "number"
+      ? execResult.affectedRows
+      : 0;
   logger.info({ deleted }, "Cleanup: removed expired refresh_tokens rows");
 }
 
 export async function insertRefreshToken(
   hash: string,
   userId: number,
-  expiresAt: Date
+  expiresAt: Date,
 ) {
   const sql =
     "INSERT INTO refresh_tokens (token_hash, uid, expiresAt, createdAt, isRevoked) VALUES (?, ?, ?, NOW(), 0)";
   await pool.execute(sql, [hash, userId, expiresAt]);
 }
 
-export type RefreshTokenRow = {
+export type RefreshTokenRowOut = {
   uid: number;
   expiresAt: Date;
   isRevoked: boolean;
@@ -59,30 +73,23 @@ export type RefreshTokenRow = {
 };
 
 export async function findRefreshTokenByHash(
-  hash: string
-): Promise<RefreshTokenRow | null> {
+  hash: string,
+): Promise<RefreshTokenRowOut | null> {
   const sql =
     "SELECT uid, expiresAt, isRevoked, replacedBy, createdAt, lastUsed FROM refresh_tokens WHERE token_hash = ? LIMIT 1";
-  type RefreshRow = {
-    uid?: number | string;
-    expiresAt?: string | Date | null;
-    isRevoked?: number | boolean | null;
-    replacedBy?: string | null;
-    createdAt?: string | Date | null;
-    lastUsed?: string | Date | null;
-  };
-  const [rows] = (await pool.execute(sql, [hash])) as unknown as [
-    RefreshRow[],
-    unknown
-  ];
-  if (!Array.isArray(rows) || rows.length === 0) return null;
-  const r = rows[0];
+  const [rows] = await pool.execute(sql, [hash]);
+  const arr = asRows<RefreshTokenRow>(rows);
+  if (arr.length === 0) return null;
+
+  const r = arr[0];
   const uid = typeof r.uid === "number" ? r.uid : Number(r.uid);
   if (!Number.isFinite(uid)) return null;
   if (!r.expiresAt) return null;
+
   const expiresAt =
     r.expiresAt instanceof Date ? r.expiresAt : new Date(r.expiresAt);
   if (Number.isNaN(expiresAt.getTime())) return null;
+
   const isRevoked =
     typeof r.isRevoked === "number" ? r.isRevoked === 1 : Boolean(r.isRevoked);
   const createdAt =
@@ -97,6 +104,7 @@ export async function findRefreshTokenByHash(
       : r.lastUsed
       ? new Date(r.lastUsed)
       : null;
+
   return {
     uid,
     expiresAt,
@@ -109,16 +117,16 @@ export async function findRefreshTokenByHash(
 
 export async function markRefreshTokenRevokedByHash(
   hash: string,
-  replacedByHash?: string | null
+  replacedByHash?: string | null,
 ) {
   const sql =
     "UPDATE refresh_tokens SET isRevoked = 1, replacedBy = ?, lastUsed = NOW() WHERE token_hash = ? AND isRevoked = 0";
   const params = [replacedByHash ?? null, hash];
-  const [result] = (await pool.execute(sql, params)) as unknown as [
-    ExecResult,
-    unknown
-  ];
-  return typeof result?.affectedRows === "number" ? result.affectedRows : 0;
+  const [result] = await pool.execute(sql, params);
+  const execResult = result as ExecResult;
+  return typeof execResult?.affectedRows === "number"
+    ? execResult.affectedRows
+    : 0;
 }
 
 export async function deleteRefreshTokenByHash(hash: string) {

@@ -15,9 +15,13 @@ import {
   getAccessTokenFromReq,
 } from "../utils/authTokens";
 import { revokeJti } from "./tokenService";
-import { REFRESH_DAYS } from "../config/constants";
+import {
+  DEFAULT_TOKEN_FUTURE_MS,
+  REFRESH_COOKIE,
+  REFRESH_DAYS,
+} from "../config/constants";
 import logger from "../utils/logger";
-import { DEFAULT_TOKEN_FUTURE_MS } from "../config/constants";
+import { revokeAllSessions } from "./userService";
 
 export async function loginWithEmail(
   email: string,
@@ -74,7 +78,6 @@ export async function refreshFromCookie(res: Response, refresh: string) {
   );
   if (!rotated) {
     try {
-      const { revokeAllSessions } = await import("./userService");
       await revokeAllSessions(stored.uid);
     } catch (err) {
       logger.error("Failed to revoke all sessions after concurrent reuse", err);
@@ -113,7 +116,6 @@ export async function logoutFromRequest(
     }
 
     // revoke refresh token if present (use configured cookie name)
-    const { REFRESH_COOKIE } = await import("../config/constants");
     const refresh = req.cookies
       ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
       : undefined;

@@ -5,9 +5,27 @@ import type { Post as PostRecord } from "../types";
 
 type SqlExecutor = Pick<PoolConnection, "execute">;
 
-export async function listPosts(
-  lodgeIds?: number[],
-): Promise<PostRecord[]> {
+type PostRow = {
+  id?: unknown;
+  title?: unknown;
+  description?: unknown;
+  picture?: unknown;
+};
+
+type PostPictureRow = {
+  picture?: unknown;
+};
+
+type PostLodgeRow = {
+  id?: unknown;
+  name?: unknown;
+};
+
+function asRows<T>(rows: unknown): T[] {
+  return Array.isArray(rows) ? (rows as T[]) : [];
+}
+
+export async function listPosts(lodgeIds?: number[]): Promise<PostRecord[]> {
   const normalizedLodgeIds = Array.isArray(lodgeIds)
     ? Array.from(
         new Set(
@@ -32,10 +50,7 @@ export async function listPosts(
   sql += " ORDER BY p.id DESC";
 
   const [rows] = await pool.execute(sql, params);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr)) return [];
-
-  return arr
+  return asRows<PostRow>(rows)
     .map((r) => ({
       id: Number(r.id),
       title: String(r.title ?? ""),
@@ -62,8 +77,8 @@ export async function findPostById(postId: number): Promise<PostRecord | null> {
   const sql =
     "SELECT id, title, description, picture FROM posts WHERE id = ? LIMIT 1";
   const [rows] = await pool.execute(sql, [postId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const arr = asRows<PostRow>(rows);
+  if (arr.length === 0) return null;
   const r = arr[0];
   return {
     id: Number(r.id),
@@ -82,10 +97,8 @@ export async function selectPostPicture(
     "SELECT picture FROM posts WHERE id = ? LIMIT 1",
     [postId],
   );
-  const arr = rows as unknown as Array<{ picture?: unknown }>;
-  return Array.isArray(arr) &&
-    arr.length > 0 &&
-    typeof arr[0].picture === "string"
+  const arr = asRows<PostPictureRow>(rows);
+  return arr.length > 0 && typeof arr[0].picture === "string"
     ? (arr[0].picture as string)
     : null;
 }
@@ -134,10 +147,7 @@ export async function selectPostLodges(
      ORDER BY l.name ASC`,
     [postId],
   );
-  const arr = rows as Array<{ id?: unknown; name?: unknown }>;
-  if (!Array.isArray(arr) || arr.length === 0) return [];
-
-  return arr
+  return asRows<PostLodgeRow>(rows)
     .map((row) => ({
       id: Number(row.id),
       name: String(row.name ?? ""),
@@ -188,3 +198,4 @@ export default {
   selectPostLodges,
   replacePostLodges,
 };
+

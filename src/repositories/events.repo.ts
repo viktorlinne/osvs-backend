@@ -13,19 +13,34 @@ export type EventRecord = {
   endDate: string;
 };
 
-export async function listEvents() {
-  let sql =
-    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events ORDER BY startDate DESC";
-  const [rows] = await pool.execute(sql);
-  return rows as unknown as Array<Record<string, unknown>>;
+type EventRow = Record<string, unknown>;
+type UserIdRow = { uid?: unknown };
+type LodgeRow = { id?: unknown; name?: unknown };
+type CountRow = { cnt?: unknown };
+type RsvpStatsRow = { answered?: unknown; going?: unknown };
+type RsvpRow = { rsvp?: unknown };
+
+function asRows<T>(rows: unknown): T[] {
+  return Array.isArray(rows) ? (rows as T[]) : [];
 }
 
-export async function findEventById(id: number) {
+function getExecutor(conn?: PoolConnection) {
+  return conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+}
+
+export async function listEvents(): Promise<EventRow[]> {
+  const sql =
+    "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events ORDER BY startDate DESC";
+  const [rows] = await pool.execute(sql);
+  return asRows<EventRow>(rows);
+}
+
+export async function findEventById(id: number): Promise<EventRow | null> {
   const [rows] = await pool.execute(
     "SELECT id, title, description, lodgeMeeting, price, startDate, endDate FROM events WHERE id = ? LIMIT 1",
     [id],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<EventRow>(rows);
   return arr[0] ?? null;
 }
 
@@ -40,7 +55,7 @@ export async function insertEvent(
   },
   conn?: PoolConnection,
 ) {
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+  const executor = getExecutor(conn);
   const sql =
     "INSERT INTO events (title, description, lodgeMeeting, price, startDate, endDate) VALUES (?, ?, ?, ?, ?, ?)";
   const params = [
@@ -51,10 +66,7 @@ export async function insertEvent(
     payload.startDate,
     payload.endDate,
   ];
-  const [result] = (await executor<ResultSetHeader>(
-    sql,
-    params,
-  )) as unknown as [ResultSetHeader, unknown];
+  const [result] = await executor<ResultSetHeader>(sql, params);
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 
@@ -107,29 +119,35 @@ export async function insertLodgeEvent(
   lodgeId: number,
   conn?: PoolConnection,
 ) {
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+  const executor = getExecutor(conn);
   await executor("INSERT IGNORE INTO lodges_events (lid, eid) VALUES (?, ?)", [
     lodgeId,
     eventId,
   ]);
 }
 
-export async function selectEventPrice(eventId: number, conn?: PoolConnection) {
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+export async function selectEventPrice(
+  eventId: number,
+  conn?: PoolConnection,
+): Promise<number> {
+  const executor = getExecutor(conn);
   const [rows] = await executor(
     "SELECT price FROM events WHERE id = ? LIMIT 1",
     [eventId],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  return Array.isArray(arr) && arr.length > 0 ? Number(arr[0].price ?? 0) : 0;
+  const arr = asRows<EventRow>(rows);
+  return arr.length > 0 ? Number(arr[0].price ?? 0) : 0;
 }
 
-export async function findUsersInLodge(lodgeId: number, conn?: PoolConnection) {
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+export async function findUsersInLodge(
+  lodgeId: number,
+  conn?: PoolConnection,
+): Promise<UserIdRow[]> {
+  const executor = getExecutor(conn);
   const [rows] = await executor("SELECT uid FROM users_lodges WHERE lid = ?", [
     lodgeId,
   ]);
-  return rows as unknown as Array<Record<string, unknown>>;
+  return asRows<UserIdRow>(rows);
 }
 
 export async function bulkInsertEventPayments(
@@ -148,8 +166,8 @@ export async function selectUsersToRemoveOnUnlink(
   lodgeId: number,
   eventId: number,
   conn?: PoolConnection,
-) {
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+): Promise<UserIdRow[]> {
+  const executor = getExecutor(conn);
   const [rows] = await executor(
     `
       SELECT ul.uid
@@ -164,7 +182,7 @@ export async function selectUsersToRemoveOnUnlink(
     `,
     [lodgeId, eventId, lodgeId],
   );
-  return rows as unknown as Array<Record<string, unknown>>;
+  return asRows<UserIdRow>(rows);
 }
 
 export async function deletePendingEventPaymentsForUids(
@@ -175,7 +193,7 @@ export async function deletePendingEventPaymentsForUids(
   if (!Array.isArray(uids) || uids.length === 0) return;
   const placeholders = uids.map(() => "?").join(",");
   const params: Array<unknown> = [eventId, ...uids];
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+  const executor = getExecutor(conn);
   await executor(
     `DELETE FROM event_payments WHERE eid = ? AND status = 'Pending' AND uid IN (${placeholders})`,
     params,
@@ -187,16 +205,14 @@ export async function deleteLodgeEvent(
   eventId: number,
   conn?: PoolConnection,
 ) {
-  const executor = conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+  const executor = getExecutor(conn);
   await executor("DELETE FROM lodges_events WHERE lid = ? AND eid = ?", [
     lodgeId,
     eventId,
   ]);
 }
 
-export async function listEventsForUser(
-  userId: number,
-) {
+export async function listEventsForUser(userId: number): Promise<EventRow[]> {
   const sql = `
     SELECT DISTINCT e.id, e.title, e.description, e.lodgeMeeting, e.price, e.startDate, e.endDate
     FROM events e
@@ -205,17 +221,16 @@ export async function listEventsForUser(
     WHERE ul.uid = ?
     ORDER BY e.startDate ASC
   `;
-  const params: Array<unknown> = [userId];
-  const [rows] = await pool.execute(sql, params);
-  return rows as unknown as Array<Record<string, unknown>>;
+  const [rows] = await pool.execute(sql, [userId]);
+  return asRows<EventRow>(rows);
 }
 
-export async function selectLodgesForEvent(eventId: number) {
+export async function selectLodgesForEvent(eventId: number): Promise<LodgeRow[]> {
   const [rows] = await pool.execute(
     "SELECT l.id, l.name FROM lodges l JOIN lodges_events le ON le.lid = l.id WHERE le.eid = ? ORDER BY l.name",
     [eventId],
   );
-  return rows as unknown as Array<Record<string, unknown>>;
+  return asRows<LodgeRow>(rows);
 }
 
 export async function isUserInvitedToEvent(eventId: number, userId: number) {
@@ -225,8 +240,7 @@ export async function isUserInvitedToEvent(eventId: number, userId: number) {
     WHERE le.eid = ? AND ul.uid = ? LIMIT 1
   `;
   const [rows] = await pool.execute(sql, [eventId, userId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  return Array.isArray(arr) && arr.length > 0;
+  return asRows<EventRow>(rows).length > 0;
 }
 
 export async function upsertUserRsvp(
@@ -247,8 +261,8 @@ export async function countInvitedUsersForEvent(eventId: number) {
     WHERE le.eid = ?
   `;
   const [rows] = await pool.execute(sql, [eventId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0) return 0;
+  const arr = asRows<CountRow>(rows);
+  if (arr.length === 0) return 0;
   return Number(arr[0].cnt ?? 0);
 }
 
@@ -261,8 +275,8 @@ export async function countRsvpStatsForEvent(eventId: number) {
     WHERE eid = ?
   `;
   const [rows] = await pool.execute(sql, [eventId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0) return { answered: 0, going: 0 };
+  const arr = asRows<RsvpStatsRow>(rows);
+  if (arr.length === 0) return { answered: 0, going: 0 };
   return {
     answered: Number(arr[0].answered ?? 0),
     going: Number(arr[0].going ?? 0),
@@ -274,9 +288,9 @@ export async function getUserRsvpFromDb(userId: number, eventId: number) {
     "SELECT rsvp FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
     [userId, eventId],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr) || arr.length === 0) return null;
-  return arr[0].rsvp as unknown as number;
+  const arr = asRows<RsvpRow>(rows);
+  if (arr.length === 0) return null;
+  return Number(arr[0].rsvp);
 }
 
 // Event payments helpers
@@ -285,7 +299,7 @@ export async function findEventPaymentByUidEid(uid: number, eid: number) {
     "SELECT * FROM event_payments WHERE uid = ? AND eid = ? LIMIT 1",
     [uid, eid],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<EventRow>(rows);
   return arr[0] ?? null;
 }
 
@@ -309,16 +323,13 @@ export async function insertEventPayment(opts: {
     opts.expiresAt ?? null,
     opts.currency ?? null,
   ];
-  const [res] = (await pool.execute<ResultSetHeader>(
-    sql,
-    params,
-  )) as unknown as [ResultSetHeader, unknown];
-  const insertId = (res as ResultSetHeader).insertId ?? 0;
+  const [res] = await pool.execute<ResultSetHeader>(sql, params);
+  const insertId = res.insertId ?? 0;
   const [rows] = await pool.execute(
     "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
     [insertId],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<EventRow>(rows);
   return arr[0] ?? null;
 }
 
@@ -327,7 +338,7 @@ export async function findEventPaymentById(id: number) {
     "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
     [id],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<EventRow>(rows);
   return arr[0] ?? null;
 }
 
@@ -336,7 +347,7 @@ export async function findEventPaymentByToken(token: string) {
     "SELECT * FROM event_payments WHERE invoice_token = ? LIMIT 1",
     [token],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<EventRow>(rows);
   return arr[0] ?? null;
 }
 
@@ -380,4 +391,14 @@ export default {
   isUserInvitedToEvent,
   upsertUserRsvp,
   getUserRsvpFromDb,
+  countInvitedUsersForEvent,
+  countRsvpStatsForEvent,
+  findEventPaymentByUidEid,
+  insertEventPayment,
+  findEventPaymentById,
+  findEventPaymentByToken,
+  updateEventPaymentProviderRefById,
+  updateEventPaymentsByProviderRef,
+  selectLodgesForEvent,
 };
+

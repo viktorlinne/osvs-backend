@@ -25,13 +25,19 @@ import {
   listPublicUsers,
   getPublicUserById,
   findById as findUserById,
-} from "../services";
+  setUserRoles,
+} from "../services/userService";
 import { toPublicUser } from "../utils/serialize";
-import { getUserLodge, setUserLodge } from "../services";
+import { getUserLodge, setUserLodge } from "../services/lodgeService";
 // (schemas imported above)
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import { PROFILE_PLACEHOLDER } from "../config/constants";
+import {
+  parseNumericParam,
+  requireAuthUserId,
+  unwrapValidation,
+} from "./helpers/request";
 
 export async function updatePictureHandler(
   req: AuthenticatedRequest & { file?: Request["file"] },
@@ -39,8 +45,8 @@ export async function updatePictureHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = req.user?.userId;
-    if (!uid) return sendError(res, 401, "Invalid token payload");
+    const uid = requireAuthUserId(req, res, "Invalid token payload");
+    if (!uid) return;
 
     const file = req.file;
     if (!file) return sendError(res, 400, "No file uploaded");
@@ -89,12 +95,15 @@ export async function updateOtherPictureHandler(
   _next: NextFunction,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Invalid token payload");
+    const callerId = requireAuthUserId(req, res, "Invalid token payload");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
     const file = req.file;
     if (!file) return sendError(res, 400, "No file uploaded");
@@ -145,14 +154,13 @@ export async function updateMeHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = req.user?.userId;
-    if (!uid) return sendError(res, 401, "Invalid token payload");
+    const uid = requireAuthUserId(req, res, "Invalid token payload");
+    if (!uid) return;
 
-    const parsed = validateUpdateUserProfileBody(req.body);
-    if (!parsed.ok) return sendError(res, 400, parsed.errors);
-    const payload = parsed.data as UpdateUserProfileBody;
+    const payload = unwrapValidation(res, validateUpdateUserProfileBody(req.body));
+    if (!payload) return;
 
-    await updateUserProfile(uid, payload);
+    await updateUserProfile(uid, payload as UpdateUserProfileBody);
 
     const updated = await findUserById(uid);
     if (!updated) return sendError(res, 404, "User not found");
@@ -173,18 +181,20 @@ export async function updateUserHandler(
   _next: NextFunction,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Unauthorized");
+    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
-    const parsed = validateUpdateUserProfileBody(req.body);
-    if (!parsed.ok) return sendError(res, 400, parsed.errors);
-    const payload = parsed.data as UpdateUserProfileBody;
+    const payload = unwrapValidation(res, validateUpdateUserProfileBody(req.body));
+    if (!payload) return;
 
-    await updateUserProfile(targetId, payload);
+    await updateUserProfile(targetId, payload as UpdateUserProfileBody);
 
     const updated = await findUserById(targetId);
     if (!updated) return sendError(res, 404, "User not found");
@@ -204,16 +214,19 @@ export async function addAchievementHandler(
   res: Response,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Unauthorized");
+    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
-    const parsed = validateAddAchievementBody(req.body);
-    if (!parsed.ok) return sendError(res, 400, parsed.errors);
-    const { achievementId, awardedAt } = parsed.data;
+    const parsed = unwrapValidation(res, validateAddAchievementBody(req.body));
+    if (!parsed) return;
+    const { achievementId, awardedAt } = parsed;
     const when = awardedAt ? new Date(String(awardedAt)) : undefined;
 
     const newId = await setUserAchievement(
@@ -234,12 +247,15 @@ export async function getAchievementsHandler(
   res: Response,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Unauthorized");
+    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
     const rows = await getUserAchievements(targetId);
     return res.status(200).json({ achievements: rows });
@@ -287,8 +303,8 @@ export async function getPublicUserHandler(
   _next: NextFunction,
 ) {
   try {
-    const userId = Number(req.params.id);
-    if (!Number.isFinite(userId)) return sendError(res, 400, "Invalid user id");
+    const userId = parseNumericParam(res, req.params.id, "Invalid user id");
+    if (userId === null) return;
     const user = await getPublicUserById(userId);
     if (!user) return sendError(res, 404, "User not found");
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
@@ -310,20 +326,22 @@ export async function setRolesHandler(
   res: Response,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Unauthorized");
+    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
-    const parsed = validateSetRolesBody(req.body);
-    if (!parsed.ok) return sendError(res, 400, parsed.errors);
-    const { roleIds } = parsed.data;
+    const parsed = unwrapValidation(res, validateSetRolesBody(req.body));
+    if (!parsed) return;
+    const { roleIds } = parsed;
     const numericIds = roleIds.map((r) => Number(r));
 
     try {
-      const { setUserRoles } = await import("../services/userService");
       await setUserRoles(targetId, numericIds as number[]);
     } catch (err) {
       logger.error("Failed to set roles (service)", err);
@@ -342,12 +360,15 @@ export async function getRolesHandler(
   res: Response,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Unauthorized");
+    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
     const roles = await getUserRoles(targetId);
     return res.status(200).json({ roles });
@@ -362,12 +383,15 @@ export async function getLodgeHandler(
   res: Response,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Unauthorized");
+    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
     const lodge = await getUserLodge(targetId);
     return res.status(200).json({ lodge });
@@ -382,16 +406,19 @@ export async function setLodgeHandler(
   res: Response,
 ) {
   try {
-    const callerId = req.user?.userId;
-    if (!callerId) return sendError(res, 401, "Unauthorized");
+    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    if (!callerId) return;
 
-    const targetId = Number(req.params.id);
-    if (!Number.isFinite(targetId))
-      return sendError(res, 400, "Invalid target user id");
+    const targetId = parseNumericParam(
+      res,
+      req.params.id,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
 
-    const parsed = validateSetLodgeBody(req.body);
-    if (!parsed.ok) return sendError(res, 400, parsed.errors);
-    const { lodgeId } = parsed.data;
+    const parsed = unwrapValidation(res, validateSetLodgeBody(req.body));
+    if (!parsed) return;
+    const { lodgeId } = parsed;
 
     const numericLid = lodgeId === null ? null : Number(lodgeId);
     if (numericLid !== null && !Number.isFinite(numericLid))

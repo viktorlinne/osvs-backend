@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { ListPostsQuery, UpdatePostBody } from "../types";
 import { parseNumericIds, validateCreatePostBody } from "../validators";
-import * as postsService from "../services";
+import * as postsService from "../services/postsService";
 import {
   uploadToStorage,
   getPublicUrl,
@@ -11,6 +11,7 @@ import {
 import logger from "../utils/logger";
 import { getCached, setCached, delPattern } from "../infra/cache";
 import { sendError } from "../utils/response";
+import { parseNumericParam, unwrapValidation } from "./helpers/request";
 
 export async function listPostsHandler(
   _req: AuthenticatedRequest,
@@ -51,9 +52,7 @@ export async function listPostsHandler(
     void setCached(cacheKey, withUrls);
     return res.status(200).json({ posts: withUrls });
   } catch (err) {
-    const requestId =
-      res.locals.requestId ??
-      (_req as unknown as { requestId?: string }).requestId;
+    const requestId = res.locals.requestId ?? _req.requestId;
     logger.error({ msg: "Failed to list posts", err, requestId });
     return res.status(500).json({
       error: "InternalError",
@@ -68,10 +67,8 @@ export async function getPostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const postId = Number(req.params.id);
-  if (!Number.isFinite(postId)) {
-    return sendError(res, 400, "Ogiltigt inlaggs-ID");
-  }
+  const postId = parseNumericParam(res, req.params.id, "Ogiltigt inlaggs-ID");
+  if (postId === null) return;
 
   const post = await postsService.getPostById(postId);
   if (!post) return sendError(res, 404, "Inlagg hittades inte");
@@ -85,10 +82,10 @@ export async function createPostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const parsed = validateCreatePostBody(req.body);
-  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+  const parsed = unwrapValidation(res, validateCreatePostBody(req.body));
+  if (!parsed) return;
 
-  const { title, description, lodgeIds = [] } = parsed.data;
+  const { title, description, lodgeIds = [] } = parsed;
 
   const file = req.file;
   let pictureKey: string | null = null;
@@ -114,10 +111,8 @@ export async function updatePostHandler(
 ) {
   let newKey: string | null = null;
   try {
-    const postId = Number(req.params.id);
-    if (!Number.isFinite(postId)) {
-      return sendError(res, 400, "Ogiltigt inlaggs-ID");
-    }
+    const postId = parseNumericParam(res, req.params.id, "Ogiltigt inlaggs-ID");
+    if (postId === null) return;
 
     const body = req.body as UpdatePostBody & Record<string, unknown>;
     const titleRaw = body.title;

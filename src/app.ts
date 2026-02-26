@@ -112,14 +112,13 @@ app.use(
         req.headers &&
         (req.headers["x-request-id"] || req.headers["x-requestid"]);
       const headerStr = Array.isArray(header) ? header[0] : header;
-      return (headerStr as string) || randomUUID();
+      return typeof headerStr === "string" ? headerStr : randomUUID();
     },
     serializers: {
       req: (req: express.Request) => {
         try {
           // prefer redacted copy attached by scrubRequestBody
-          const host = req as unknown as Record<string, unknown>;
-          const body = (host["redactedBody"] ?? host["body"]) as unknown;
+          const body = req.redactedBody ?? req.body;
           return {
             method: req.method,
             url: req.url,

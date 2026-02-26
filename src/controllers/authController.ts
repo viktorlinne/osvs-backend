@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { RequestWithBody, RequestWithCookies } from "../types/requests";
+import sessionService from "../services/sessionService";
 import {
-  sessionService,
   findByEmail,
   updatePassword,
   revokeAllSessions,
@@ -9,13 +9,15 @@ import {
   findById,
   getUserRoles,
   getUserAchievements,
+  getUserOfficials,
+} from "../services/userService";
+import {
   createPasswordResetToken,
   findPasswordResetToken,
   consumePasswordResetToken,
-  sendPasswordReset,
-  hashPassword,
-  getUserOfficials,
-} from "../services";
+} from "../services/passwordResetService";
+import { sendPasswordReset } from "../services/brevoService";
+import { hashPassword } from "../services/authService";
 import { REFRESH_COOKIE } from "../config/constants";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
@@ -33,6 +35,7 @@ import type {
 } from "../types";
 import { PASSWORD_RESET_TOKEN_MS } from "../config/constants";
 import { uploadToStorage, deleteProfilePicture } from "../utils/fileUpload";
+import { requireAuthUserId } from "./helpers/request";
 
 export async function login(
   req: RequestWithBody<LoginBody>,
@@ -253,8 +256,9 @@ export async function me(
   res: Response,
   _next: NextFunction,
 ): Promise<Response | void> {
-  if (!req.user?.userId) return sendError(res, 401, "Invalid token payload");
-  const user = await findById(req.user.userId);
+  const uid = requireAuthUserId(req, res, "Invalid token payload");
+  if (!uid) return;
+  const user = await findById(uid);
   if (!user) return sendError(res, 404, "User not found");
   const roles = user.id ? await getUserRoles(user.id) : [];
   const achievements = user.id ? await getUserAchievements(user.id) : [];
@@ -276,8 +280,8 @@ export async function revokeAll(
   res: Response,
   _next: NextFunction,
 ): Promise<Response | void> {
-  const uid = req.user?.userId;
-  if (!uid) return sendError(res, 401, "Invalid token payload");
+  const uid = requireAuthUserId(req, res, "Invalid token payload");
+  if (!uid) return;
   try {
     await revokeAllSessions(uid);
   } catch (err) {

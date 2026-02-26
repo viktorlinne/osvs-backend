@@ -53,10 +53,7 @@ export async function createLodge(
   const sql =
     "INSERT INTO lodges (name, city, description, email, picture) VALUES (?, ?, ?, ?, ?)";
   const params = [name, city, description, email, picture];
-  const [result] = (await pool.execute<ResultSetHeader>(
-    sql,
-    params,
-  )) as unknown as [ResultSetHeader, unknown];
+  const [result] = await pool.execute<ResultSetHeader>(sql, params);
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 

@@ -9,13 +9,11 @@ export default function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const requestId =
-    res.locals.requestId ??
-    (req as unknown as { requestId?: string }).requestId;
+  const requestId = res.locals.requestId ?? req.requestId;
 
   // Handle JSON parse errors from body-parser (Bad Request)
   if (err instanceof SyntaxError) {
-    const maybe = err as unknown as { status?: number; body?: unknown };
+    const maybe = err as SyntaxError & { status?: number; body?: unknown };
     if (maybe.status === 400 && "body" in maybe) {
       logger.warn({ msg: "Invalid JSON body", err, requestId });
       return res.status(400).json({

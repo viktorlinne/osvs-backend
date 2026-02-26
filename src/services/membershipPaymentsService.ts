@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+﻿import { randomBytes } from "crypto";
 import { membershipRepo } from "../repositories";
 import type { MembershipPayment } from "../types";
 
@@ -7,6 +7,76 @@ export interface CreateMembershipPaymentOpts {
   year: number;
   amount?: number;
   provider?: string | null;
+}
+
+function parseMetadata(
+  value: unknown,
+): Record<string, unknown> | null | undefined {
+  if (value == null) return null;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // ignore invalid JSON metadata
+    }
+  }
+  return undefined;
+}
+
+function toMembershipPayment(row: unknown): MembershipPayment | null {
+  if (!row || typeof row !== "object") return null;
+  const source = row as Record<string, unknown>;
+
+  const id = Number(source.id);
+  const uid = Number(source.uid);
+  const amount = Number(source.amount);
+  const year = Number(source.year);
+  const status = String(source.status ?? "");
+
+  if (
+    !Number.isFinite(id) ||
+    !Number.isFinite(uid) ||
+    !Number.isFinite(amount) ||
+    !Number.isFinite(year) ||
+    !["Pending", "Paid", "Failed", "Refunded"].includes(status)
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    uid,
+    amount,
+    year,
+    status: status as MembershipPayment["status"],
+    provider: source.provider == null ? null : String(source.provider),
+    provider_ref:
+      source.provider_ref == null ? null : String(source.provider_ref),
+    currency: source.currency == null ? null : String(source.currency),
+    invoice_token:
+      source.invoice_token == null ? null : String(source.invoice_token),
+    expiresAt: source.expiresAt == null ? null : String(source.expiresAt),
+    metadata: parseMetadata(source.metadata),
+    createdAt:
+      source.createdAt == null ? undefined : String(source.createdAt),
+    updatedAt:
+      source.updatedAt == null ? undefined : String(source.updatedAt),
+  };
+}
+
+function mapRowsToPayments(rows: unknown[]): MembershipPayment[] {
+  const mapped: MembershipPayment[] = [];
+  for (const row of rows) {
+    const payment = toMembershipPayment(row);
+    if (payment) mapped.push(payment);
+  }
+  return mapped;
 }
 
 export async function createMembershipPayment(
@@ -26,19 +96,19 @@ export async function createMembershipPayment(
     expiresAt,
   });
   const row = await membershipRepo.findById(insertId);
-  return (row as unknown as MembershipPayment) ?? null;
+  return toMembershipPayment(row);
 }
 
 export async function getById(id: number): Promise<MembershipPayment | null> {
   const row = await membershipRepo.findById(id);
-  return (row as unknown as MembershipPayment) ?? null;
+  return toMembershipPayment(row);
 }
 
 export async function getByToken(
   token: string,
 ): Promise<MembershipPayment | null> {
   const row = await membershipRepo.findByToken(token);
-  return (row as unknown as MembershipPayment) ?? null;
+  return toMembershipPayment(row);
 }
 
 export async function updateByProviderRef(
@@ -77,7 +147,7 @@ export async function createMembershipPaymentIfMissing(
   // Check if an invoice for this user and year already exists
   const rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
   if (Array.isArray(rows) && rows.length > 0) {
-    return (rows[0] as unknown as MembershipPayment) ?? null;
+    return toMembershipPayment(rows[0]);
   }
 
   // Create a new invoice
@@ -100,25 +170,23 @@ export async function createMembershipPaymentsIfMissingBulk(
   const now = new Date();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const values: Array<Array<unknown>> = [];
-  const tokens: Record<number, string> = {};
   for (const uid of uids) {
     if (existingSet.has(uid)) continue;
     const token = randomBytes(16).toString("hex");
-    tokens[uid] = token;
     values.push([uid, amt, year, "Pending", null, token, expiresAt, now, now]);
   }
 
   if (values.length === 0) {
-    // nothing to create — return existing payments for these users
+    // nothing to create; return existing payments for these users
     const rows = await membershipRepo.findPaymentsForUsers(year, uids);
-    return rows as unknown as MembershipPayment[];
+    return mapRowsToPayments(rows);
   }
 
   await membershipRepo.bulkInsertIfMissing(values);
 
   // Return all payments for these users/year
   const rows = await membershipRepo.findPaymentsForUsers(year, uids);
-  return rows as unknown as MembershipPayment[];
+  return mapRowsToPayments(rows);
 }
 
 export default {

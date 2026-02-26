@@ -3,10 +3,15 @@ import type { AuthenticatedRequest } from "../types/auth";
 import type { ListEventsQuery, CreateEventBody, UpdateEventBody } from "../types";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
-import * as eventsService from "../services";
+import * as eventsService from "../services/eventsService";
 import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
 import { validateLinkLodgeBody, validateRsvpBody } from "../validators";
+import {
+  parseNumericParam,
+  requireAuthUserId,
+  unwrapValidation,
+} from "./helpers/request";
 
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
@@ -36,8 +41,8 @@ export async function getEventHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
   const ev = await eventsService.getEventById(id);
   if (!ev) return sendError(res, 404, "Not found");
   return res.status(200).json({ event: ev });
@@ -95,9 +100,9 @@ export async function updateEventHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
   logger.info({ id }, "eventsController: updateEventHandler called");
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
   const raw = req.body as UpdateEventBody;
   const payload: Partial<{
     title: string;
@@ -129,8 +134,8 @@ export async function deleteEventHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
   await eventsService.deleteEvent(id);
   void delPattern("events:*");
   return res.status(200).json({ success: true });
@@ -141,11 +146,12 @@ export async function linkLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
-  const parsed = validateLinkLodgeBody(req.body);
-  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+  const id = parseNumericParam(res, req.params.id, "Invalid ids");
+  if (id === null) return;
+  const parsed = unwrapValidation(res, validateLinkLodgeBody(req.body));
+  if (!parsed) return;
 
-  const { lodgeId } = parsed.data;
+  const { lodgeId } = parsed;
   if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId))) {
     return sendError(res, 400, "Invalid ids");
   }
@@ -160,13 +166,14 @@ export async function unlinkLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
+  const id = parseNumericParam(res, req.params.id, "Invalid ids");
+  if (id === null) return;
 
   let bodyLodge: number | string | undefined;
   if (req.body && Object.keys(req.body).length > 0) {
-    const parsed = validateLinkLodgeBody(req.body);
-    if (!parsed.ok) return sendError(res, 400, parsed.errors);
-    bodyLodge = parsed.data.lodgeId;
+    const parsed = unwrapValidation(res, validateLinkLodgeBody(req.body));
+    if (!parsed) return;
+    bodyLodge = parsed.lodgeId;
   }
 
   const queryLodge = (req.query as ListEventsQuery)?.lodgeId;
@@ -185,8 +192,8 @@ export async function listForUserHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = req.user?.userId;
-  if (!uid) return sendError(res, 401, "Unauthorized");
+  const uid = requireAuthUserId(req, res, "Unauthorized");
+  if (!uid) return;
   const rows = await eventsService.listEventsForUser(uid);
   const dto = rows.map((r) => ({
     id: r.id,
@@ -203,8 +210,8 @@ export async function listEventLodgesHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
   const lodges = await eventsService.listLodgesForEvent(id);
   return res.status(200).json({ lodges });
 }
@@ -214,8 +221,8 @@ export async function getEventStatsHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
   const stats = await eventsService.getEventStats(id);
   return res.status(200).json({ stats });
 }
@@ -226,15 +233,15 @@ export async function rsvpHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = req.user?.userId;
-    if (!uid) return sendError(res, 401, "Unauthorized");
+    const uid = requireAuthUserId(req, res, "Unauthorized");
+    if (!uid) return;
 
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
+    const id = parseNumericParam(res, req.params.id, "Invalid id");
+    if (id === null) return;
 
-    const parsed = validateRsvpBody(req.body);
-    if (!parsed.ok) return sendError(res, 400, parsed.errors);
-    const { status } = parsed.data;
+    const parsed = unwrapValidation(res, validateRsvpBody(req.body));
+    if (!parsed) return;
+    const { status } = parsed;
 
     const ev = await eventsService.getEventById(id);
     if (!ev) return sendError(res, 404, "Event not found");
@@ -261,11 +268,11 @@ export async function getUserRsvpHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = req.user?.userId;
-  if (!uid) return sendError(res, 401, "Unauthorized");
+  const uid = requireAuthUserId(req, res, "Unauthorized");
+  if (!uid) return;
 
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  if (id === null) return;
 
   const status = await eventsService.getUserRsvp(uid, id);
   return res.status(200).json({ rsvp: status });

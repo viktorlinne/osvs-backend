@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import * as tokenRepo from "../repositories/token.repo";
+import logger from "../utils/logger";
 
 /**
  * Store a revoked token along with its expiry time (as Date).
@@ -80,15 +81,9 @@ export async function rotateRefreshToken(
   const affected = await markRefreshTokenRevoked(oldToken, newHash);
   if (affected === 0) return false;
   // insert the new token
-  await createRefreshToken(newToken, userId, newExpiresAt).catch(
-    async (err) => {
-      const logger = (await import("../utils/logger")).default;
-      logger.error(
-        err,
-        "rotateRefreshToken: failed to insert new refresh token"
-      );
-    }
-  );
+  await createRefreshToken(newToken, userId, newExpiresAt).catch((err) => {
+    logger.error(err, "rotateRefreshToken: failed to insert new refresh token");
+  });
   return true;
 }
 

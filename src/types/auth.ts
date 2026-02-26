@@ -13,6 +13,10 @@ export interface JWTPayload {
 export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
   userRoles?: RoleValue[];
+  roleCache?: {
+    roles: RoleValue[];
+    loadedAt: number;
+  };
 }
 
 export { isValidRole };

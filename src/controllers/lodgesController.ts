@@ -1,6 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import * as lodgeService from "../services";
+import * as lodgeService from "../services/lodgeService";
 import { validateCreateLodgeBody, validateUpdateLodgeBody } from "../validators";
 import { sendError } from "../utils/response";
 

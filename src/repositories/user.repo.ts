@@ -20,6 +20,18 @@ export interface CreateUserParams {
   accommodationAvailable?: boolean | null;
 }
 
+type UserRow = Record<string, unknown>;
+type RoleRow = { role?: unknown };
+type PictureRow = { picture?: unknown };
+type AchievementRow = { id?: unknown; aid?: unknown; awardedAt?: unknown; title?: unknown };
+type RoleListRow = { id?: unknown; role?: unknown };
+type AchievementListRow = { id?: unknown; title?: unknown };
+type OfficialRow = { id?: unknown; title?: unknown };
+
+function asRows<T>(rows: unknown): T[] {
+  return Array.isArray(rows) ? (rows as T[]) : [];
+}
+
 async function exec(
   sql: string,
   params: unknown[] = [],
@@ -33,13 +45,13 @@ export async function findByEmail(email: string) {
   const [rows] = await exec("SELECT * FROM users WHERE email = ? LIMIT 1", [
     email,
   ]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<UserRow>(rows);
   return arr.length > 0 ? arr[0] : undefined;
 }
 
 export async function findById(id: number) {
   const [rows] = await exec("SELECT * FROM users WHERE id = ? LIMIT 1", [id]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<UserRow>(rows);
   return arr.length > 0 ? arr[0] : undefined;
 }
 
@@ -68,16 +80,15 @@ export async function insertUser(
     params.accommodationAvailable == null
       ? null
       : params.accommodationAvailable
-        ? 1
-        : 0,
+      ? 1
+      : 0,
     params.notes ?? null,
   ];
 
-  const result = (
-    await exec(sql, execParams, conn)
-  )[0] as unknown as ResultSetHeader;
-  return result && typeof result.insertId === "number"
-    ? result.insertId
+  const [result] = await exec(sql, execParams, conn);
+  const header = result as ResultSetHeader;
+  return header && typeof header.insertId === "number"
+    ? header.insertId
     : undefined;
 }
 
@@ -96,8 +107,8 @@ export async function lodgeExists(lodgeId: number, conn?: PoolConnection) {
     [lodgeId],
     conn,
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  return Array.isArray(arr) && arr.length > 0;
+  const arr = asRows<UserRow>(rows);
+  return arr.length > 0;
 }
 
 export async function assignUserToLodge(
@@ -119,7 +130,6 @@ export async function insertUserRolesBulk(
 ) {
   if (!Array.isArray(values) || values.length === 0) return;
 
-  // Build a parameterized multi-row insert: (?,?),(?,?),...
   const placeholders = values.map(() => "(?,?)").join(",");
   const flatParams: number[] = [];
   for (const pair of values) {
@@ -195,13 +205,11 @@ export async function updateUserProfile(
   await exec(sql, params);
 }
 
-export async function getUserRoles(userId: number) {
+export async function getUserRoles(userId: number): Promise<string[]> {
   const sql =
     "SELECT r.role FROM roles r JOIN users_roles ur ON ur.rid = r.id WHERE ur.uid = ?";
   const [rows] = await exec(sql, [userId]);
-  const arr = rows as unknown as Array<{ role?: unknown }>;
-  if (!Array.isArray(arr)) return [];
-  return arr
+  return asRows<RoleRow>(rows)
     .map((r) => r?.role)
     .filter((role): role is string => typeof role === "string");
 }
@@ -215,11 +223,9 @@ export async function updatePicture(userId: number, pictureKey: string | null) {
   const [rows] = await exec("SELECT picture FROM users WHERE id = ? LIMIT 1", [
     userId,
   ]);
-  const currentRows = rows as unknown as Array<{ picture?: unknown }>;
+  const currentRows = asRows<PictureRow>(rows);
   const oldKey =
-    Array.isArray(currentRows) &&
-    currentRows.length > 0 &&
-    typeof currentRows[0].picture === "string"
+    currentRows.length > 0 && typeof currentRows[0].picture === "string"
       ? (currentRows[0].picture as string)
       : null;
 
@@ -241,10 +247,9 @@ export async function setUserAchievement(
   const when = awardedAt ? awardedAt : new Date();
   const sql =
     "INSERT INTO users_achievements (uid, aid, awardedAt) VALUES (?, ?, ?)";
-  const result = (
-    await exec(sql, [userId, achievementId, when])
-  )[0] as unknown as ResultSetHeader;
-  return result && typeof result.insertId === "number" ? result.insertId : 0;
+  const [result] = await exec(sql, [userId, achievementId, when]);
+  const header = result as ResultSetHeader;
+  return header && typeof header.insertId === "number" ? header.insertId : 0;
 }
 
 export async function getUserAchievements(userId: number) {
@@ -256,9 +261,7 @@ export async function getUserAchievements(userId: number) {
     ORDER BY ua.awardedAt DESC, ua.id DESC
   `;
   const [rows] = await exec(sql, [userId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr)) return [];
-  return arr
+  return asRows<AchievementRow>(rows)
     .map((r) => ({
       id: Number(r.id),
       aid: Number(r.aid),
@@ -272,26 +275,23 @@ export async function listAchievements() {
   const [rows] = await exec(
     "SELECT id, title FROM achievements ORDER BY id ASC",
   );
-  const arr = rows as unknown as Array<{ id?: number; title?: unknown }>;
-  if (!Array.isArray(arr)) return [];
-  return arr
+  return asRows<AchievementListRow>(rows)
     .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
     .filter((r) => Number.isFinite(r.id));
 }
 
 export async function listRoles() {
   const [rows] = await exec("SELECT id, role FROM roles ORDER BY id ASC");
-  const arr = rows as unknown as Array<{ id?: number; role?: unknown }>;
-  if (!Array.isArray(arr)) return [];
-  return arr
+  return asRows<RoleListRow>(rows)
     .map((r) => ({ id: Number(r.id), role: String(r.role ?? "") }))
     .filter((r) => Number.isFinite(r.id));
 }
 
-export async function listUsers(
-  filters?: { name?: string; achievementId?: number; lodgeId?: number },
-) {
-  // Build dynamic SQL with optional filters
+export async function listUsers(filters?: {
+  name?: string;
+  achievementId?: number;
+  lodgeId?: number;
+}) {
   const where: string[] = [];
   const params: Array<string | number | null> = [];
 
@@ -320,7 +320,7 @@ export async function listUsers(
     FROM users u ${whereSql} ORDER BY u.id DESC`;
 
   const [rows] = await exec(sql, params);
-  return rows as unknown as Array<Record<string, unknown>>;
+  return asRows<UserRow>(rows);
 }
 
 export async function getUserPublicById(id: number) {
@@ -329,7 +329,7 @@ export async function getUserPublicById(id: number) {
      FROM users WHERE id = ? LIMIT 1`,
     [id],
   );
-  const arr = rows as unknown as Array<Record<string, unknown>>;
+  const arr = asRows<UserRow>(rows);
   return arr.length > 0 ? arr[0] : undefined;
 }
 
@@ -342,9 +342,7 @@ export async function selectUserOfficials(userId: number) {
     ORDER BY o.id ASC
   `;
   const [rows] = await exec(sql, [userId]);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  if (!Array.isArray(arr)) return [];
-  return arr
+  return asRows<OfficialRow>(rows)
     .map((r) => ({ id: Number(r.id), title: String(r.title ?? "") }))
     .filter((r) => Number.isFinite(r.id));
 }
@@ -354,7 +352,6 @@ export async function setUserOfficials(
   officialIds: number[],
   conn?: PoolConnection,
 ) {
-  // Delete existing and insert provided set. Caller may provide `conn` to run in transaction.
   await exec("DELETE FROM users_officials WHERE uid = ?", [userId], conn);
   if (!Array.isArray(officialIds) || officialIds.length === 0) return;
   const placeholders = officialIds.map(() => "(?,?)").join(",");
@@ -381,3 +378,4 @@ export default {
   selectUserOfficials,
   setUserOfficials,
 };
+

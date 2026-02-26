@@ -1,7 +1,7 @@
 import { Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { RoleValue } from "../types";
-import { getUserRoles } from "../services";
+import { getUserRoles } from "../services/userService";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 
@@ -24,7 +24,14 @@ export function requireRole(...requiredRoles: RoleValue[]) {
         { userId, requiredRoles },
         "authorize: checking roles for user",
       );
-      const roles = await getUserRoles(userId);
+      const roles =
+        req.userRoles && req.userRoles.length > 0
+          ? req.userRoles
+          : await getUserRoles(userId);
+      if (!req.userRoles || req.userRoles.length === 0) {
+        req.userRoles = roles;
+        req.roleCache = { roles, loadedAt: Date.now() };
+      }
       const has = requiredRoles.some((r) => roles.includes(r));
       logger.info({ userId, roles, has }, "authorize: roles fetched");
       if (!has) {
@@ -64,7 +71,14 @@ export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
       }
 
       // Otherwise check DB-backed roles
-      const roles = await getUserRoles(payload.userId);
+      const roles =
+        req.userRoles && req.userRoles.length > 0
+          ? req.userRoles
+          : await getUserRoles(payload.userId);
+      if (!req.userRoles || req.userRoles.length === 0) {
+        req.userRoles = roles;
+        req.roleCache = { roles, loadedAt: Date.now() };
+      }
       const allowed = allowedRoles.some((r) => roles.includes(r));
       if (allowed) return next();
 

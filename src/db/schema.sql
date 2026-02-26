@@ -93,7 +93,6 @@ CREATE TABLE `officials` (
 -- Users
 CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(256) NOT NULL,
   `email` varchar(256) NOT NULL,
   `passwordHash` varchar(512) NOT NULL,
   `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),

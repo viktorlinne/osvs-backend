@@ -1,6 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import * as mailsService from "../services";
+import * as mailsService from "../services/mailsService";
 import { validateCreateMailBody } from "../validators";
 import { sendError } from "../utils/response";
 

@@ -53,7 +53,7 @@ async function sendViaBrevo(
     SendSmtpEmail: new (opts: unknown) => unknown;
   };
 
-  const SibApiV3Sdk = sibModule as unknown as SibModuleShape;
+  const SibApiV3Sdk = sibModule as SibModuleShape;
   const defaultClient = SibApiV3Sdk.ApiClient.instance;
   defaultClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
   const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();

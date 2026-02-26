@@ -75,8 +75,7 @@ export async function sendMailToLodge(
 
 export async function listInboxForUser(uid: number) {
   const rows = await mailsRepo.listInboxForUser(uid);
-  const arr = rows as unknown as Array<Record<string, unknown>>;
-  return arr
+  return rows
     .map((r) => ({
       uid: Number(uid),
       mid: Number(r.id),
