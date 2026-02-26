@@ -5,6 +5,7 @@ export {
   getUserRoles,
   getUserAchievements,
   getUserOfficials,
+  getUserOfficialsHistory,
   listAchievements,
   listRoles,
   listPublicUsers,
@@ -28,6 +29,7 @@ import {
   getUserRoles,
   getUserAchievements,
   getUserOfficials,
+  getUserOfficialsHistory,
   listAchievements,
   listRoles,
   listPublicUsers,
@@ -52,6 +54,7 @@ export default {
   getUserRoles,
   getUserAchievements,
   getUserOfficials,
+  getUserOfficialsHistory,
   listAchievements,
   listRoles,
   listPublicUsers,
@@ -65,4 +68,3 @@ export default {
   setUserRoles,
   createUser,
 };
-

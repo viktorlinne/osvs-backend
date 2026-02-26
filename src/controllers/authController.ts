@@ -8,6 +8,7 @@ import {
   getUserRoles,
   getUserAchievements,
   getUserOfficials,
+  getUserOfficialsHistory,
 } from "../services/userService";
 import { hashPassword } from "../services/authService";
 import { REFRESH_COOKIE, PROFILE_PLACEHOLDER } from "../config/constants";
@@ -194,16 +195,20 @@ export async function me(
   const officials = user.matrikelnummer
     ? await getUserOfficials(user.matrikelnummer)
     : [];
+  const officialHistory = user.matrikelnummer
+    ? await getUserOfficialsHistory(user.matrikelnummer)
+    : [];
   const publicUser = toPublicUser(user);
   const pictureUrl = publicUser.picture
     ? await getPublicUrl(publicUser.picture)
     : null;
 
   return res.json({
-    user: { ...publicUser, pictureUrl },
+    user: { ...publicUser, pictureUrl, officials, officialHistory },
     roles,
     achievements,
     officials,
+    officialHistory,
   });
 }
 

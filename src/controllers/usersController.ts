@@ -20,6 +20,7 @@ import {
   setUserAchievement,
   getUserAchievements,
   getUserOfficials,
+  getUserOfficialsHistory,
   getUserRoles,
   updateUserProfile,
   listPublicUsers,
@@ -314,10 +315,12 @@ export async function getPublicUserHandler(
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
     const achievements = await getUserAchievements(matrikelnummer);
     const officials = await getUserOfficials(matrikelnummer);
+    const officialHistory = await getUserOfficialsHistory(matrikelnummer);
     return res.status(200).json({
-      user: { ...user, pictureUrl, officials },
+      user: { ...user, pictureUrl, officials, officialHistory },
       achievements,
       officials,
+      officialHistory,
     });
   } catch (err) {
     logger.error("Failed to get public user", err);

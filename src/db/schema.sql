@@ -109,7 +109,7 @@ CREATE TABLE `users` (
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(10) NOT NULL,
   `notes` text DEFAULT NULL,
-  
+  `allergies` text DEFAULT NULL,
   `accommodationAvailable` tinyint(1) DEFAULT 0,
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_matrikelnummer` (`matrikelnummer`),
@@ -209,11 +209,15 @@ CREATE TABLE `users_achievements` (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 CREATE TABLE `users_officials` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
   `oid` int(11) NOT NULL,
   `appointedAt` datetime NOT NULL,
   `unAppointedAt` datetime DEFAULT NULL,
-  PRIMARY KEY (`uid`, `oid`),
+  PRIMARY KEY (`id`),
+  KEY `idx_users_officials_uid_unappointed` (`uid`, `unAppointedAt`),
+  KEY `idx_users_officials_uid_oid_unappointed` (`uid`, `oid`, `unAppointedAt`),
+  KEY `idx_users_officials_uid_unappointed_appointed` (`uid`, `unAppointedAt`, `appointedAt`),
   KEY `fk_users_officials_official` (`oid`),
   CONSTRAINT `fk_users_officials_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_users_officials_official` FOREIGN KEY (`oid`) REFERENCES `officials` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -454,7 +458,7 @@ VALUES
   (
     1,
     'alice@example.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
+    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
     'Alice',
     'Example',
@@ -472,7 +476,7 @@ VALUES
   (
     2,
     'bob@example.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
+    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
     'Bob',
     'Tester',
@@ -490,7 +494,7 @@ VALUES
   (
     3,
     'viktor.linne@gmail.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
+    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
     'Viktor',
     'Linné',

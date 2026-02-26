@@ -1,7 +1,7 @@
 import pool from "../config/db";
 import { officialsRepo } from "../repositories";
 import * as userRepo from "../repositories/user.repo";
-import type { Official } from "../types";
+import type { Official, OfficialHistory } from "../types";
 
 export async function listOfficials(): Promise<Official[]> {
   const rows = await officialsRepo.listOfficials();
@@ -16,6 +16,18 @@ export async function getUserOfficials(userId: number): Promise<Official[]> {
     id: Number(r.id),
     title: String(r.title ?? ""),
   })) as Official[];
+}
+
+export async function getUserOfficialsHistory(
+  userId: number,
+): Promise<OfficialHistory[]> {
+  const rows = await userRepo.selectUserOfficialsHistory(userId);
+  return rows.map((r) => ({
+    id: Number(r.id),
+    title: String(r.title ?? ""),
+    appointedAt: String(r.appointedAt ?? ""),
+    unappointedAt: String(r.unappointedAt ?? ""),
+  })) as OfficialHistory[];
 }
 
 export async function setUserOfficials(
@@ -43,4 +55,9 @@ export async function setUserOfficials(
   }
 }
 
-export default { listOfficials, getUserOfficials, setUserOfficials };
+export default {
+  listOfficials,
+  getUserOfficials,
+  getUserOfficialsHistory,
+  setUserOfficials,
+};

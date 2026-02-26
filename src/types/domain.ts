@@ -36,6 +36,13 @@ export type Official = {
   title: string;
 };
 
+export type OfficialHistory = {
+  id: number;
+  title: string;
+  appointedAt: string;
+  unappointedAt: string;
+};
+
 export type UserRecord = {
   matrikelnummer: number;
   email: string;

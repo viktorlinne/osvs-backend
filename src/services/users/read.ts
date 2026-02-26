@@ -1,5 +1,6 @@
 import type {
   Achievement,
+  OfficialHistory,
   PublicUser,
   Role,
   RoleValue,
@@ -54,6 +55,26 @@ export async function getUserOfficials(userId: number) {
     .filter((r) => Number.isFinite(r.id));
 }
 
+export async function getUserOfficialsHistory(
+  userId: number,
+): Promise<OfficialHistory[]> {
+  const rows = await userRepo.selectUserOfficialsHistory(userId);
+  return rows
+    .map((r) => ({
+      id: Number(r.id),
+      title: String(r.title ?? ""),
+      appointedAt: String(r.appointedAt ?? ""),
+      unappointedAt: String(r.unappointedAt ?? ""),
+    }))
+    .filter(
+      (r) =>
+        Number.isFinite(r.id) &&
+        r.title.length > 0 &&
+        r.appointedAt.length > 0 &&
+        r.unappointedAt.length > 0,
+    );
+}
+
 export async function listAchievements(): Promise<Achievement[]> {
   const rows = await userRepo.listAchievements();
   return rows
@@ -88,4 +109,3 @@ export async function getPublicUserById(id: number) {
   if (!row) return undefined;
   return isValidUserRecord(row) ? toPublicUser(row) : undefined;
 }
-

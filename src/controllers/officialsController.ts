@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "../types/auth";
 import {
   listOfficials,
   getUserOfficials,
+  getUserOfficialsHistory,
   setUserOfficials,
 } from "../services/officialsService";
 import { sendError } from "../utils/response";
@@ -29,7 +30,8 @@ export async function getMyOfficialsHandler(
     const uid = req.user?.matrikelnummer;
     if (!uid) return sendError(res, 401, "Unauthorized");
     const rows = await getUserOfficials(uid);
-    return res.status(200).json({ officials: rows });
+    const history = await getUserOfficialsHistory(uid);
+    return res.status(200).json({ officials: rows, officialHistory: history });
   } catch {
     return sendError(res, 500, "Failed to get officials");
   }
@@ -45,7 +47,10 @@ export async function getMemberOfficialsHandler(
     if (!Number.isFinite(matrikelnummer))
       return sendError(res, 400, "Invalid id");
     const rows = await getUserOfficials(matrikelnummer);
-    return res.status(200).json({ officials: rows });
+    const history = await getUserOfficialsHistory(matrikelnummer);
+    return res
+      .status(200)
+      .json({ officials: rows, officialHistory: history });
   } catch {
     return sendError(res, 500, "Failed to get member officials");
   }
@@ -66,7 +71,10 @@ export async function setMemberOfficialsHandler(
       : [];
     await setUserOfficials(matrikelnummer, officialIds);
     const rows = await getUserOfficials(matrikelnummer);
-    return res.status(200).json({ success: true, officials: rows });
+    const history = await getUserOfficialsHistory(matrikelnummer);
+    return res
+      .status(200)
+      .json({ success: true, officials: rows, officialHistory: history });
   } catch {
     return sendError(res, 500, "Failed to set member officials");
   }

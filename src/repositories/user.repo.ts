@@ -26,6 +26,13 @@ type AchievementRow = { id?: unknown; aid?: unknown; awardedAt?: unknown; title?
 type RoleListRow = { id?: unknown; role?: unknown };
 type AchievementListRow = { id?: unknown; title?: unknown };
 type OfficialRow = { id?: unknown; title?: unknown };
+type OfficialHistoryRow = {
+  id?: unknown;
+  title?: unknown;
+  appointedAt?: unknown;
+  unappointedAt?: unknown;
+};
+type ActiveOfficialOidRow = { oid?: unknown };
 
 function asRows<T>(rows: unknown): T[] {
   return Array.isArray(rows) ? (rows as T[]) : [];
@@ -340,7 +347,7 @@ export async function selectUserOfficials(userId: number) {
     SELECT o.id, o.title
     FROM users_officials uo
     JOIN officials o ON o.id = uo.oid
-    WHERE uo.uid = ?
+    WHERE uo.uid = ? AND uo.unAppointedAt IS NULL
     ORDER BY o.id ASC
   `;
   const [rows] = await exec(sql, [userId]);
@@ -349,20 +356,95 @@ export async function selectUserOfficials(userId: number) {
     .filter((r) => Number.isFinite(r.id));
 }
 
+export async function selectUserOfficialsHistory(userId: number) {
+  const sql = `
+    SELECT o.id, o.title, uo.appointedAt, uo.unAppointedAt AS unappointedAt
+    FROM users_officials uo
+    JOIN officials o ON o.id = uo.oid
+    WHERE uo.uid = ? AND uo.unAppointedAt IS NOT NULL
+    ORDER BY uo.unAppointedAt DESC, uo.appointedAt DESC, o.id ASC
+  `;
+  const [rows] = await exec(sql, [userId]);
+  return asRows<OfficialHistoryRow>(rows)
+    .map((r) => ({
+      id: Number(r.id),
+      title: String(r.title ?? ""),
+      appointedAt: r.appointedAt ? String(r.appointedAt) : "",
+      unappointedAt: r.unappointedAt ? String(r.unappointedAt) : "",
+    }))
+    .filter(
+      (r) =>
+        Number.isFinite(r.id) &&
+        r.title.length > 0 &&
+        r.appointedAt.length > 0 &&
+        r.unappointedAt.length > 0,
+    );
+}
+
 export async function setUserOfficials(
   userId: number,
   officialIds: number[],
   conn?: PoolConnection,
 ) {
-  await exec("DELETE FROM users_officials WHERE uid = ?", [userId], conn);
-  if (!Array.isArray(officialIds) || officialIds.length === 0) return;
-  const placeholders = officialIds.map(() => "(?,?)").join(",");
-  const params: Array<number> = [];
-  for (const oid of officialIds) {
-    params.push(userId, oid);
+  const normalizedIds = Array.from(
+    new Set(
+      (Array.isArray(officialIds) ? officialIds : [])
+        .map((id) => Number(id))
+        .filter((id): id is number => Number.isFinite(id)),
+    ),
+  );
+
+  const [activeRows] = await exec(
+    `
+      SELECT oid
+      FROM users_officials
+      WHERE uid = ? AND unAppointedAt IS NULL
+      FOR UPDATE
+    `,
+    [userId],
+    conn,
+  );
+
+  const activeIds = new Set(
+    asRows<ActiveOfficialOidRow>(activeRows)
+      .map((row) => Number(row.oid))
+      .filter((id): id is number => Number.isFinite(id)),
+  );
+  const desiredIds = new Set(normalizedIds);
+
+  const toUnappoint = Array.from(activeIds).filter((id) => !desiredIds.has(id));
+  const toAppoint = Array.from(desiredIds).filter((id) => !activeIds.has(id));
+
+  if (toUnappoint.length > 0) {
+    const placeholders = toUnappoint.map(() => "?").join(",");
+    await exec(
+      `
+        UPDATE users_officials
+        SET unAppointedAt = NOW()
+        WHERE uid = ?
+          AND unAppointedAt IS NULL
+          AND oid IN (${placeholders})
+      `,
+      [userId, ...toUnappoint],
+      conn,
+    );
   }
-  const sql = `INSERT INTO users_officials (uid, oid) VALUES ${placeholders}`;
-  await exec(sql, params, conn);
+
+  if (toAppoint.length > 0) {
+    const placeholders = toAppoint.map(() => "(?, ?, NOW(), NULL)").join(",");
+    const params: number[] = [];
+    for (const oid of toAppoint) {
+      params.push(userId, oid);
+    }
+    await exec(
+      `
+        INSERT INTO users_officials (uid, oid, appointedAt, unAppointedAt)
+        VALUES ${placeholders}
+      `,
+      params,
+      conn,
+    );
+  }
 }
 
 export default {
@@ -378,5 +460,6 @@ export default {
   getUserPublicById,
   listAchievements,
   selectUserOfficials,
+  selectUserOfficialsHistory,
   setUserOfficials,
 };

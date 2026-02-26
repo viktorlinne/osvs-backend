@@ -10,7 +10,6 @@ import pinoHttp from "pino-http";
 import logger from "./utils/logger";
 import pool from "./config/db";
 import requestId from "./middleware/requestId";
-import requestTiming from "./middleware/requestTiming";
 import scrubResponseJson from "./middleware/scrubResponse";
 import scrubRequestBody from "./middleware/scrubRequest";
 import * as Sentry from "@sentry/node";
@@ -93,7 +92,6 @@ app.use(
 // Response compression
 app.use(compression());
 // Request timing middleware
-app.use(requestTiming);
 app.use(express.json());
 app.use(cookieParser());
 
