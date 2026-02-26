@@ -59,13 +59,13 @@ export async function authMiddleware(
     // User-level revocation check (revoke all tokens issued before a time)
     try {
       const decodedObjForUser = decodedPayload;
-      const userIdCandidate = decodedObjForUser?.userId;
+      const matrikelnummerCandidate = decodedObjForUser?.matrikelnummer;
       const tokenIat =
         typeof decodedObjForUser?.iat === "number"
           ? decodedObjForUser.iat
           : undefined;
-      if (typeof userIdCandidate === "number") {
-        const dbUser = await findById(userIdCandidate);
+      if (typeof matrikelnummerCandidate === "number") {
+        const dbUser = await findById(matrikelnummerCandidate);
         if (dbUser && dbUser.revokedAt) {
           const revokedAt = new Date(dbUser.revokedAt as string);
           if (tokenIat && typeof tokenIat === "number") {
@@ -73,7 +73,7 @@ export async function authMiddleware(
             if (tokenIatMs <= revokedAt.getTime()) {
               logger.warn({
                 msg: "Token issued before user-wide revoke",
-                userId: userIdCandidate,
+                matrikelnummer: matrikelnummerCandidate,
               });
               return sendError(res, 401, "Inloggning utgången");
             }
@@ -93,19 +93,19 @@ export async function authMiddleware(
     if (
       typeof decoded !== "object" ||
       decoded === null ||
-      typeof decodedObj.userId !== "number" ||
+      typeof decodedObj.matrikelnummer !== "number" ||
       !Array.isArray(decodedObj.roles)
     ) {
       logger.warn({ msg: "Invalid JWT payload shape", payload: decoded });
       return sendError(res, 401, "Invalid token payload");
     }
 
-    const userId = decodedObj.userId as number;
+    const matrikelnummer = decodedObj.matrikelnummer as number;
     const roles = decodedObj.roles.filter(isValidRole);
 
     // assign typed payload
     const payload: JWTPayload = {
-      userId,
+      matrikelnummer,
       roles: roles.filter(isValidRole),
       iat: decodedObj?.iat,
       exp: decodedObj?.exp,
@@ -119,7 +119,7 @@ export async function authMiddleware(
     // attach user info to request logger (if available)
     if (req.log && typeof req.log.child === "function") {
       req.log = req.log.child({
-        userId: payload.userId,
+        matrikelnummer: payload.matrikelnummer,
         roles: payload.roles,
       });
     }
@@ -127,7 +127,7 @@ export async function authMiddleware(
     // attach to Sentry scope
     try {
       Sentry.configureScope((scope) => {
-        scope.setUser({ id: String(payload.userId) });
+        scope.setUser({ id: String(payload.matrikelnummer) });
         scope.setTag("roles", payload.roles.join(","));
       });
     } catch {
@@ -142,3 +142,4 @@ export async function authMiddleware(
 }
 
 export default authMiddleware;
+

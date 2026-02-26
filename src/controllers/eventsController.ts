@@ -9,7 +9,7 @@ import { getCached, setCached, delPattern } from "../infra/cache";
 import { validateLinkLodgeBody, validateRsvpBody } from "../validators";
 import {
   parseNumericParam,
-  requireAuthUserId,
+  requireAuthMatrikelnummer,
   unwrapValidation,
 } from "./helpers/request";
 
@@ -192,7 +192,7 @@ export async function listForUserHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = requireAuthUserId(req, res, "Unauthorized");
+  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
   if (!uid) return;
   const rows = await eventsService.listEventsForUser(uid);
   const dto = rows.map((r) => ({
@@ -233,7 +233,7 @@ export async function rsvpHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = requireAuthUserId(req, res, "Unauthorized");
+    const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!uid) return;
 
     const id = parseNumericParam(res, req.params.id, "Invalid id");
@@ -268,7 +268,7 @@ export async function getUserRsvpHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = requireAuthUserId(req, res, "Unauthorized");
+  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
   if (!uid) return;
 
   const id = parseNumericParam(res, req.params.id, "Invalid id");

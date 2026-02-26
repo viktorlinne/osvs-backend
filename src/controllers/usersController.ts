@@ -35,7 +35,7 @@ import { sendError } from "../utils/response";
 import { PROFILE_PLACEHOLDER } from "../config/constants";
 import {
   parseNumericParam,
-  requireAuthUserId,
+  requireAuthMatrikelnummer,
   unwrapValidation,
 } from "./helpers/request";
 
@@ -45,7 +45,7 @@ export async function updatePictureHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = requireAuthUserId(req, res, "Invalid token payload");
+    const uid = requireAuthMatrikelnummer(req, res, "Invalid token payload");
     if (!uid) return;
 
     const file = req.file;
@@ -95,12 +95,12 @@ export async function updateOtherPictureHandler(
   _next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Invalid token payload");
+    const callerId = requireAuthMatrikelnummer(req, res, "Invalid token payload");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -154,7 +154,7 @@ export async function updateMeHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = requireAuthUserId(req, res, "Invalid token payload");
+    const uid = requireAuthMatrikelnummer(req, res, "Invalid token payload");
     if (!uid) return;
 
     const payload = unwrapValidation(res, validateUpdateUserProfileBody(req.body));
@@ -181,12 +181,12 @@ export async function updateUserHandler(
   _next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -214,12 +214,12 @@ export async function addAchievementHandler(
   res: Response,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -247,12 +247,12 @@ export async function getAchievementsHandler(
   res: Response,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -303,13 +303,17 @@ export async function getPublicUserHandler(
   _next: NextFunction,
 ) {
   try {
-    const userId = parseNumericParam(res, req.params.id, "Invalid user id");
-    if (userId === null) return;
-    const user = await getPublicUserById(userId);
+    const matrikelnummer = parseNumericParam(
+      res,
+      req.params.matrikelnummer,
+      "Invalid user id",
+    );
+    if (matrikelnummer === null) return;
+    const user = await getPublicUserById(matrikelnummer);
     if (!user) return sendError(res, 404, "User not found");
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
-    const achievements = await getUserAchievements(userId);
-    const officials = await getUserOfficials(userId);
+    const achievements = await getUserAchievements(matrikelnummer);
+    const officials = await getUserOfficials(matrikelnummer);
     return res.status(200).json({
       user: { ...user, pictureUrl, officials },
       achievements,
@@ -326,12 +330,12 @@ export async function setRolesHandler(
   res: Response,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -360,12 +364,12 @@ export async function getRolesHandler(
   res: Response,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -383,12 +387,12 @@ export async function getLodgeHandler(
   res: Response,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -406,12 +410,12 @@ export async function setLodgeHandler(
   res: Response,
 ) {
   try {
-    const callerId = requireAuthUserId(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
-      req.params.id,
+      req.params.matrikelnummer,
       "Invalid target user id",
     );
     if (targetId === null) return;
@@ -447,3 +451,4 @@ export default {
   listUsersHandler,
   getPublicUserHandler,
 };
+

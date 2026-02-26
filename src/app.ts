@@ -27,7 +27,6 @@ import lodgesRouter from "./routes/lodges";
 import postsRouter from "./routes/posts";
 import uploadsRouter from "./routes/uploads";
 import eventsRouter from "./routes/events";
-import mailsRouter from "./routes/mails";
 import paymentsRouter from "./routes/payments";
 import achievementsRouter from "./routes/achievements";
 import officialsRouter from "./routes/officials";
@@ -89,7 +88,7 @@ app.use(
     credentials: true,
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  })
+  }),
 );
 // Response compression
 app.use(compression());
@@ -130,7 +129,7 @@ app.use(
         }
       },
     },
-  })
+  }),
 );
 
 // Serve static files (profile pictures, etc.)
@@ -163,8 +162,6 @@ app.use("/api/events", eventsRouter);
 app.use("/api/achievements", achievementsRouter);
 // Officials routes
 app.use("/api/officials", officialsRouter);
-// Mails routes
-app.use("/api/mails", mailsRouter);
 // Payments routes
 app.use("/api/payments", paymentsRouter);
 

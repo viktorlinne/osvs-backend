@@ -15,25 +15,28 @@ export function requireRole(...requiredRoles: RoleValue[]) {
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction,
-  ) => {
+    ) => {
     try {
       const payload = req.user;
       if (!payload) return sendError(res, 401, "Unauthorized");
-      const userId = payload.userId;
+      const matrikelnummer = payload.matrikelnummer;
       logger.info(
-        { userId, requiredRoles },
+        { matrikelnummer, requiredRoles },
         "authorize: checking roles for user",
       );
       const roles =
         req.userRoles && req.userRoles.length > 0
           ? req.userRoles
-          : await getUserRoles(userId);
+          : await getUserRoles(matrikelnummer);
       if (!req.userRoles || req.userRoles.length === 0) {
         req.userRoles = roles;
         req.roleCache = { roles, loadedAt: Date.now() };
       }
       const has = requiredRoles.some((r) => roles.includes(r));
-      logger.info({ userId, roles, has }, "authorize: roles fetched");
+      logger.info(
+        { matrikelnummer, roles, has },
+        "authorize: roles fetched",
+      );
       if (!has) {
         return sendError(res, 403, "Forbidden");
       }
@@ -47,7 +50,7 @@ export function requireRole(...requiredRoles: RoleValue[]) {
 
 /**
  * allowSelfOrRoles: allows access when the caller is the same user as the
- * target (in `req.params.id` or `req.params.userId`), or when the caller has
+ * target (in `req.params.matrikelnummer`), or when the caller has
  * any of the specified roles (DB-backed check).
  */
 export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
@@ -60,21 +63,19 @@ export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
       const payload = req.user;
       if (!payload) return sendError(res, 401, "Unauthorized");
 
-      const paramId = (req.params && (req.params.id ?? req.params.userId)) as
-        | string
-        | undefined;
+      const paramId = req.params?.matrikelnummer as string | undefined;
       const targetId = paramId ? Number(paramId) : undefined;
 
       // If targetId is provided and matches caller, allow
       if (typeof targetId !== "undefined" && !Number.isNaN(targetId)) {
-        if (payload.userId === targetId) return next();
+        if (payload.matrikelnummer === targetId) return next();
       }
 
       // Otherwise check DB-backed roles
       const roles =
         req.userRoles && req.userRoles.length > 0
           ? req.userRoles
-          : await getUserRoles(payload.userId);
+          : await getUserRoles(payload.matrikelnummer);
       if (!req.userRoles || req.userRoles.length === 0) {
         req.userRoles = roles;
         req.roleCache = { roles, loadedAt: Date.now() };

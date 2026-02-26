@@ -3,7 +3,7 @@ import type { RoleValue } from "./domain";
 import { isValidRole } from "./domain";
 
 export interface JWTPayload {
-  userId: number;
+  matrikelnummer: number;
   roles: RoleValue[];
   iat?: number;
   exp?: number;

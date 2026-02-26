@@ -84,28 +84,12 @@ export type CreatePostBody = {
 
 export type UpdatePostBody = Partial<CreatePostBody>;
 
-export type CreateMailBody = {
-  lid?: number | string;
-  title?: string;
-  content?: string;
-};
-
 export type LoginBody = {
   email?: string;
   password?: string;
 };
 
-export type ForgotPasswordBody = {
-  email?: string;
-};
-
-export type ResetPasswordBody = {
-  token?: string;
-  password?: string;
-};
-
 export type RegisterBody = {
-  username?: string;
   email?: string;
   password?: string;
   firstname?: string;

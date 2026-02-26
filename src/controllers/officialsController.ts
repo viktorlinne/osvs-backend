@@ -26,7 +26,7 @@ export async function getMyOfficialsHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = req.user?.userId;
+    const uid = req.user?.matrikelnummer;
     if (!uid) return sendError(res, 401, "Unauthorized");
     const rows = await getUserOfficials(uid);
     return res.status(200).json({ officials: rows });
@@ -41,9 +41,10 @@ export async function getMemberOfficialsHandler(
   _next: NextFunction,
 ) {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
-    const rows = await getUserOfficials(id);
+    const matrikelnummer = Number(req.params.matrikelnummer);
+    if (!Number.isFinite(matrikelnummer))
+      return sendError(res, 400, "Invalid id");
+    const rows = await getUserOfficials(matrikelnummer);
     return res.status(200).json({ officials: rows });
   } catch {
     return sendError(res, 500, "Failed to get member officials");
@@ -56,14 +57,15 @@ export async function setMemberOfficialsHandler(
   _next: NextFunction,
 ) {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return sendError(res, 400, "Invalid id");
+    const matrikelnummer = Number(req.params.matrikelnummer);
+    if (!Number.isFinite(matrikelnummer))
+      return sendError(res, 400, "Invalid id");
     const body = req.body as { officialIds?: unknown };
     const officialIds = Array.isArray(body?.officialIds)
       ? body.officialIds.map((v) => Number(v)).filter((n) => Number.isFinite(n))
       : [];
-    await setUserOfficials(id, officialIds);
-    const rows = await getUserOfficials(id);
+    await setUserOfficials(matrikelnummer, officialIds);
+    const rows = await getUserOfficials(matrikelnummer);
     return res.status(200).json({ success: true, officials: rows });
   } catch {
     return sendError(res, 500, "Failed to set member officials");

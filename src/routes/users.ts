@@ -94,14 +94,14 @@ router.post(
 router.get("/", authMiddleware, wrapAsync(usersController.listUsersHandler));
 
 router.get(
-  "/:id",
+  "/:matrikelnummer",
   authMiddleware,
   wrapAsync(usersController.getPublicUserHandler)
 );
 
 /**
  * @openapi
- * /users/{id}:
+ * /users/{matrikelnummer}:
  *   put:
  *     tags:
  *       - Users
@@ -110,7 +110,7 @@ router.get(
  *       - cookieAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: matrikelnummer
  *         required: true
  *         schema:
  *           type: integer
@@ -121,7 +121,7 @@ router.get(
 
 // Update another user's profile
 router.put(
-  "/:id",
+  "/:matrikelnummer",
   authMiddleware,
   requireRole("Admin", "Editor"),
   wrapAsync(usersController.updateUserHandler)
@@ -129,7 +129,7 @@ router.put(
 
 // Update another user's profile picture
 router.post(
-  "/:id/picture",
+  "/:matrikelnummer/picture",
   authMiddleware,
   requireRole("Editor", "Admin"),
   uploadProfilePicture,
@@ -138,7 +138,7 @@ router.post(
 
 // Award an achievement to a user
 router.post(
-  "/:id/achievements",
+  "/:matrikelnummer/achievements",
   authMiddleware,
   requireRole("Admin", "Editor"),
   wrapAsync(usersController.addAchievementHandler)
@@ -146,14 +146,14 @@ router.post(
 
 // Get a user's achievement history
 router.get(
-  "/:id/achievements",
+  "/:matrikelnummer/achievements",
   authMiddleware,
   wrapAsync(usersController.getAchievementsHandler)
 );
 
 // Get a user's roles
 router.get(
-  "/:id/roles",
+  "/:matrikelnummer/roles",
   authMiddleware,
   requireRole("Admin", "Editor"),
   wrapAsync(usersController.getRolesHandler)
@@ -161,7 +161,7 @@ router.get(
 
 // Set roles for a user (admin only)
 router.post(
-  "/:id/roles",
+  "/:matrikelnummer/roles",
   authMiddleware,
   requireRole("Admin"),
   wrapAsync(usersController.setRolesHandler)
@@ -169,14 +169,14 @@ router.post(
 
 // Get a user's lodge
 router.get(
-  "/:id/lodges",
+  "/:matrikelnummer/lodges",
   authMiddleware,
   wrapAsync(usersController.getLodgeHandler)
 );
 
 // Atomic post a user's lodge. Send `{ "lodgeId": <id> }` or `{ "lodgeId": null }` to remove.
 router.post(
-  "/:id/lodges",
+  "/:matrikelnummer/lodges",
   authMiddleware,
   requireRole("Admin", "Editor"),
   wrapAsync(usersController.setLodgeHandler)

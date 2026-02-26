@@ -5,8 +5,7 @@ export function isValidUserRecord(value: unknown): value is UserRecord {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
   return (
-    typeof record.id === "number" &&
-    typeof record.username === "string" &&
+    typeof record.matrikelnummer === "number" &&
     typeof record.email === "string" &&
     (typeof record.passwordHash === "undefined" ||
       typeof record.passwordHash === "string") &&
@@ -55,7 +54,6 @@ export function trimUserInput(input: CreateUserInput): CreateUserInput {
   const trimRequired = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   return {
     ...input,
-    username: trimRequired(input.username),
     email: trimRequired(input.email),
     firstname: trimRequired(input.firstname),
     lastname: trimRequired(input.lastname),
@@ -69,4 +67,3 @@ export function trimUserInput(input: CreateUserInput): CreateUserInput {
     zipcode: trimRequired(input.zipcode),
   } as CreateUserInput;
 }
-

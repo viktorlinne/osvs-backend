@@ -29,11 +29,15 @@ router.get("/", listOfficialsHandler);
 router.get("/me", authMiddleware, wrapAsync(getMyOfficialsHandler));
 
 // Get another member's officials (auth required)
-router.get("/member/:id", authMiddleware, wrapAsync(getMemberOfficialsHandler));
+router.get(
+  "/member/:matrikelnummer",
+  authMiddleware,
+  wrapAsync(getMemberOfficialsHandler),
+);
 
 // Set another member's officials (Admin/Editor required)
 router.put(
-  "/member/:id",
+  "/member/:matrikelnummer",
   authMiddleware,
   requireRole("Admin", "Editor"),
   wrapAsync(setMemberOfficialsHandler)

@@ -92,7 +92,7 @@ CREATE TABLE `officials` (
 -- =====================================================
 -- Users
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `matrikelnummer` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(256) NOT NULL,
   `passwordHash` varchar(512) NOT NULL,
   `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
@@ -109,10 +109,11 @@ CREATE TABLE `users` (
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(10) NOT NULL,
   `notes` text DEFAULT NULL,
+  
   `accommodationAvailable` tinyint(1) DEFAULT 0,
   UNIQUE KEY `uq_users_email` (`email`),
-  UNIQUE KEY `uq_users_username` (`username`),
-  PRIMARY KEY (`id`)
+  UNIQUE KEY `uq_users_matrikelnummer` (`matrikelnummer`),
+  PRIMARY KEY (`matrikelnummer`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Posts
@@ -143,7 +144,7 @@ CREATE TABLE `events_attendances` (
   `rsvp` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`uid`, `eid`),
   KEY `fk_events_attendances_event` (`eid`),
-  CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_events_attendances_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -168,18 +169,7 @@ CREATE TABLE `refresh_tokens` (
   `lastUsed` datetime DEFAULT NULL,
   PRIMARY KEY (`token_hash`),
   KEY `fk_refresh_token_user` (`uid`),
-  CONSTRAINT `fk_refresh_token_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
--- Password reset tokens (one-time use) — store hashed token
-CREATE TABLE `password_resets` (
-  `token_hash` varchar(128) NOT NULL,
-  `uid` int(11) NOT NULL,
-  `expiresAt` datetime NOT NULL,
-  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  PRIMARY KEY (`token_hash`),
-  KEY `fk_password_reset_user` (`uid`),
-  CONSTRAINT `fk_password_reset_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_refresh_token_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =====================================================
@@ -192,7 +182,7 @@ CREATE TABLE `users_roles` (
   PRIMARY KEY (`uid`, `rid`),
   KEY `fk_user_roles_role` (`rid`),
   CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`rid`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Users ↔ Lodges
@@ -202,7 +192,7 @@ CREATE TABLE `users_lodges` (
   PRIMARY KEY (`uid`, `lid`),
   KEY `fk_user_lodges_lodge_fixed` (`lid`),
   CONSTRAINT `fk_user_lodges_lodge_fixed` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_user_lodges_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_user_lodges_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Users ↔ Achievements (which user has which achievement)
@@ -215,7 +205,7 @@ CREATE TABLE `users_achievements` (
   KEY `fk_users_achievements_achievement` (`aid`),
   KEY `fk_users_achievements_user` (`uid`),
   CONSTRAINT `fk_users_achievements_achievement` FOREIGN KEY (`aid`) REFERENCES `achievements` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_users_achievements_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_users_achievements_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 CREATE TABLE `users_officials` (
@@ -225,7 +215,7 @@ CREATE TABLE `users_officials` (
   `unAppointedAt` datetime DEFAULT NULL,
   PRIMARY KEY (`uid`, `oid`),
   KEY `fk_users_officials_official` (`oid`),
-  CONSTRAINT `fk_users_officials_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_officials_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_users_officials_official` FOREIGN KEY (`oid`) REFERENCES `officials` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -270,7 +260,7 @@ CREATE TABLE `membership_payments` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_membership_uid_year` (`uid`, `year`),
   KEY `fk_membership_payments_user` (`uid`),
-  CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+  CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Event payments
@@ -293,7 +283,7 @@ CREATE TABLE `event_payments` (
   KEY `fk_event_payments_user` (`uid`),
   KEY `fk_event_payments_event` (`eid`),
   CONSTRAINT `fk_event_payments_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT `fk_event_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_event_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =====================================================
@@ -443,8 +433,7 @@ VALUES
 -- Users
 INSERT INTO
   `users` (
-    `id`,
-    `username`,
+    `matrikelnummer`,
     `email`,
     `passwordHash`,
     `archive`,
@@ -464,7 +453,6 @@ INSERT INTO
 VALUES
   (
     1,
-    'alice',
     'alice@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
     NULL,
@@ -483,7 +471,6 @@ VALUES
   ),
   (
     2,
-    'bob',
     'bob@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
     NULL,
@@ -502,7 +489,6 @@ VALUES
   ),
   (
     3,
-    'viktorlinne',
     'viktor.linne@gmail.com',
     "$argon2id$v=19$m=65536,t=3,p=1$yi69mW2ZDIaddQpXVbvcUg$oplrjJ0wXLbRBEGxGxWf7UhCXtcDibLPxRIv0A+DXcE",
     NULL,
@@ -520,9 +506,6 @@ VALUES
     NULL
   ) ON DUPLICATE KEY
 UPDATE
-  `username` =
-VALUES
-  (`username`),
   `email` =
 VALUES
   (`email`),

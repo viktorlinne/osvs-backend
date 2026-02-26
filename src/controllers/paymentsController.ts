@@ -15,7 +15,7 @@ export async function getMyMembershipsHandler(
   req: AuthenticatedRequest,
   res: Response,
 ) {
-  const uid = req.user?.userId;
+  const uid = req.user?.matrikelnummer;
   if (!uid) return sendError(res, 401, "Unauthorized");
 
   try {

@@ -3,12 +3,12 @@ import type { AuthenticatedRequest } from "../../types/auth";
 import { sendError } from "../../utils/response";
 import type { ValidationResult } from "../../validators";
 
-export function requireAuthUserId(
+export function requireAuthMatrikelnummer(
   req: AuthenticatedRequest,
   res: Response,
   message = "Unauthorized",
 ): number | null {
-  const uid = req.user?.userId;
+  const uid = req.user?.matrikelnummer;
   if (!uid) {
     sendError(res, 401, message);
     return null;
@@ -39,4 +39,3 @@ export function unwrapValidation<T>(
   }
   return parsed.data;
 }
-

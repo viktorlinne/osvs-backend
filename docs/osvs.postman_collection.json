@@ -68,50 +68,6 @@
           "response": []
         },
         {
-          "name": "Request Reset Password",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"alice@example.com\"\n}"
-            },
-            "url": {
-              "raw": "{{baseURL}}/api/auth/forgot-password",
-              "host": ["{{baseURL}}"],
-              "path": ["api", "auth", "forgot-password"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Reset Password",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"<token>\",\n  \"password\": \"NewPassword123\"\n}"
-            },
-            "url": {
-              "raw": "{{baseURL}}/api/auth/reset-password",
-              "host": ["{{baseURL}}"],
-              "path": ["api", "auth", "reset-password"]
-            }
-          },
-          "response": []
-        },
-        {
           "name": "Revoke All Sessions",
           "request": {
             "method": "POST",
@@ -653,59 +609,6 @@
       ]
     },
     {
-      "name": "Mails",
-      "item": [
-        {
-          "name": "Create Mail (POST /api/mails)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"lid\": 1,\n  \"title\": \"Newsletter\",\n  \"content\": \"Hello lodge members!\"\n}"
-            },
-            "url": {
-              "raw": "{{baseURL}}/api/mails",
-              "host": ["{{baseURL}}"],
-              "path": ["api", "mails"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Send Mail (POST /api/mails/:id/send)",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseURL}}/api/mails/{{mailId}}/send",
-              "host": ["{{baseURL}}"],
-              "path": ["api", "mails", "{{mailId}}", "send"]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Inbox (GET /api/mails/inbox)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseURL}}/api/mails/inbox",
-              "host": ["{{baseURL}}"],
-              "path": ["api", "mails", "inbox"]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
       "name": "Officials",
       "item": [
         {
@@ -893,11 +796,6 @@
     },
     {
       "key": "postId",
-      "value": "",
-      "type": "default"
-    },
-    {
-      "key": "mailId",
       "value": "",
       "type": "default"
     }

@@ -14,8 +14,7 @@ export function formatDateOnly(d: unknown): string | unknown {
 
 export function toPublicUser(user: UserRecord): PublicUser {
   return {
-    id: user.id,
-    username: user.username,
+    matrikelnummer: user.matrikelnummer,
     email: user.email,
     createdAt: String(formatDateOnly(user.createdAt)),
     picture: user.picture ?? null,

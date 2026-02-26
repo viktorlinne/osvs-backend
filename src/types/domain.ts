@@ -37,8 +37,7 @@ export type Official = {
 };
 
 export type UserRecord = {
-  id: number;
-  username: string;
+  matrikelnummer: number;
   email: string;
   passwordHash?: string;
   createdAt: string | Date;
@@ -59,8 +58,7 @@ export type UserRecord = {
 };
 
 export type PublicUser = {
-  id: number;
-  username: string;
+  matrikelnummer: number;
   email: string;
   createdAt: string;
   picture?: string | null;
@@ -80,7 +78,6 @@ export type PublicUser = {
 };
 
 export type CreateUserInput = {
-  username: string;
   email: string;
   passwordHash: string;
   firstname: string;
@@ -113,26 +110,6 @@ export type EventRecord = {
   price: number;
   startDate: string;
   endDate: string;
-};
-
-export type Mail = {
-  id: number;
-  lid: number;
-  title: string;
-  content: string;
-};
-
-export type UsersMail = {
-  uid: number;
-  mid: number;
-  sentAt: string;
-  isRead: boolean;
-  delivered: boolean;
-  mails?: {
-    id: number;
-    title: string;
-    content: string;
-  };
 };
 
 export type MembershipPayment = {

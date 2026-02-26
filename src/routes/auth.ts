@@ -51,8 +51,6 @@ const registerLimiter = rateLimit({
  *           schema:
  *             type: object
  *             properties:
- *               username:
- *                 type: string
  *               email:
  *                 type: string
  *               password:
@@ -117,56 +115,6 @@ router.post(
  *         description: Invalid credentials
  */
 router.post("/login", loginLimiter, wrapAsync(authController.login));
-
-// Request a password reset: returns a one-time token in tmp/ (for Postman/dev).
-/**
- * @openapi
- * /auth/forgot-password:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Request password reset link
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *     responses:
- *       204:
- *         description: If email exists, reset token created (no body)
- */
-router.post("/forgot-password", wrapAsync(authController.forgotPassword));
-
-// Perform password reset using token
-/**
- * @openapi
- * /auth/reset-password:
- *   post:
- *     tags:
- *       - Auth
- *     summary: Reset password using token
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               token:
- *                 type: string
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Password changed
- *       400:
- *         description: Invalid token or input
- */
-router.post("/reset-password", wrapAsync(authController.resetPassword));
 
 router.post("/refresh", wrapAsync(authController.refresh));
 /**

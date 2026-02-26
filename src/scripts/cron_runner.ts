@@ -34,12 +34,12 @@ async function createAnniversaryInvoices() {
       "Cron Job Creating membership payments for users",
     );
 
-    const rows = await query<{ id: number }>(
-      "SELECT id FROM users WHERE MONTH(createdAt) = ? AND DAY(createdAt) = ?",
+    const rows = await query<{ matrikelnummer: number }>(
+      "SELECT matrikelnummer FROM users WHERE MONTH(createdAt) = ? AND DAY(createdAt) = ?",
       [month, day],
     );
     const uids = rows
-      .map((r) => Number(r.id))
+      .map((r) => Number(r.matrikelnummer))
       .filter((x) => Number.isFinite(x));
     if (uids.length > 0) {
       try {

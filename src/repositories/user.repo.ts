@@ -3,7 +3,6 @@ import type { PoolConnection } from "mysql2/promise";
 import type { ResultSetHeader } from "mysql2";
 
 export interface CreateUserParams {
-  username: string;
   email: string;
   passwordHash: string;
   picture?: string | null;
@@ -50,7 +49,10 @@ export async function findByEmail(email: string) {
 }
 
 export async function findById(id: number) {
-  const [rows] = await exec("SELECT * FROM users WHERE id = ? LIMIT 1", [id]);
+  const [rows] = await exec(
+    "SELECT * FROM users WHERE matrikelnummer = ? LIMIT 1",
+    [id],
+  );
   const arr = asRows<UserRow>(rows);
   return arr.length > 0 ? arr[0] : undefined;
 }
@@ -60,11 +62,10 @@ export async function insertUser(
   conn?: PoolConnection,
 ): Promise<number | undefined> {
   const sql = `INSERT INTO users
-    (username, email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, accommodationAvailable, notes)
-      VALUES (?, ?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    (email, passwordHash, createdAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, accommodationAvailable, notes)
+      VALUES (?, ?, CURRENT_DATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   const execParams = [
-    params.username,
     params.email,
     params.passwordHash,
     params.picture ?? null,
@@ -200,7 +201,7 @@ export async function updateUserProfile(
 
   if (fields.length === 0) return;
 
-  const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
+  const sql = `UPDATE users SET ${fields.join(", ")} WHERE matrikelnummer = ?`;
   params.push(String(userId));
   await exec(sql, params);
 }
@@ -215,27 +216,28 @@ export async function getUserRoles(userId: number): Promise<string[]> {
 }
 
 export async function updatePassword(userId: number, passwordHash: string) {
-  const sql = "UPDATE users SET passwordHash = ? WHERE id = ?";
+  const sql = "UPDATE users SET passwordHash = ? WHERE matrikelnummer = ?";
   await exec(sql, [passwordHash, userId]);
 }
 
 export async function updatePicture(userId: number, pictureKey: string | null) {
-  const [rows] = await exec("SELECT picture FROM users WHERE id = ? LIMIT 1", [
-    userId,
-  ]);
+  const [rows] = await exec(
+    "SELECT picture FROM users WHERE matrikelnummer = ? LIMIT 1",
+    [userId],
+  );
   const currentRows = asRows<PictureRow>(rows);
   const oldKey =
     currentRows.length > 0 && typeof currentRows[0].picture === "string"
       ? (currentRows[0].picture as string)
       : null;
 
-  const sql = "UPDATE users SET picture = ? WHERE id = ?";
+  const sql = "UPDATE users SET picture = ? WHERE matrikelnummer = ?";
   await exec(sql, [pictureKey, userId]);
   return oldKey;
 }
 
 export async function setUserRevokedAt(userId: number, when: Date) {
-  const sql = "UPDATE users SET revokedAt = ? WHERE id = ?";
+  const sql = "UPDATE users SET revokedAt = ? WHERE matrikelnummer = ?";
   await exec(sql, [when, userId]);
 }
 
@@ -303,21 +305,21 @@ export async function listUsers(filters?: {
 
   if (typeof filters?.achievementId === "number") {
     where.push(
-      "EXISTS (SELECT 1 FROM users_achievements ua WHERE ua.uid = u.id AND ua.aid = ?)",
+      "EXISTS (SELECT 1 FROM users_achievements ua WHERE ua.uid = u.matrikelnummer AND ua.aid = ?)",
     );
     params.push(filters.achievementId);
   }
 
   if (typeof filters?.lodgeId === "number") {
     where.push(
-      "EXISTS (SELECT 1 FROM users_lodges ul WHERE ul.uid = u.id AND ul.lid = ?)",
+      "EXISTS (SELECT 1 FROM users_lodges ul WHERE ul.uid = u.matrikelnummer AND ul.lid = ?)",
     );
     params.push(filters.lodgeId);
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-  const sql = `SELECT u.id, u.username, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
-    FROM users u ${whereSql} ORDER BY u.id DESC`;
+  const sql = `SELECT u.matrikelnummer, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
+    FROM users u ${whereSql} ORDER BY u.matrikelnummer DESC`;
 
   const [rows] = await exec(sql, params);
   return asRows<UserRow>(rows);
@@ -325,8 +327,8 @@ export async function listUsers(filters?: {
 
 export async function getUserPublicById(id: number) {
   const [rows] = await exec(
-    `SELECT id, username, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable
-     FROM users WHERE id = ? LIMIT 1`,
+    `SELECT matrikelnummer, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable
+     FROM users WHERE matrikelnummer = ? LIMIT 1`,
     [id],
   );
   const arr = asRows<UserRow>(rows);
@@ -378,4 +380,3 @@ export default {
   selectUserOfficials,
   setUserOfficials,
 };
-

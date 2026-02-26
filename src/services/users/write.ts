@@ -121,7 +121,6 @@ export async function createUser(
 ): Promise<PublicUser | undefined> {
   const trimmed = trimUserInput(input);
   const {
-    username,
     email,
     passwordHash,
     firstname,
@@ -138,7 +137,6 @@ export async function createUser(
   } = trimmed;
 
   const required = [
-    "username",
     "email",
     "passwordHash",
     "firstname",
@@ -184,7 +182,6 @@ export async function createUser(
 
     insertId = await userRepo.insertUser(
       {
-        username,
         email,
         passwordHash,
         picture: picture ?? null,
@@ -266,12 +263,7 @@ export async function createUser(
       const msg = dbErr.message || "";
       const m = msg.match(/for key '?([^']+)'?/i);
       const key = m ? m[1] : undefined;
-      const field =
-        key && key.includes("email")
-          ? "email"
-          : key && key.includes("username")
-          ? "username"
-          : key;
+      const field = key && key.includes("email") ? "email" : key;
       throw new ConflictError(
         field,
         `Duplicate entry${field ? ` on ${field}` : ""}`,
@@ -312,4 +304,3 @@ export async function createUser(
   if (!user) return undefined;
   return toPublicUser(user);
 }
-

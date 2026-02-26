@@ -29,12 +29,14 @@ export async function loginWithEmail(
   res: Response
 ): Promise<Record<string, unknown> | null> {
   const user = await findByEmail(email);
-  if (!user || !user.id || !user.passwordHash) return null;
+  if (!user || !user.matrikelnummer || !user.passwordHash) return null;
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) return null;
-  const roles = user.id ? await getUserRoles(user.id) : [];
+  const roles = user.matrikelnummer
+    ? await getUserRoles(user.matrikelnummer)
+    : [];
   const jti = cryptoSafeId();
-  const payload = { userId: user.id, roles, jti };
+  const payload = { matrikelnummer: user.matrikelnummer, roles, jti };
   const accessToken = createAccessToken(payload);
 
   const refreshToken = generateRefreshToken();
@@ -42,7 +44,7 @@ export async function loginWithEmail(
   const refreshExpires = new Date(
     Date.now() + refreshDays * 24 * 60 * 60 * 1000
   );
-  await createRefreshToken(refreshToken, user.id!, refreshExpires);
+  await createRefreshToken(refreshToken, user.matrikelnummer, refreshExpires);
 
   setAuthCookies(res, accessToken, refreshToken, refreshDays);
   return {};
@@ -59,9 +61,11 @@ export async function refreshFromCookie(res: Response, refresh: string) {
   }
   const user = await findById(stored.uid);
   if (!user) return null;
-  const roles = user.id ? await getUserRoles(user.id) : [];
+  const roles = user.matrikelnummer
+    ? await getUserRoles(user.matrikelnummer)
+    : [];
   const jti = cryptoSafeId();
-  const payload = { userId: user.id, roles, jti };
+  const payload = { matrikelnummer: user.matrikelnummer, roles, jti };
   const accessToken = createAccessToken(payload);
 
   // rotate refresh token via tokenService helper
@@ -73,7 +77,7 @@ export async function refreshFromCookie(res: Response, refresh: string) {
   const rotated = await rotateRefreshToken(
     refresh,
     newRefresh,
-    user.id!,
+    user.matrikelnummer,
     refreshExpires
   );
   if (!rotated) {
