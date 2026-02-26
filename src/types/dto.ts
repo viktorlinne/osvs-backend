@@ -74,6 +74,7 @@ export type RsvpApiStatus = string;
 
 export type ListPostsQuery = {
   lodgeId?: string | number | Array<string | number>;
+  title?: string;
 };
 
 export type CreatePostBody = {

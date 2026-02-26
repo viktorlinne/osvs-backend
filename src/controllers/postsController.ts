@@ -30,8 +30,14 @@ export async function listPostsHandler(
     .map((value) => Number(value))
     .filter((value) => Number.isFinite(value));
   const normalizedLodgeIds = lodgeIds.length ? lodgeIds : undefined;
+  const title =
+    typeof query.title === "string" && query.title.trim().length > 0
+      ? query.title.trim()
+      : undefined;
 
-  const cacheKey = `posts:lodges:${normalizedLodgeIds?.join("_") ?? "all"}`;
+  const cacheKey = `posts:lodges:${normalizedLodgeIds?.join("_") ?? "all"}:title:${
+    title ? encodeURIComponent(title.toLowerCase()) : "all"
+  }`;
 
   try {
     const cached = await getCached(cacheKey);
@@ -39,7 +45,7 @@ export async function listPostsHandler(
       return res.status(200).json({ posts: cached });
     }
 
-    const rows = await postsService.listPosts(normalizedLodgeIds);
+    const rows = await postsService.listPosts(normalizedLodgeIds, title);
     const withUrls = await Promise.all(
       rows.map(async (r) => ({
         id: r.id,

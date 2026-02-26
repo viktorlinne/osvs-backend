@@ -25,7 +25,10 @@ function asRows<T>(rows: unknown): T[] {
   return Array.isArray(rows) ? (rows as T[]) : [];
 }
 
-export async function listPosts(lodgeIds?: number[]): Promise<PostRecord[]> {
+export async function listPosts(
+  lodgeIds?: number[],
+  title?: string,
+): Promise<PostRecord[]> {
   const normalizedLodgeIds = Array.isArray(lodgeIds)
     ? Array.from(
         new Set(
@@ -36,15 +39,31 @@ export async function listPosts(lodgeIds?: number[]): Promise<PostRecord[]> {
         ),
       )
     : undefined;
+  const normalizedTitle =
+    typeof title === "string" && title.trim().length > 0
+      ? title.trim()
+      : undefined;
 
-  const params: number[] = [];
+  const params: Array<number | string> = [];
   let sql =
     "SELECT DISTINCT p.id, p.title, p.description, p.picture FROM posts p";
+  const where: string[] = [];
 
   if (normalizedLodgeIds && normalizedLodgeIds.length > 0) {
+    // Only join lodges_posts when lodge filter is active.
     const placeholders = normalizedLodgeIds.map(() => "?").join(", ");
-    sql += ` INNER JOIN lodges_posts lp ON lp.pid = p.id WHERE lp.lid IN (${placeholders})`;
+    sql += " INNER JOIN lodges_posts lp ON lp.pid = p.id";
+    where.push(`lp.lid IN (${placeholders})`);
     params.push(...normalizedLodgeIds);
+  }
+
+  if (normalizedTitle) {
+    where.push("p.title LIKE ?");
+    params.push(`%${normalizedTitle}%`);
+  }
+
+  if (where.length > 0) {
+    sql += ` WHERE ${where.join(" AND ")}`;
   }
 
   sql += " ORDER BY p.id DESC";
@@ -198,4 +217,3 @@ export default {
   selectPostLodges,
   replacePostLodges,
 };
-

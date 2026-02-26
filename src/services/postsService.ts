@@ -5,8 +5,9 @@ import type { Post as PostRecord } from "../types";
 
 export async function listPosts(
   lodgeIds?: number[],
+  title?: string,
 ): Promise<PostRecord[]> {
-  return await postsRepo.listPosts(lodgeIds);
+  return await postsRepo.listPosts(lodgeIds, title);
 }
 
 export async function createPost(
