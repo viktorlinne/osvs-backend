@@ -40,7 +40,7 @@ export async function getCached(key: string): Promise<unknown | null> {
 export async function setCached(
   key: string,
   value: unknown,
-  ttlSeconds = Number(process.env.CACHE_TTL_SECONDS ?? 60)
+  ttlSeconds = Number(process.env.CACHE_TTL_SECONDS)
 ): Promise<void> {
   try {
     const raw = JSON.stringify(value);
