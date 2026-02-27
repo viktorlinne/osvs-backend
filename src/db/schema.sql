@@ -282,13 +282,7 @@ CREATE TABLE `membership_payments` (
   `uid` int(11) NOT NULL,
   `amount` decimal(10, 2) NOT NULL DEFAULT 600.00,
   `year` int(11) NOT NULL,
-  `status` enum('Pending', 'Paid', 'Failed', 'Refunded') NOT NULL DEFAULT 'Pending',
-  `provider` varchar(64) DEFAULT NULL,
-  `provider_ref` varchar(256) DEFAULT NULL,
-  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
-  `invoice_token` varchar(128) DEFAULT NULL,
-  `expiresAt` datetime DEFAULT NULL,
-  `metadata` json DEFAULT NULL,
+  `status` enum('Pending', 'Paid') NOT NULL DEFAULT 'Pending',
   `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
   `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
@@ -303,13 +297,7 @@ CREATE TABLE `event_payments` (
   `uid` int(11) NOT NULL,
   `eid` int(11) NOT NULL,
   `amount` decimal(10, 2) NOT NULL DEFAULT 0.00,
-  `status` enum('Pending', 'Paid', 'Failed', 'Refunded') NOT NULL DEFAULT 'Pending',
-  `provider` varchar(64) DEFAULT NULL,
-  `provider_ref` varchar(256) DEFAULT NULL,
-  `currency` varchar(3) NOT NULL DEFAULT 'SEK',
-  `invoice_token` varchar(128) DEFAULT NULL,
-  `expiresAt` datetime DEFAULT NULL,
-  `metadata` json DEFAULT NULL,
+  `status` enum('Pending', 'Paid') NOT NULL DEFAULT 'Pending',
   `createdAt` datetime NOT NULL DEFAULT current_timestamp(),
   `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
@@ -643,7 +631,12 @@ INSERT INTO
   `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
 VALUES
   (1, 1, '2025-01-01 10:00:00', NULL),
-  (1, 2, '2024-01-01 10:00:00', '2024-12-31 23:59:59'),
+  (
+    1,
+    2,
+    '2024-01-01 10:00:00',
+    '2024-12-31 23:59:59'
+  ),
   (1, 2, '2025-01-01 10:00:00', NULL),
   (2, 2, '2025-12-01 10:00:00', NULL);
 
@@ -693,8 +686,8 @@ VALUES
     1,
     1,
     275.00,
-    '2026-11-14 18:00:00',
-    '2026-11-14 21:00:00'
+    '2026-03-14 18:00:00',
+    '2026-03-14 21:00:00'
   ),
   (
     2,
@@ -809,50 +802,26 @@ INSERT INTO
     `uid`,
     `amount`,
     `year`,
-    `status`,
-    `provider`,
-    `provider_ref`,
-    `currency`,
-    `invoice_token`,
-    `expiresAt`,
-    `metadata`
+    `status`
   )
 VALUES
   (
     1,
     600.00,
     2026,
-    'Paid',
-    'Manual',
-    'seed-uid1-2026',
-    'SEK',
-    'inv_seed_uid1_2026',
-    '2026-12-31 23:59:59',
-    JSON_OBJECT('seed', true)
+    'Paid'
   ),
   (
     2,
     600.00,
     2026,
-    'Pending',
-    'Manual',
-    'seed-uid2-2026',
-    'SEK',
-    'inv_seed_uid2_2026',
-    '2026-12-31 23:59:59',
-    JSON_OBJECT('seed', true)
+    'Pending'
   ),
   (
     3,
     600.00,
     2026,
-    'Paid',
-    'Manual',
-    'seed-uid3-2026',
-    'SEK',
-    'inv_seed_uid3_2026',
-    '2026-12-31 23:59:59',
-    JSON_OBJECT('seed', true)
+    'Paid'
   );
 
 -- Event payments - predictable state for these users/events
@@ -867,38 +836,20 @@ INSERT INTO
     `uid`,
     `eid`,
     `amount`,
-    `status`,
-    `provider`,
-    `provider_ref`,
-    `currency`,
-    `invoice_token`,
-    `expiresAt`,
-    `metadata`
+    `status`
   )
 VALUES
   (
     1,
     1,
     275.00,
-    'Paid',
-    'Manual',
-    'seed-uid1-eid1',
-    'SEK',
-    'inv_seed_uid1_eid1',
-    '2026-11-14 17:59:59',
-    JSON_OBJECT('seed', true)
+    'Paid'
   ),
   (
     2,
     1,
     275.00,
-    'Pending',
-    'Manual',
-    'seed-uid2-eid1',
-    'SEK',
-    'inv_seed_uid2_eid1',
-    '2026-11-14 17:59:59',
-    JSON_OBJECT('seed', true)
+    'Pending'
   );
 
 -- =====================================================

@@ -7,12 +7,6 @@ export interface MembershipPayment {
   amount: number;
   year: number;
   status: string;
-  provider?: string | null;
-  provider_ref?: string | null;
-  currency?: string | null;
-  invoice_token?: string | null;
-  expiresAt?: string | null;
-  metadata?: Record<string, unknown> | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -28,20 +22,14 @@ export async function insertMembershipPayment(opts: {
   uid: number;
   amount: number;
   year: number;
-  provider?: string | null;
-  invoice_token: string;
-  expiresAt: Date;
 }): Promise<number> {
   const sql = `INSERT INTO membership_payments
-  (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt)
-  VALUES (?, ?, ?, 'Pending', ?, ?, ?, NOW(), NOW())`;
+  (uid, amount, year, status, createdAt, updatedAt)
+  VALUES (?, ?, ?, 'Pending', NOW(), NOW())`;
   const [res] = await pool.execute<ResultSetHeader>(sql, [
     opts.uid,
     opts.amount,
     opts.year,
-    opts.provider ?? null,
-    opts.invoice_token,
-    opts.expiresAt,
   ]);
   return Number(res.insertId ?? 0);
 }
@@ -53,37 +41,6 @@ export async function findById(id: number): Promise<MembershipPaymentRow | null>
   );
   const arr = asRows<MembershipPaymentRow>(rows);
   return arr[0] ?? null;
-}
-
-export async function findByToken(
-  token: string,
-): Promise<MembershipPaymentRow | null> {
-  const [rows] = await pool.execute(
-    "SELECT * FROM membership_payments WHERE invoice_token = ?",
-    [token],
-  );
-  const arr = asRows<MembershipPaymentRow>(rows);
-  return arr[0] ?? null;
-}
-
-export async function updateByProviderRef(
-  provider: string,
-  providerRef: string,
-  status: string,
-  metadataStr: string | null,
-  invoiceToken: string | null,
-) {
-  await pool.execute(
-    "UPDATE membership_payments SET status = ?, provider = ?, provider_ref = ?, metadata = ? WHERE invoice_token = ? OR provider_ref = ?",
-    [
-      status,
-      provider,
-      providerRef,
-      metadataStr,
-      invoiceToken ?? null,
-      providerRef,
-    ],
-  );
 }
 
 export async function findExistingForUsers(
@@ -105,7 +62,7 @@ export async function bulkInsertIfMissing(values: Array<Array<unknown>>) {
   if (values.length === 0) return;
   try {
     await pool.query(
-      "INSERT IGNORE INTO membership_payments (uid, amount, year, status, provider, invoice_token, expiresAt, createdAt, updatedAt) VALUES ?",
+      "INSERT IGNORE INTO membership_payments (uid, amount, year, status) VALUES ?",
       [values],
     );
   } catch {
@@ -139,8 +96,6 @@ export async function findPaymentsForUser(
 export default {
   insertMembershipPayment,
   findById,
-  findByToken,
-  updateByProviderRef,
   findExistingForUsers,
   bulkInsertIfMissing,
   findPaymentsForUsers,

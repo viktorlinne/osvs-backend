@@ -434,21 +434,15 @@ export async function insertEventPayment(opts: {
   uid: number;
   eid: number;
   amount: number;
-  invoice_token: string;
-  expiresAt?: Date;
-  status?: string;
-  currency?: string | null;
+  status?: "Pending" | "Paid";
 }) {
   const sql =
-    "INSERT INTO event_payments (uid, eid, amount, status, invoice_token, expiresAt, createdAt, updatedAt, currency) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?)";
+    "INSERT INTO event_payments (uid, eid, amount, status, createdAt, updatedAt) VALUES (?, ?, ?, ?, NOW(), NOW())";
   const params = [
     opts.uid,
     opts.eid,
     opts.amount,
     opts.status ?? "Pending",
-    opts.invoice_token,
-    opts.expiresAt ?? null,
-    opts.currency ?? null,
   ];
   const [res] = await pool.execute<ResultSetHeader>(sql, params);
   const insertId = res.insertId ?? 0;
@@ -467,38 +461,6 @@ export async function findEventPaymentById(id: number) {
   );
   const arr = asRows<EventRow>(rows);
   return arr[0] ?? null;
-}
-
-export async function findEventPaymentByToken(token: string) {
-  const [rows] = await pool.execute(
-    "SELECT * FROM event_payments WHERE invoice_token = ? LIMIT 1",
-    [token],
-  );
-  const arr = asRows<EventRow>(rows);
-  return arr[0] ?? null;
-}
-
-export async function updateEventPaymentProviderRefById(
-  id: number,
-  provider: string,
-  providerRef: string,
-) {
-  await pool.execute(
-    "UPDATE event_payments SET provider = ?, provider_ref = ? WHERE id = ?",
-    [provider, providerRef, id],
-  );
-}
-
-export async function updateEventPaymentsByProviderRef(
-  provider: string,
-  providerRef: string,
-  status: string,
-  invoiceToken: string | null,
-) {
-  await pool.execute(
-    "UPDATE event_payments SET status = ?, provider = ?, provider_ref = ? WHERE invoice_token = ? OR provider_ref = ?",
-    [status, provider, providerRef, invoiceToken ?? null, providerRef],
-  );
 }
 
 export default {
@@ -529,8 +491,5 @@ export default {
   findEventPaymentByUidEid,
   insertEventPayment,
   findEventPaymentById,
-  findEventPaymentByToken,
-  updateEventPaymentProviderRefById,
-  updateEventPaymentsByProviderRef,
   selectLodgesForEvent,
 };

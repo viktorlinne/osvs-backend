@@ -2,9 +2,6 @@ export {
   getEventPrice,
   findOrCreateEventPaymentForUser,
   getEventPaymentById,
-  getEventPaymentByToken,
-  updateEventPaymentsByProviderRef,
-  associateProviderRefForPayment,
 } from "./events/payments";
 export {
   listEvents,
@@ -33,9 +30,6 @@ import {
   getEventPrice,
   findOrCreateEventPaymentForUser,
   getEventPaymentById,
-  getEventPaymentByToken,
-  updateEventPaymentsByProviderRef,
-  associateProviderRefForPayment,
 } from "./events/payments";
 import {
   listEvents,
@@ -64,9 +58,6 @@ export default {
   getEventPrice,
   findOrCreateEventPaymentForUser,
   getEventPaymentById,
-  getEventPaymentByToken,
-  updateEventPaymentsByProviderRef,
-  associateProviderRefForPayment,
   listEvents,
   getEventById,
   createEvent,

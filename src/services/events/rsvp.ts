@@ -17,14 +17,9 @@ function toDbFlag(value: unknown): number {
 
 function toPaymentStatus(
   value: unknown,
-): "Pending" | "Paid" | "Failed" | "Refunded" | null {
+): "Pending" | "Paid" | null {
   if (typeof value !== "string") return null;
-  if (
-    value === "Pending" ||
-    value === "Paid" ||
-    value === "Failed" ||
-    value === "Refunded"
-  ) {
+  if (value === "Pending" || value === "Paid") {
     return value;
   }
   return null;
