@@ -125,6 +125,19 @@ export type EventRecord = {
   endDate: string;
 };
 
+export type AttendedEvent = {
+  id: number;
+  title: string;
+  startDate: string;
+  endDate: string;
+};
+
+export type AttendedEventsSummary = {
+  events: AttendedEvent[];
+  sinceLastAchievementCount: number;
+  lastAchievementAt: string | null;
+};
+
 export type EventAttendanceRow = {
   uid: number;
   firstname: string;

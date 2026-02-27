@@ -19,6 +19,7 @@ import {
   updatePicture,
   setUserAchievement,
   getUserAchievements,
+  getUserAttendedEventsSummary,
   getUserAllergies,
   getUserOfficials,
   getUserOfficialsHistory,
@@ -267,6 +268,45 @@ export async function getAchievementsHandler(
   }
 }
 
+export async function getMyAttendedEventsHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+) {
+  try {
+    const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    if (!uid) return;
+
+    const summary = await getUserAttendedEventsSummary(uid);
+    return res.status(200).json(summary);
+  } catch (err) {
+    logger.error("Failed to get my attended events", err);
+    return sendError(res, 500, "Failed to get attended events");
+  }
+}
+
+export async function getUserAttendedEventsHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+) {
+  try {
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    if (!callerId) return;
+
+    const targetId = parseNumericParam(
+      res,
+      req.params.matrikelnummer,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
+
+    const summary = await getUserAttendedEventsSummary(targetId);
+    return res.status(200).json(summary);
+  } catch (err) {
+    logger.error("Failed to get user attended events", err);
+    return sendError(res, 500, "Failed to get attended events");
+  }
+}
+
 export async function listUsersHandler(
   _req: AuthenticatedRequest,
   res: Response,
@@ -454,6 +494,8 @@ export default {
   updatePictureHandler,
   updateOtherPictureHandler,
   addAchievementHandler,
+  getMyAttendedEventsHandler,
+  getUserAttendedEventsHandler,
   setRolesHandler,
   getAchievementsHandler,
   getRolesHandler,

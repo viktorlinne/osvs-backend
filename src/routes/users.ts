@@ -24,6 +24,12 @@ const router = express.Router();
  */
 router.get("/me", authMiddleware, wrapAsync(usersController.placeholderMe));
 
+router.get(
+  "/me/attended",
+  authMiddleware,
+  wrapAsync(usersController.getMyAttendedEventsHandler),
+);
+
 // Update current user's profile
 /**
  * @openapi
@@ -97,6 +103,12 @@ router.get(
   "/:matrikelnummer",
   authMiddleware,
   wrapAsync(usersController.getPublicUserHandler)
+);
+
+router.get(
+  "/:matrikelnummer/attended",
+  authMiddleware,
+  wrapAsync(usersController.getUserAttendedEventsHandler),
 );
 
 /**

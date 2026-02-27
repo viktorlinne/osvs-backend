@@ -698,6 +698,26 @@ VALUES
     0.00,
     '2026-12-20 10:00:00',
     '2026-12-20 18:00:00'
+  ),
+  (
+    3,
+    'Winter Gathering',
+    'Open winter gathering with activities.',
+    0,
+    0,
+    0.00,
+    '2025-12-20 10:00:00',
+    '2025-12-20 18:00:00'
+  ),
+  (
+    2,
+    'Spring Gathering',
+    'Open spring gathering with activities.',
+    0,
+    0,
+    0.00,
+    '2026-03-20 10:00:00',
+    '2026-03-20 18:00:00'
   ) ON DUPLICATE KEY
 UPDATE
   `title` =

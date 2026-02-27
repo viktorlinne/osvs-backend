@@ -1,5 +1,7 @@
 import type {
   Achievement,
+  AttendedEvent,
+  AttendedEventsSummary,
   Allergy,
   OfficialHistory,
   PublicUser,
@@ -11,6 +13,14 @@ import { RoleValues } from "../../types";
 import { toPublicUser } from "../../utils/serialize";
 import * as userRepo from "../../repositories/user.repo";
 import { isValidUserRecord } from "./shared";
+
+function toIsoString(value: unknown): string | null {
+  if (!value) return null;
+  const parsed =
+    value instanceof Date ? value : new Date(String(value).replace(" ", "T"));
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
 
 export async function findByEmail(
   email: string,
@@ -47,6 +57,33 @@ export async function getUserAchievements(
       title: String(r.title ?? ""),
     }))
     .filter((it) => Number.isFinite(it.id) && Number.isFinite(it.aid)) as Achievement[];
+}
+
+export async function getUserAttendedEventsSummary(
+  userId: number,
+): Promise<AttendedEventsSummary> {
+  const [eventRows, lastAchievementRaw, sinceCountRaw] = await Promise.all([
+    userRepo.listAttendedEventsForUser(userId),
+    userRepo.getLatestAchievementAwardedAt(userId),
+    userRepo.countAttendedEventsSinceLatestAchievement(userId),
+  ]);
+
+  const events = eventRows
+    .map((row) => ({
+      id: Number(row.id),
+      title: String(row.title ?? ""),
+      startDate: String(row.startDate ?? ""),
+      endDate: String(row.endDate ?? ""),
+    }))
+    .filter((row) => Number.isFinite(row.id)) as AttendedEvent[];
+
+  return {
+    events,
+    sinceLastAchievementCount: Number.isFinite(sinceCountRaw)
+      ? sinceCountRaw
+      : 0,
+    lastAchievementAt: toIsoString(lastAchievementRaw),
+  };
 }
 
 export async function getUserAllergies(userId: number): Promise<Allergy[]> {

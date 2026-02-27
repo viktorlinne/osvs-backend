@@ -22,11 +22,28 @@ export interface CreateUserParams {
 type UserRow = Record<string, unknown>;
 type RoleRow = { role?: unknown };
 type PictureRow = { picture?: unknown };
-type AchievementRow = { id?: unknown; aid?: unknown; awardedAt?: unknown; title?: unknown };
+type AchievementRow = {
+  id?: unknown;
+  aid?: unknown;
+  awardedAt?: unknown;
+  title?: unknown;
+};
 type RoleListRow = { id?: unknown; role?: unknown };
 type AchievementListRow = { id?: unknown; title?: unknown };
 type AllergyRow = { id?: unknown; title?: unknown };
 type OfficialRow = { id?: unknown; title?: unknown };
+type AttendedEventRow = {
+  id?: unknown;
+  title?: unknown;
+  startDate?: unknown;
+  endDate?: unknown;
+};
+type LastAchievementRow = {
+  awardedAt?: unknown;
+};
+type CountRow = {
+  cnt?: unknown;
+};
 type OfficialHistoryRow = {
   id?: unknown;
   title?: unknown;
@@ -281,6 +298,63 @@ export async function getUserAchievements(userId: number) {
     .filter((it) => Number.isFinite(it.id) && Number.isFinite(it.aid));
 }
 
+export async function listAttendedEventsForUser(userId: number) {
+  const sql = `
+    SELECT e.id, e.title, e.startDate, e.endDate
+    FROM events_attendances ea
+    JOIN events e ON e.id = ea.eid
+    WHERE ea.uid = ? AND ea.attended = 1
+    ORDER BY e.startDate DESC, e.id DESC
+  `;
+  const [rows] = await exec(sql, [userId]);
+  return asRows<AttendedEventRow>(rows)
+    .map((r) => ({
+      id: Number(r.id),
+      title: String(r.title ?? ""),
+      startDate: String(r.startDate ?? ""),
+      endDate: String(r.endDate ?? ""),
+    }))
+    .filter((event) => Number.isFinite(event.id));
+}
+
+export async function getLatestAchievementAwardedAt(userId: number) {
+  const sql = `
+    SELECT ua.awardedAt
+    FROM users_achievements ua
+    WHERE ua.uid = ?
+    ORDER BY ua.awardedAt DESC, ua.id DESC
+    LIMIT 1
+  `;
+  const [rows] = await exec(sql, [userId]);
+  const arr = asRows<LastAchievementRow>(rows);
+  if (arr.length === 0 || !arr[0].awardedAt) return null;
+  return arr[0].awardedAt;
+}
+
+export async function countAttendedEventsSinceLatestAchievement(userId: number) {
+  const sql = `
+    SELECT COUNT(*) AS cnt
+    FROM events_attendances ea
+    JOIN events e ON e.id = ea.eid
+    WHERE ea.uid = ?
+      AND ea.attended = 1
+      AND e.startDate > COALESCE(
+        (
+          SELECT ua.awardedAt
+          FROM users_achievements ua
+          WHERE ua.uid = ?
+          ORDER BY ua.awardedAt DESC, ua.id DESC
+          LIMIT 1
+        ),
+        '1000-01-01 00:00:00'
+      )
+  `;
+  const [rows] = await exec(sql, [userId, userId]);
+  const arr = asRows<CountRow>(rows);
+  if (arr.length === 0) return 0;
+  return Number(arr[0].cnt ?? 0);
+}
+
 export async function listAchievements() {
   const [rows] = await exec(
     "SELECT id, title FROM achievements ORDER BY id ASC",
@@ -503,6 +577,9 @@ export default {
   insertUserRolesBulk,
   listUsers,
   getUserPublicById,
+  listAttendedEventsForUser,
+  getLatestAchievementAwardedAt,
+  countAttendedEventsSinceLatestAchievement,
   listAchievements,
   selectUserAllergies,
   setUserAllergies,
