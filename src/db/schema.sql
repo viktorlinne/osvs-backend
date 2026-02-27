@@ -93,7 +93,7 @@ CREATE TABLE `allergies` (
   `title` enum(
     'Gluten',
     'Laktos',
-    'Egg',
+    'Ägg',
     'Fisk',
     'Skaldjur',
     'Nötter',
@@ -390,7 +390,7 @@ INSERT INTO
 VALUES
   (1, 'Gluten'),
   (2, 'Laktos'),
-  (3, 'Egg'),
+  (3, 'Ägg'),
   (4, 'Fisk'),
   (5, 'Skaldjur'),
   (6, 'Nötter'),
@@ -805,24 +805,14 @@ INSERT INTO
     `status`
   )
 VALUES
-  (
-    1,
-    600.00,
-    2026,
-    'Paid'
-  ),
+  (1, 600.00, 2026, 'Paid'),
   (
     2,
     600.00,
     2026,
     'Pending'
   ),
-  (
-    3,
-    600.00,
-    2026,
-    'Paid'
-  );
+  (3, 600.00, 2026, 'Paid');
 
 -- Event payments - predictable state for these users/events
 DELETE FROM
@@ -839,18 +829,8 @@ INSERT INTO
     `status`
   )
 VALUES
-  (
-    1,
-    1,
-    275.00,
-    'Paid'
-  ),
-  (
-    2,
-    1,
-    275.00,
-    'Pending'
-  );
+  (1, 1, 275.00, 'Paid'),
+  (2, 1, 275.00, 'Pending');
 
 -- =====================================================
 -- RE-ENABLE FOREIGN KEY CHECKS

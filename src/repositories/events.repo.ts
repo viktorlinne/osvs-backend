@@ -30,6 +30,7 @@ type EventAttendanceListRow = {
   uid?: unknown;
   firstname?: unknown;
   lastname?: unknown;
+  allergies?: unknown;
   rsvp?: unknown;
   bookFood?: unknown;
   attended?: unknown;
@@ -380,6 +381,10 @@ export async function selectEventAttendances(
       invited.uid AS uid,
       u.firstname AS firstname,
       u.lastname AS lastname,
+      COALESCE(
+        GROUP_CONCAT(DISTINCT a.title ORDER BY a.title SEPARATOR ', '),
+        ''
+      ) AS allergies,
       COALESCE(ea.rsvp, 0) AS rsvp,
       COALESCE(ea.bookFood, 0) AS bookFood,
       COALESCE(ea.attended, 0) AS attended,
@@ -395,6 +400,18 @@ export async function selectEventAttendances(
       ON ea.uid = invited.uid AND ea.eid = ?
     LEFT JOIN event_payments ep
       ON ep.uid = invited.uid AND ep.eid = ?
+    LEFT JOIN users_allergies ua
+      ON ua.uid = invited.uid
+    LEFT JOIN allergies a
+      ON a.id = ua.alid
+    GROUP BY
+      invited.uid,
+      u.firstname,
+      u.lastname,
+      ea.rsvp,
+      ea.bookFood,
+      ea.attended,
+      ep.status
     ORDER BY u.firstname ASC, u.lastname ASC, invited.uid ASC
   `;
   const [rows] = await pool.execute(sql, [eventId, eventId, eventId]);

@@ -25,12 +25,28 @@ function toPaymentStatus(
   return null;
 }
 
+function parseAllergies(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item).trim())
+      .filter((item) => item.length > 0);
+  }
+  if (typeof value !== "string") return [];
+  const raw = value.trim();
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
 function asAttendanceRow(row: Record<string, unknown>): EventAttendanceRow {
   const paymentStatus = toPaymentStatus(row.paymentStatus);
   return {
     uid: Number(row.uid),
     firstname: String(row.firstname ?? ""),
     lastname: String(row.lastname ?? ""),
+    allergies: parseAllergies(row.allergies),
     rsvp: toDbFlag(row.rsvp) === 1,
     bookFood: toDbFlag(row.bookFood) === 1,
     attended: toDbFlag(row.attended) === 1,

@@ -129,6 +129,7 @@ export type EventAttendanceRow = {
   uid: number;
   firstname: string;
   lastname: string;
+  allergies: string[];
   rsvp: boolean;
   bookFood: boolean;
   attended: boolean;
