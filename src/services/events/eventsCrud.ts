@@ -3,6 +3,8 @@ import * as eventsRepo from "../../repositories/events.repo";
 import type { EventRecord } from "../../types";
 import { mapEventRow } from "./common";
 
+const RSVP_UNANSWERED = 2;
+
 export async function listEvents(): Promise<EventRecord[]> {
   return (await eventsRepo.listEvents())
     .map(mapEventRow)
@@ -48,25 +50,35 @@ export async function createEventWithLodges(
         await eventsRepo.insertLodgeEvent(eventId, Number(lid), conn);
       }
 
-      const price = await eventsRepo.selectEventPrice(eventId, conn);
-      if (Number.isFinite(price) && price > 0) {
-        const uidSet = new Set<number>();
-        for (const lid of lodgeIds) {
-          const users = await eventsRepo.findUsersInLodge(Number(lid), conn);
-          for (const u of users) {
-            const uid = typeof u.uid === "number" ? u.uid : Number(u.uid);
-            if (Number.isFinite(uid)) uidSet.add(uid);
-          }
+      const uidSet = new Set<number>();
+      for (const lid of lodgeIds) {
+        const users = await eventsRepo.findUsersInLodge(Number(lid), conn);
+        for (const u of users) {
+          const uid = typeof u.uid === "number" ? u.uid : Number(u.uid);
+          if (Number.isFinite(uid)) uidSet.add(uid);
         }
-        const values: Array<Array<unknown>> = Array.from(uidSet).map((uid) => [
+      }
+
+      const uids = Array.from(uidSet);
+      if (uids.length > 0) {
+        const attendanceValues: Array<Array<unknown>> = uids.map((uid) => [
           uid,
           eventId,
-          price,
+          RSVP_UNANSWERED,
+          0,
+          0,
+        ]);
+        await eventsRepo.bulkInsertEventAttendances(attendanceValues, conn);
+
+        const price = await eventsRepo.selectEventPrice(eventId, conn);
+        const amount = Number.isFinite(price) ? price : 0;
+        const paymentValues: Array<Array<unknown>> = uids.map((uid) => [
+          uid,
+          eventId,
+          amount,
           "Pending",
         ]);
-        if (values.length > 0) {
-          await eventsRepo.bulkInsertEventPayments(values, conn);
-        }
+        await eventsRepo.bulkInsertEventPayments(paymentValues, conn);
       }
     }
 
@@ -110,23 +122,25 @@ export async function linkLodgeToEvent(
   try {
     await conn.beginTransaction();
     await eventsRepo.insertLodgeEvent(eventId, lodgeId, conn);
-    const price = await eventsRepo.selectEventPrice(eventId, conn);
-
-    if (!Number.isFinite(price) || price <= 0) {
-      await conn.commit();
-      return;
-    }
-
     const users = await eventsRepo.findUsersInLodge(lodgeId, conn);
     if (users.length > 0) {
-      const values: Array<Array<unknown>> = [];
+      const attendanceValues: Array<Array<unknown>> = [];
+      const paymentValues: Array<Array<unknown>> = [];
+      const price = await eventsRepo.selectEventPrice(eventId, conn);
+      const amount = Number.isFinite(price) ? price : 0;
+
       for (const u of users) {
         const uid = typeof u.uid === "number" ? u.uid : Number(u.uid);
         if (!Number.isFinite(uid)) continue;
-        values.push([uid, eventId, price, "Pending"]);
+        attendanceValues.push([uid, eventId, RSVP_UNANSWERED, 0, 0]);
+        paymentValues.push([uid, eventId, amount, "Pending"]);
       }
-      if (values.length > 0) {
-        await eventsRepo.bulkInsertEventPayments(values, conn);
+
+      if (attendanceValues.length > 0) {
+        await eventsRepo.bulkInsertEventAttendances(attendanceValues, conn);
+      }
+      if (paymentValues.length > 0) {
+        await eventsRepo.bulkInsertEventPayments(paymentValues, conn);
       }
     }
     await conn.commit();
@@ -159,7 +173,8 @@ export async function unlinkLodgeFromEvent(
       .filter((x) => Number.isFinite(x));
 
     if (uids.length > 0) {
-      await eventsRepo.deletePendingEventPaymentsForUids(eventId, uids, conn);
+      await eventsRepo.deleteEventAttendancesForUids(eventId, uids, conn);
+      await eventsRepo.deleteEventPaymentsForUids(eventId, uids, conn);
     }
 
     await eventsRepo.deleteLodgeEvent(lodgeId, eventId, conn);

@@ -193,6 +193,18 @@ export async function bulkInsertEventPayments(
   );
 }
 
+export async function bulkInsertEventAttendances(
+  values: Array<Array<unknown>>,
+  conn?: PoolConnection,
+) {
+  if (!Array.isArray(values) || values.length === 0) return;
+  const executor = conn ? conn.query.bind(conn) : pool.query.bind(pool);
+  await executor(
+    "INSERT IGNORE INTO events_attendances (uid, eid, rsvp, bookFood, attended) VALUES ?",
+    [values],
+  );
+}
+
 export async function selectUsersToRemoveOnUnlink(
   lodgeId: number,
   eventId: number,
@@ -227,6 +239,36 @@ export async function deletePendingEventPaymentsForUids(
   const executor = getExecutor(conn);
   await executor(
     `DELETE FROM event_payments WHERE eid = ? AND status = 'Pending' AND uid IN (${placeholders})`,
+    params,
+  );
+}
+
+export async function deleteEventAttendancesForUids(
+  eventId: number,
+  uids: number[],
+  conn?: PoolConnection,
+) {
+  if (!Array.isArray(uids) || uids.length === 0) return;
+  const placeholders = uids.map(() => "?").join(",");
+  const params: Array<unknown> = [eventId, ...uids];
+  const executor = getExecutor(conn);
+  await executor(
+    `DELETE FROM events_attendances WHERE eid = ? AND uid IN (${placeholders})`,
+    params,
+  );
+}
+
+export async function deleteEventPaymentsForUids(
+  eventId: number,
+  uids: number[],
+  conn?: PoolConnection,
+) {
+  if (!Array.isArray(uids) || uids.length === 0) return;
+  const placeholders = uids.map(() => "?").join(",");
+  const params: Array<unknown> = [eventId, ...uids];
+  const executor = getExecutor(conn);
+  await executor(
+    `DELETE FROM event_payments WHERE eid = ? AND uid IN (${placeholders})`,
     params,
   );
 }
@@ -300,7 +342,7 @@ export async function countInvitedUsersForEvent(eventId: number) {
 export async function countRsvpStatsForEvent(eventId: number) {
   const sql = `
     SELECT
-      COUNT(rsvp) AS answered,
+      SUM(CASE WHEN rsvp IN (0, 1) THEN 1 ELSE 0 END) AS answered,
       SUM(CASE WHEN rsvp = 1 THEN 1 ELSE 0 END) AS going
     FROM events_attendances
     WHERE eid = ?
@@ -490,8 +532,11 @@ export default {
   selectEventPrice,
   findUsersInLodge,
   bulkInsertEventPayments,
+  bulkInsertEventAttendances,
   selectUsersToRemoveOnUnlink,
   deletePendingEventPaymentsForUids,
+  deleteEventAttendancesForUids,
+  deleteEventPaymentsForUids,
   deleteLodgeEvent,
   listEventsForUser,
   isUserInvitedToEvent,

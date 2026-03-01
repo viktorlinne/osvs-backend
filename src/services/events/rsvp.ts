@@ -15,6 +15,11 @@ function toDbFlag(value: unknown): number {
   return value === true || Number(value) === 1 ? 1 : 0;
 }
 
+function toDbRsvpState(value: unknown): number {
+  const numeric = Number(value);
+  return numeric === 0 || numeric === 1 || numeric === 2 ? numeric : 2;
+}
+
 function toPaymentStatus(
   value: unknown,
 ): "Pending" | "Paid" | null {
@@ -156,7 +161,7 @@ export async function patchEventAttendanceByAdmin(
         rsvp:
           typeof patch.rsvp === "boolean"
             ? toDbFlag(patch.rsvp)
-            : toDbFlag(current?.rsvp),
+            : toDbRsvpState(current?.rsvp),
         bookFood:
           typeof patch.bookFood === "boolean"
             ? toDbFlag(patch.bookFood)
