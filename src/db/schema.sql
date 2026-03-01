@@ -492,15 +492,15 @@ INSERT INTO
 VALUES
   (
     1,
-    'alice@example.com',
+    'viktor.linne@gmail.com',
     "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
-    'Alice',
-    'Example',
-    '1985-06-15',
-    'Software Engineer',
+    'Viktor',
+    'Linné',
+    '2002-01-18',
+    'Webb Utvecklare',
     NULL,
-    '0701234567',
+    '0705788520',
     NULL,
     'Stockholm',
     'Storgatan 1',
@@ -510,39 +510,57 @@ VALUES
   ),
   (
     2,
-    'bob@example.com',
+    'editor@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
-    'Bob',
-    'Tester',
-    '1990-01-01',
-    'QA',
+    'Editor',
+    'Example',
+    '1900-01-01',
+    'Testare',
     NULL,
-    '0709876543',
+    '0707070707',
     NULL,
-    'Stockholm',
-    'Testvägen 2',
+    'Stad',
+    'Adress 1',
     '22233',
-    NULL,
+    '',
     0
   ),
   (
     3,
-    'viktor.linne@gmail.com',
+    'johan@bankel.com',
     "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
-    'Viktor',
-    'Linné',
-    '2002-01-18',
-    'Webadmin',
+    'Johan',
+    'Bankel',
+    '1900-01-01',
+    'Arbete',
     NULL,
-    '0708788520',
+    '0707070707',
     NULL,
-    'Kungsbacka',
-    'Motionsvägen 74',
-    '43490',
+    'Stad',
+    'Adress 1',
+    '11111',
+    '',
+    0
+  ),
+  (
+    4,
+    'joja@me.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
-    NULL
+    'Johan',
+    'Jakobsson',
+    '1900-01-01',
+    'Arbete',
+    NULL,
+    '0707070707',
+    NULL,
+    'Stad',
+    'Adress 1',
+    '11111',
+    '',
+    0
   ) ON DUPLICATE KEY
 UPDATE
   `email` =
@@ -595,7 +613,7 @@ VALUES
 DELETE FROM
   `users_roles`
 WHERE
-  `uid` IN (1, 2, 3);
+  `uid` IN (1, 2, 3, 4);
 
 INSERT INTO
   `users_roles` (`uid`, `rid`)
@@ -603,68 +621,70 @@ VALUES
   (1, 1),
   (1, 2),
   (1, 3),
-  (2, 3),
+  (2, 1),
+  (2, 2),
   (3, 1),
   (3, 2),
-  (3, 3);
+  (3, 3),
+  (4, 1),
+  (4, 2),
+  (4, 3);
 
 -- Users ↔ Achievements
 DELETE FROM
   `users_achievements`
 WHERE
-  `uid` IN (1, 2, 3);
+  `uid` IN (1, 2, 3, 4);
 
 INSERT INTO
   `users_achievements` (`uid`, `aid`, `awardedAt`)
 VALUES
   (1, 1, '2025-12-01 10:00:00'),
   (2, 1, '2025-12-01 10:00:00'),
-  (3, 1, '2025-12-01 10:00:00');
+  (3, 1, '2025-12-01 10:00:00'),
+  (4, 1, '2025-12-01 10:00:00');
 
 -- Users ↔ Officials
 DELETE FROM
   `users_officials`
 WHERE
-  `uid` IN (1, 2, 3);
+  `uid` IN (1, 2, 3, 4);
 
 INSERT INTO
   `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
 VALUES
   (1, 1, '2025-01-01 10:00:00', NULL),
-  (
-    1,
-    2,
-    '2024-01-01 10:00:00',
-    '2024-12-31 23:59:59'
-  ),
-  (1, 2, '2025-01-01 10:00:00', NULL),
-  (2, 2, '2025-12-01 10:00:00', NULL);
+  (2, 2, '2025-12-01 10:00:00', NULL),
+  (3, 3, '2025-12-01 10:00:00', NULL),
+  (4, 4, '2025-12-01 10:00:00', NULL);
 
 -- Users ↔ Lodges
 DELETE FROM
   `users_lodges`
 WHERE
-  `uid` IN (1, 2, 3);
+  `uid` IN (1, 2, 3, 4);
 
 INSERT INTO
   `users_lodges` (`uid`, `lid`)
 VALUES
   (1, 1),
   (2, 2),
-  (3, 1);
+  (3, 4),
+  (4, 4);
 
 -- Users ↔ Allergies
 DELETE FROM
   `users_allergies`
 WHERE
-  `uid` IN (1, 2, 3);
+  `uid` IN (1, 2, 3, 4);
 
 INSERT INTO
   `users_allergies` (`uid`, `alid`)
 VALUES
   (1, 1),
   (2, 2),
-  (3, 3);
+  (3, 3),
+  (4, 4);
 
 -- Events
 INSERT INTO
@@ -710,7 +730,7 @@ VALUES
     '2025-12-20 18:00:00'
   ),
   (
-    2,
+    4,
     'Spring Gathering',
     'Open spring gathering with activities.',
     0,
@@ -814,7 +834,7 @@ VALUES
 DELETE FROM
   `membership_payments`
 WHERE
-  `uid` IN (1, 2, 3)
+  `uid` IN (1, 2, 3, 4)
   AND `year` IN (2025, 2026);
 
 INSERT INTO
@@ -838,7 +858,7 @@ VALUES
 DELETE FROM
   `event_payments`
 WHERE
-  `uid` IN (1, 2, 3)
+  `uid` IN (1, 2, 3, 4)
   AND `eid` IN (1, 2);
 
 INSERT INTO
@@ -850,7 +870,9 @@ INSERT INTO
   )
 VALUES
   (1, 1, 275.00, 'Paid'),
-  (2, 1, 275.00, 'Pending');
+  (2, 1, 275.00, 'Pending'),
+  (3, 2, 0.00, 'Paid'),
+  (4, 2, 0.00, 'Pending');
 
 -- =====================================================
 -- RE-ENABLE FOREIGN KEY CHECKS
