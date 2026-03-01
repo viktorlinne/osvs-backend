@@ -83,9 +83,38 @@ export async function updatePostAtomic(
   }
 }
 
+export async function deletePostAtomic(postId: number): Promise<void> {
+  const conn = await pool.getConnection();
+  let oldKey: string | null = null;
+  try {
+    await conn.beginTransaction();
+    oldKey = await postsRepo.selectPostPicture(postId, conn);
+    await postsRepo.deletePost(postId, conn);
+    await conn.commit();
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      // ignore
+    }
+    throw err;
+  } finally {
+    conn.release();
+  }
+
+  if (oldKey) {
+    try {
+      await deleteProfilePicture(oldKey);
+    } catch {
+      // best-effort cleanup
+    }
+  }
+}
+
 export default {
   listPosts,
   getPostById,
   createPost,
   updatePostAtomic,
+  deletePostAtomic,
 };

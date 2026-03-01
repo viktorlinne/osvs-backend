@@ -153,6 +153,14 @@ export async function updatePost(
   await executor.execute(sql, params);
 }
 
+export async function deletePost(
+  postId: number,
+  conn?: PoolConnection,
+): Promise<void> {
+  const executor = getExecutor(conn);
+  await executor.execute("DELETE FROM posts WHERE id = ?", [postId]);
+}
+
 export async function selectPostLodges(
   postId: number,
   conn?: PoolConnection,
@@ -214,6 +222,7 @@ export default {
   findPostById,
   selectPostPicture,
   updatePost,
+  deletePost,
   selectPostLodges,
   replacePostLodges,
 };

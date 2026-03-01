@@ -181,3 +181,21 @@ export async function updatePostHandler(
     throw err;
   }
 }
+
+export async function deletePostHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  try {
+    const postId = parseNumericParam(res, req.params.id, "Ogiltigt inlaggs-ID");
+    if (postId === null) return;
+
+    await postsService.deletePostAtomic(postId);
+    void delPattern("posts:*");
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error("Misslyckades att radera inlagg", err);
+    return sendError(res, 500, "Misslyckades att radera inlagg");
+  }
+}

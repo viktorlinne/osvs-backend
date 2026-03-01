@@ -4,6 +4,7 @@ import {
   getPostHandler,
   createPostHandler,
   updatePostHandler,
+  deletePostHandler,
 } from "../controllers/postsController";
 import { wrapAsync } from "../middleware/asyncHandler";
 // params validation removed; controllers will handle ID parsing
@@ -113,6 +114,13 @@ router.put(
   requireRole("Admin", "Editor"),
   uploadProfilePicture,
   wrapAsync(updatePostHandler)
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  requireRole("Admin"),
+  wrapAsync(deletePostHandler),
 );
 
 export default router;
