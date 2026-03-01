@@ -57,6 +57,18 @@ export async function listEvents(): Promise<EventRow[]> {
   return asRows<EventRow>(rows);
 }
 
+export async function listUpcomingEvents(
+  limit: number,
+  conn?: PoolConnection,
+): Promise<EventRow[]> {
+  const executor = getExecutor(conn);
+  const [rows] = await executor(
+    "SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events WHERE startDate >= NOW() ORDER BY startDate ASC LIMIT ?",
+    [limit],
+  );
+  return asRows<EventRow>(rows);
+}
+
 export async function findEventById(id: number): Promise<EventRow | null> {
   const [rows] = await pool.execute(
     "SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events WHERE id = ? LIMIT 1",
@@ -524,6 +536,7 @@ export async function findEventPaymentById(id: number) {
 
 export default {
   listEvents,
+  listUpcomingEvents,
   findEventById,
   insertEvent,
   updateEventRecord,

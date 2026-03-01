@@ -3,6 +3,7 @@ import authMiddleware from "../middleware/auth";
 import { requireRole } from "../middleware/authorize";
 import {
   listEventsHandler,
+  listUpcomingEventsPublicHandler,
   getEventHandler,
   createEventHandler,
   updateEventHandler,
@@ -38,6 +39,9 @@ const router = express.Router();
  *         description: Array of events
  */
 router.get("/", authMiddleware, wrapAsync(listEventsHandler));
+
+// Public upcoming events for homepage calendar
+router.get("/upcoming", wrapAsync(listUpcomingEventsPublicHandler));
 
 // Events visible to current user (by lodge membership)
 /**

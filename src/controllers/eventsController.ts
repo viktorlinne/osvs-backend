@@ -42,6 +42,35 @@ export async function listEventsHandler(
   return res.status(200).json({ events: dto });
 }
 
+export async function listUpcomingEventsPublicHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const rawLimit = Number((req.query as { limit?: unknown })?.limit);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(50, Math.floor(rawLimit)))
+    : 10;
+
+  const cacheKey = `events:upcoming:${limit}`;
+  const cached = await getCached(cacheKey);
+  if (cached && Array.isArray(cached as unknown[])) {
+    return res.status(200).json({ events: cached });
+  }
+
+  const rows = await eventsService.listUpcomingEvents(limit);
+  const dto = rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    startDate: r.startDate,
+    endDate: r.endDate,
+    food: r.food ?? false,
+    price: r.price,
+  }));
+  void setCached(cacheKey, dto);
+  return res.status(200).json({ events: dto });
+}
+
 export async function getEventHandler(
   req: AuthenticatedRequest,
   res: Response,

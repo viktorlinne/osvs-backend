@@ -11,6 +11,12 @@ export async function listEvents(): Promise<EventRecord[]> {
     .filter((e) => Number.isFinite(e.id));
 }
 
+export async function listUpcomingEvents(limit = 10): Promise<EventRecord[]> {
+  return (await eventsRepo.listUpcomingEvents(limit))
+    .map(mapEventRow)
+    .filter((e) => Number.isFinite(e.id));
+}
+
 export async function getEventById(id: number): Promise<EventRecord | null> {
   const row = await eventsRepo.findEventById(id);
   if (!row) return null;

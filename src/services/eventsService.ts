@@ -5,6 +5,7 @@ export {
 } from "./events/payments";
 export {
   listEvents,
+  listUpcomingEvents,
   getEventById,
   createEvent,
   createEventWithLodges,
@@ -33,6 +34,7 @@ import {
 } from "./events/payments";
 import {
   listEvents,
+  listUpcomingEvents,
   getEventById,
   createEvent,
   createEventWithLodges,
@@ -59,6 +61,7 @@ export default {
   findOrCreateEventPaymentForUser,
   getEventPaymentById,
   listEvents,
+  listUpcomingEvents,
   getEventById,
   createEvent,
   createEventWithLodges,
