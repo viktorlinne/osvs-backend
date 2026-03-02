@@ -141,6 +141,7 @@ export async function listPublicUsers(filters?: {
   name?: string;
   achievementId?: number;
   lodgeId?: number;
+  officialId?: number;
 }) {
   const rows = await userRepo.listUsers(filters);
   return rows

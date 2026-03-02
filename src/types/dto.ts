@@ -44,6 +44,7 @@ export type ListUsersQuery = {
   name?: string;
   achievementId?: string | number;
   lodgeId?: string | number;
+  officialId?: string | number;
 };
 
 export type ListEventsQuery = {

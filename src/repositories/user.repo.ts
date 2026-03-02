@@ -419,14 +419,26 @@ export async function listUsers(filters?: {
   name?: string;
   achievementId?: number;
   lodgeId?: number;
+  officialId?: number;
 }) {
   const where: string[] = [];
   const params: Array<string | number | null> = [];
 
   if (filters?.name) {
-    where.push("(u.firstname LIKE ? OR u.lastname LIKE ?)");
     const term = `%${filters.name}%`;
-    params.push(term, term);
+    const numericTerm = Number(filters.name);
+    const isNumericSearch =
+      /^\d+$/.test(filters.name) && Number.isFinite(numericTerm);
+
+    if (isNumericSearch) {
+      where.push(
+        "(u.firstname LIKE ? OR u.lastname LIKE ? OR u.email LIKE ? OR u.matrikelnummer = ?)",
+      );
+      params.push(term, term, term, numericTerm);
+    } else {
+      where.push("(u.firstname LIKE ? OR u.lastname LIKE ? OR u.email LIKE ?)");
+      params.push(term, term, term);
+    }
   }
 
   if (typeof filters?.achievementId === "number") {
@@ -441,6 +453,13 @@ export async function listUsers(filters?: {
       "EXISTS (SELECT 1 FROM users_lodges ul WHERE ul.uid = u.matrikelnummer AND ul.lid = ?)",
     );
     params.push(filters.lodgeId);
+  }
+
+  if (typeof filters?.officialId === "number") {
+    where.push(
+      "EXISTS (SELECT 1 FROM users_officials uo WHERE uo.uid = u.matrikelnummer AND uo.oid = ? AND uo.unAppointedAt IS NULL)",
+    );
+    params.push(filters.officialId);
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
