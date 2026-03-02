@@ -138,6 +138,8 @@ CREATE TABLE `posts` (
   `title` varchar(256) NOT NULL,
   `description` text NOT NULL,
   `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+  `publicum` tinyint(1) NOT NULL DEFAULT 0,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
@@ -805,19 +807,34 @@ VALUES
 
 -- Posts
 INSERT INTO
-  `posts` (`id`, `title`, `description`, `picture`)
+  `posts` (
+    `id`,
+    `title`,
+    `description`,
+    `picture`,
+    `publicum`
+  )
 VALUES
   (
     1,
     'Welcome to OSVS',
     'This is the first post on our new platform!',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png'
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    0
   ),
   (
     2,
     'Upcoming Event',
     'Join us for our annual gathering next month.',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png'
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    0
+  ),
+  (
+    3,
+    'This years charitable cause',
+    'Our charitable cause this year is to support local food banks.',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    1
   ) ON DUPLICATE KEY
 UPDATE
   `title` =
@@ -828,7 +845,10 @@ VALUES
   (`description`),
   `picture` =
 VALUES
-  (`picture`);
+  (`picture`),
+  `publicum` =
+VALUES
+  (`publicum`);
 
 -- Membership payments (yearly) - predictable state for these users/years
 DELETE FROM

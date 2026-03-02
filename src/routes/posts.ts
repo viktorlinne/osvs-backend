@@ -1,6 +1,7 @@
 import express from "express";
 import {
   listPostsHandler,
+  listPublicumPostsPublicHandler,
   getPostHandler,
   createPostHandler,
   updatePostHandler,
@@ -31,6 +32,9 @@ const router = express.Router();
  *         description: Array of posts
  */
 router.get("/", authMiddleware, wrapAsync(listPostsHandler));
+
+// Public list of publicum posts
+router.get("/publicum", wrapAsync(listPublicumPostsPublicHandler));
 
 // Authenticated get post by id
 /**

@@ -1,7 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { ListPostsQuery, UpdatePostBody } from "../types";
-import { parseNumericIds, validateCreatePostBody } from "../validators";
+import {
+  parseNumericIds,
+  parsePublicumBoolean,
+  validateCreatePostBody,
+} from "../validators";
 import * as postsService from "../services/postsService";
 import {
   uploadToStorage,
@@ -68,6 +72,41 @@ export async function listPostsHandler(
   }
 }
 
+export async function listPublicumPostsPublicHandler(
+  _req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const cacheKey = "posts:publicum";
+  try {
+    const cached = await getCached(cacheKey);
+    if (cached && Array.isArray(cached as unknown[])) {
+      return res.status(200).json({ posts: cached });
+    }
+
+    const rows = await postsService.listPublicumPosts();
+    const dto = await Promise.all(
+      rows.map(async (r) => ({
+        id: r.id,
+        title: r.title,
+        createdAt: r.createdAt,
+        description: r.description,
+        pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
+      })),
+    );
+    void setCached(cacheKey, dto);
+    return res.status(200).json({ posts: dto });
+  } catch (err) {
+    const requestId = res.locals.requestId ?? _req.requestId;
+    logger.error({ msg: "Failed to list publicum posts", err, requestId });
+    return res.status(500).json({
+      error: "InternalError",
+      message: "Misslyckades att lista publicum",
+      requestId,
+    });
+  }
+}
+
 export async function getPostHandler(
   req: AuthenticatedRequest,
   res: Response,
@@ -91,7 +130,7 @@ export async function createPostHandler(
   const parsed = unwrapValidation(res, validateCreatePostBody(req.body));
   if (!parsed) return;
 
-  const { title, description, lodgeIds = [] } = parsed;
+  const { title, description, lodgeIds = [], publicum } = parsed;
 
   const file = req.file;
   let pictureKey: string | null = null;
@@ -105,7 +144,13 @@ export async function createPostHandler(
     pictureKey = key;
   }
 
-  const id = await postsService.createPost(title, description, pictureKey, lodgeIds);
+  const id = await postsService.createPost(
+    title,
+    description,
+    publicum,
+    pictureKey,
+    lodgeIds,
+  );
   void delPattern("posts:*");
   return res.status(201).json({ success: true, id });
 }
@@ -143,8 +188,20 @@ export async function updatePostHandler(
 
     const hasLodgeInput = Object.prototype.hasOwnProperty.call(body, "lodgeIds");
     const lodgeIds = hasLodgeInput ? parseNumericIds(body.lodgeIds) : undefined;
+    const hasPublicumInput = Object.prototype.hasOwnProperty.call(body, "publicum");
 
-    if (!title && !description && !req.file && !hasLodgeInput) {
+    let publicum: boolean | undefined = undefined;
+    if (hasPublicumInput) {
+      const parsedPublicum = parsePublicumBoolean(
+        (body as Record<string, unknown>).publicum,
+      );
+      if (!parsedPublicum.ok) {
+        return sendError(res, 400, parsedPublicum.errors);
+      }
+      publicum = parsedPublicum.data;
+    }
+
+    if (!title && !description && !req.file && !hasLodgeInput && !hasPublicumInput) {
       return sendError(res, 400, "Inget att uppdatera");
     }
 
@@ -163,6 +220,7 @@ export async function updatePostHandler(
       title ?? null,
       description ?? null,
       newKey,
+      publicum,
       lodgeIds,
       hasLodgeInput,
     );

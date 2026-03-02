@@ -111,6 +111,7 @@ export type Post = {
   title: string;
   description: string;
   picture?: string | null;
+  publicum?: boolean;
   lodges?: Array<Pick<Lodge, "id" | "name">>;
 };
 

@@ -10,6 +10,7 @@ type PostRow = {
   title?: unknown;
   description?: unknown;
   picture?: unknown;
+  publicum?: unknown;
 };
 
 type PostPictureRow = {
@@ -19,6 +20,14 @@ type PostPictureRow = {
 type PostLodgeRow = {
   id?: unknown;
   name?: unknown;
+};
+
+type PublicumPostRow = {
+  id?: unknown;
+  title?: unknown;
+  createdAt?: unknown;
+  description?: unknown;
+  picture?: unknown;
 };
 
 function asRows<T>(rows: unknown): T[] {
@@ -46,7 +55,7 @@ export async function listPosts(
 
   const params: Array<number | string> = [];
   let sql =
-    "SELECT DISTINCT p.id, p.title, p.description, p.picture FROM posts p";
+    "SELECT DISTINCT p.id, p.title, p.description, p.picture, p.publicum FROM posts p";
   const where: string[] = [];
 
   if (normalizedLodgeIds && normalizedLodgeIds.length > 0) {
@@ -75,26 +84,56 @@ export async function listPosts(
       title: String(r.title ?? ""),
       description: String(r.description ?? ""),
       picture: r.picture == null ? null : String(r.picture),
+      publicum: r.publicum === 1 || r.publicum === "1" || r.publicum === true,
     }))
     .filter((p) => Number.isFinite(p.id)) as PostRecord[];
+}
+
+export async function listPublicumPosts(): Promise<
+  Array<{
+    id: number;
+    title: string;
+    createdAt: string;
+    description: string;
+    picture: string | null;
+  }>
+> {
+  const sql = `
+    SELECT id, title, createdAt, description, picture
+    FROM posts
+    WHERE publicum = 1
+    ORDER BY createdAt DESC, id DESC
+  `;
+  const [rows] = await pool.execute(sql);
+  return asRows<PublicumPostRow>(rows)
+    .map((r) => ({
+      id: Number(r.id),
+      title: String(r.title ?? ""),
+      createdAt: String(r.createdAt ?? ""),
+      description: String(r.description ?? ""),
+      picture: r.picture == null ? null : String(r.picture),
+    }))
+    .filter((p) => Number.isFinite(p.id) && p.title.length > 0);
 }
 
 export async function insertPost(
   title: string,
   description: string,
+  publicum: boolean,
   pictureKey?: string | null,
   conn?: PoolConnection,
 ): Promise<number> {
   const executor = getExecutor(conn);
-  const sql = "INSERT INTO posts (title, description, picture) VALUES (?, ?, ?)";
-  const params = [title, description, pictureKey ?? null];
+  const sql =
+    "INSERT INTO posts (title, description, picture, publicum) VALUES (?, ?, ?, ?)";
+  const params = [title, description, pictureKey ?? null, publicum ? 1 : 0];
   const [result] = await executor.execute<ResultSetHeader>(sql, params);
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 
 export async function findPostById(postId: number): Promise<PostRecord | null> {
   const sql =
-    "SELECT id, title, description, picture FROM posts WHERE id = ? LIMIT 1";
+    "SELECT id, title, description, picture, publicum FROM posts WHERE id = ? LIMIT 1";
   const [rows] = await pool.execute(sql, [postId]);
   const arr = asRows<PostRow>(rows);
   if (arr.length === 0) return null;
@@ -104,6 +143,7 @@ export async function findPostById(postId: number): Promise<PostRecord | null> {
     title: String(r.title ?? ""),
     description: String(r.description ?? ""),
     picture: r.picture == null ? null : String(r.picture),
+    publicum: r.publicum === 1 || r.publicum === "1" || r.publicum === true,
   } as PostRecord;
 }
 
@@ -127,6 +167,7 @@ export async function updatePost(
   title: string | null,
   description: string | null,
   newPictureKey: string | null,
+  publicum: boolean | undefined,
   conn?: PoolConnection,
 ): Promise<void> {
   const executor = getExecutor(conn);
@@ -144,6 +185,10 @@ export async function updatePost(
   if (newPictureKey !== null) {
     sets.push("picture = ?");
     params.push(newPictureKey);
+  }
+  if (typeof publicum === "boolean") {
+    sets.push("publicum = ?");
+    params.push(publicum ? 1 : 0);
   }
 
   if (sets.length === 0) return;
@@ -218,6 +263,7 @@ function getExecutor(conn?: PoolConnection): SqlExecutor {
 
 export default {
   listPosts,
+  listPublicumPosts,
   insertPost,
   findPostById,
   selectPostPicture,

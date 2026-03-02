@@ -10,16 +10,35 @@ export async function listPosts(
   return await postsRepo.listPosts(lodgeIds, title);
 }
 
+export async function listPublicumPosts(): Promise<
+  Array<{
+    id: number;
+    title: string;
+    createdAt: string;
+    description: string;
+    picture: string | null;
+  }>
+> {
+  return await postsRepo.listPublicumPosts();
+}
+
 export async function createPost(
   title: string,
   description: string,
+  publicum: boolean,
   pictureKey?: string | null,
   lodgeIds?: number[],
 ): Promise<number> {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const postId = await postsRepo.insertPost(title, description, pictureKey, conn);
+    const postId = await postsRepo.insertPost(
+      title,
+      description,
+      publicum,
+      pictureKey,
+      conn,
+    );
     if (Array.isArray(lodgeIds) && lodgeIds.length > 0) {
       await postsRepo.replacePostLodges(postId, lodgeIds, conn);
     }
@@ -49,6 +68,7 @@ export async function updatePostAtomic(
   title: string | null,
   description: string | null,
   newPictureKey: string | null,
+  publicum: boolean | undefined,
   lodgeIds?: number[],
   replaceLodges = false,
 ): Promise<void> {
@@ -57,7 +77,14 @@ export async function updatePostAtomic(
   try {
     await conn.beginTransaction();
     oldKey = await postsRepo.selectPostPicture(postId, conn);
-    await postsRepo.updatePost(postId, title, description, newPictureKey, conn);
+    await postsRepo.updatePost(
+      postId,
+      title,
+      description,
+      newPictureKey,
+      publicum,
+      conn,
+    );
     if (replaceLodges) {
       await postsRepo.replacePostLodges(postId, lodgeIds ?? [], conn);
     }
@@ -113,6 +140,7 @@ export async function deletePostAtomic(postId: number): Promise<void> {
 
 export default {
   listPosts,
+  listPublicumPosts,
   getPostById,
   createPost,
   updatePostAtomic,
