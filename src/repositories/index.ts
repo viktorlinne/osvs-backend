@@ -6,3 +6,5 @@ export { default as tokenRepo } from "./token.repo";
 export { default as userRepo } from "./user.repo";
 export { default as officialsRepo } from "./officials.repo";
 export { default as allergiesRepo } from "./allergies.repo";
+export { default as revisionsRepo } from "./revisions.repo";
+export { default as documentsRepo } from "./documents.repo";

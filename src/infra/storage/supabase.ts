@@ -32,9 +32,16 @@ if (!client) {
     const first = String(key || "").split("/")[0];
     const postsBucket = process.env.SUPABASE_BUCKET_POSTS ?? "posts";
     const profilesBucket = process.env.SUPABASE_BUCKET_PROFILES ?? "profiles";
+    const documentsBucket = process.env.SUPABASE_BUCKET_DOCUMENTS ?? "documents";
+    const revisionsBucket = process.env.SUPABASE_BUCKET_REVISIONS ?? "revisions";
+    const staticBucket = process.env.SUPABASE_BUCKET_STATIC ?? "static";
+
     if (!first) return process.env.SUPABASE_BUCKET_POSTS ?? DEFAULT_BUCKET;
     if (first === postsBucket) return postsBucket;
     if (first === profilesBucket) return profilesBucket;
+    if (first === documentsBucket) return documentsBucket;
+    if (first === revisionsBucket) return revisionsBucket;
+    if (first === staticBucket) return staticBucket;
     // fallback to posts bucket
     return process.env.SUPABASE_BUCKET_POSTS ?? DEFAULT_BUCKET;
   }

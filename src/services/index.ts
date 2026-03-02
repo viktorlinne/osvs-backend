@@ -3,6 +3,8 @@ export * from "./eventsService";
 export * from "./lodgeService";
 export * from "./membershipPaymentsService";
 export * from "./postsService";
+export * from "./revisionsService";
+export * from "./documentsService";
 export * from "./sessionService";
 export * from "./paymentsService";
 export * from "./tokenService";

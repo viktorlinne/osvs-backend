@@ -88,6 +88,11 @@ export type ListPostsQuery = {
   title?: string;
 };
 
+export type ListRevisionsQuery = {
+  year?: string | number;
+  lodgeId?: string | number;
+};
+
 export type CreatePostBody = {
   title?: string;
   description?: string;

@@ -165,6 +165,21 @@ export type EventPaymentRecord = MembershipPayment & {
   eid: number;
 };
 
+export type RevisionRecord = {
+  id: number;
+  lid: number;
+  lodgeName: string;
+  title: string;
+  year: number;
+  picture: string | null;
+};
+
+export type DocumentRecord = {
+  id: number;
+  title: string;
+  picture: string | null;
+};
+
 export type RevokedToken = {
   jti: string;
   expiresAt: string;

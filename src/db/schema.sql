@@ -169,6 +169,26 @@ CREATE TABLE `events_attendances` (
   CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
+-- Revisions 
+CREATE TABLE `revisions` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `lid` int(11) NOT NULL,
+  `title` varchar(256) NOT NULL,
+  `year` date NOT NULL,
+  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/coatOfArmsPlaceholder.webp',
+  PRIMARY KEY (`id`),
+  KEY `fk_revisions_lodge` (`lid`),
+  CONSTRAINT `fk_revisions_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Documents
+CREATE TABLE `documents` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(256) NOT NULL,
+  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/documentPlaceholder.png',
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 -- =====================================================
 -- AUTHENTICATION TABLES
 -- =====================================================
@@ -273,6 +293,16 @@ CREATE TABLE `lodges_posts` (
   KEY `fk_lodges_posts_post` (`pid`),
   CONSTRAINT `fk_lodges_posts_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT `fk_lodges_posts_post` FOREIGN KEY (`pid`) REFERENCES `posts` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+-- Lodges ↔ Revisions (link lodges to revisions)
+CREATE TABLE `lodges_revisions` (
+  `lid` int(11) NOT NULL,
+  `rid` int(11) NOT NULL,
+  PRIMARY KEY (`lid`, `rid`),
+  KEY `fk_lodges_revisions_revision` (`rid`),
+  CONSTRAINT `fk_lodges_revisions_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT `fk_lodges_revisions_revision` FOREIGN KEY (`rid`) REFERENCES `revisions` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- =====================================================
@@ -611,6 +641,89 @@ VALUES
 VALUES
   (`accommodationAvailable`);
 
+DELETE FROM
+  `revisions`
+WHERE
+  `id` IN (1, 2, 3, 4);
+
+INSERT INTO
+  `revisions` (`id`, `lid`, `year`, `title`, `picture`)
+VALUES
+  (
+    1,
+    1,
+    '2026-01-01',
+    'Stamlogen Revision',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+  ),
+  (
+    2,
+    2,
+    '2026-01-01',
+    'Stella Polaris Revision',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+  ),
+  (
+    3,
+    3,
+    '2026-01-01',
+    'Regulus Revision',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+  ),
+  (
+    4,
+    4,
+    '2026-01-01',
+    'Orion Revision',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+  ) ON DUPLICATE KEY
+UPDATE
+  `year` =
+VALUES
+  (`year`),
+  `title` =
+VALUES
+  (`title`),
+  `picture` =
+VALUES
+  (`picture`);
+
+DELETE FROM
+  `documents`
+WHERE
+  `id` IN (1, 2, 3, 4);
+
+INSERT INTO
+  `documents` (`id`, `title`, `picture`)
+VALUES
+  (
+    1,
+    'Stamlogen Stadgar',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+  ),
+  (
+    2,
+    'Stella Polaris Stadgar',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+  ),
+  (
+    3,
+    'Regulus Stadgar',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+  ),
+  (
+    4,
+    'Orion Stadgar',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+  ) ON DUPLICATE KEY
+UPDATE
+  `title` =
+VALUES
+  (`title`),
+  `picture` =
+VALUES
+  (`picture`);
+
 -- Users ↔ Roles (predictable state)
 DELETE FROM
   `users_roles`
@@ -791,6 +904,19 @@ VALUES
   (1, 2),
   (2, 2),
   (3, 2);
+
+DELETE FROM
+  `lodges_revisions`
+WHERE
+  `rid` IN (1, 2, 3, 4);
+
+INSERT INTO
+  `lodges_revisions` (`lid`, `rid`)
+VALUES
+  (1, 1),
+  (2, 2),
+  (3, 3),
+  (4, 4);
 
 -- Event attendances (RSVP)
 DELETE FROM

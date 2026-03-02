@@ -1,6 +1,7 @@
 import multer from "multer";
 import type { Request } from "express";
 import sharp from "sharp";
+import path from "path";
 import logger from "./logger";
 import { supabaseStorageAdapter } from "../infra/storage/supabase";
 import type { StorageAdapter } from "../infra/storage/adapter";
@@ -31,6 +32,19 @@ const fileFilter = (
   }
 };
 
+const documentFileFilter = (
+  _req: Request,
+  file: UploadedFile,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedMimes = ["application/pdf"];
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only PDF files are allowed"));
+  }
+};
+
 // Multer middleware: single file upload, max 5MB
 export const uploadProfilePicture = multer({
   storage: memory,
@@ -39,6 +53,15 @@ export const uploadProfilePicture = multer({
     fileSize: PROFILE_PICTURE_MAX_SIZE,
   },
 }).single("picture");
+
+// Multer middleware for document/revision PDFs.
+export const uploadDocumentFile = multer({
+  storage: memory,
+  fileFilter: documentFileFilter,
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+}).single("file");
 
 /**
  * Helper to get the relative path for storing in DB
@@ -52,6 +75,13 @@ export type UploadOptions = {
   folder?: string; // e.g. "posts" or "profiles"
   prefix?: string; // e.g. "post_" or "profile_"
   size?: { width: number; height: number };
+};
+
+export type RawUploadOptions = {
+  bucket: string; // e.g. "documents" or "revisions"
+  prefix?: string; // e.g. "document_" or "revision_"
+  fallbackExtension?: string; // e.g. ".pdf"
+  allowedExtensions?: string[]; // e.g. [".pdf"]
 };
 
 export async function uploadToStorage(
@@ -103,18 +133,68 @@ export async function uploadToStorage(
   }
 }
 
+function sanitizeExtension(raw: string): string {
+  const ext = raw.toLowerCase();
+  return /^\.[a-z0-9]+$/.test(ext) ? ext : "";
+}
+
+/**
+ * Upload a raw (non-image-transformed) file buffer to storage.
+ * Intended for PDFs/documents where file bytes should be preserved.
+ */
+export async function uploadRawToStorage(
+  file: Request["file"],
+  opts: RawUploadOptions
+): Promise<string | null> {
+  if (!file || !file.buffer) return null;
+
+  const bucket = String(opts.bucket || "").trim();
+  if (!bucket) return null;
+
+  const prefix = opts.prefix ?? "file_";
+  const fallbackExtension = sanitizeExtension(opts.fallbackExtension ?? ".bin") || ".bin";
+  const sourceExtension = sanitizeExtension(path.extname(file.originalname || ""));
+  const extension = sourceExtension || fallbackExtension;
+
+  if (Array.isArray(opts.allowedExtensions) && opts.allowedExtensions.length > 0) {
+    const allowed = opts.allowedExtensions
+      .map((item) => sanitizeExtension(item))
+      .filter((item) => item.length > 0);
+    if (allowed.length > 0 && !allowed.includes(extension)) {
+      return null;
+    }
+  }
+
+  const rand = Math.random().toString(36).slice(2, 10);
+  const name = `${prefix}${Date.now()}_${rand}${extension}`;
+  const key = `${bucket}/${name}`;
+  const mime = file.mimetype || "application/octet-stream";
+
+  try {
+    const res = await storageAdapter.upload(key, file.buffer, mime);
+    return res.key;
+  } catch (err) {
+    logger.error("Failed to upload raw file to storage:", err);
+    return null;
+  }
+}
+
 /**
  * Helper to delete an old profile picture file
  */
+export async function deleteFromStorage(key: string | null | undefined): Promise<void> {
+  if (!key) return;
+  try {
+    await storageAdapter.delete(key);
+  } catch (err) {
+    logger.error(`Failed to delete storage object ${key}:`, err);
+  }
+}
+
 export async function deleteProfilePicture(
   filename: string | null | undefined
 ): Promise<void> {
-  if (!filename) return;
-  try {
-    await storageAdapter.delete(filename);
-  } catch (err) {
-    logger.error(`Failed to delete profile picture ${filename}:`, err);
-  }
+  await deleteFromStorage(filename);
 }
 
 /**
