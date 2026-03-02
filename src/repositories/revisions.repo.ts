@@ -16,7 +16,7 @@ function asRows<T>(rows: unknown): T[] {
 }
 
 function normalizeYear(value: unknown): number {
-  if (value instanceof Date) return value.getUTCFullYear();
+  if (value instanceof Date) return value.getFullYear();
   if (typeof value === "string") {
     const parsed = Number(value.slice(0, 4));
     return Number.isFinite(parsed) ? parsed : Number.NaN;
@@ -33,7 +33,7 @@ export async function listRevisions(filters?: {
   const params: Array<number> = [];
 
   let sql = `
-    SELECT r.id, r.lid, l.name AS lodgeName, r.title, r.year, r.picture
+    SELECT r.id, r.lid, l.name AS lodgeName, r.title, YEAR(r.year) AS year, r.picture
     FROM revisions r
     INNER JOIN lodges l ON l.id = r.lid
   `;
