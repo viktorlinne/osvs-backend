@@ -1,8 +1,6 @@
 import express from "express";
 import {
   listOfficialsHandler,
-  getMyOfficialsHandler,
-  getMemberOfficialsHandler,
   setMemberOfficialsHandler,
 } from "../controllers/officialsController";
 import { wrapAsync } from "../middleware/asyncHandler";
@@ -24,16 +22,6 @@ const router = express.Router();
  *         description: Array of official types
  */
 router.get("/", listOfficialsHandler);
-
-// Get current user's officials (auth required)
-router.get("/me", authMiddleware, wrapAsync(getMyOfficialsHandler));
-
-// Get another member's officials (auth required)
-router.get(
-  "/member/:matrikelnummer",
-  authMiddleware,
-  wrapAsync(getMemberOfficialsHandler),
-);
 
 // Set another member's officials (Admin/Editor required)
 router.put(

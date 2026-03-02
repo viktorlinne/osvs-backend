@@ -2,13 +2,11 @@ import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { ListRevisionsQuery } from "../types";
 import * as revisionsService from "../services/revisionsService";
-import {
-  deleteFromStorage,
-  getPublicUrl,
-  uploadRawToStorage,
-} from "../utils/fileUpload";
+import { getPublicUrl } from "../utils/fileUpload";
+import { STORAGE_BUCKETS, STORAGE_KEYS, STORAGE_PREFIXES } from "../config/storage";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
+import { uploadRawAndPersist } from "./helpers/storage";
 
 function parseOptionalYear(value: unknown): number | null {
   if (value === undefined || value === null || String(value).trim().length === 0) {
@@ -56,7 +54,9 @@ export async function listRevisionsHandler(
   const withUrls = await Promise.all(
     rows.map(async (row) => ({
       ...row,
-      pictureUrl: await getPublicUrl(row.picture ?? "revisions/revisionPlaceholder.pdf"),
+      pictureUrl: await getPublicUrl(
+        row.picture ?? STORAGE_KEYS.REVISION_PLACEHOLDER,
+      ),
     })),
   );
 
@@ -82,28 +82,24 @@ export async function createRevisionHandler(
   }
   if (!req.file) return sendError(res, 400, "File is required");
 
-  let storageKey: string | null = null;
   try {
-    storageKey = await uploadRawToStorage(req.file, {
-      bucket: "revisions",
-      prefix: "revision_",
-      fallbackExtension: ".pdf",
-      allowedExtensions: [".pdf"],
-    });
-    if (!storageKey) {
+    const id = await uploadRawAndPersist(
+      req.file,
+      {
+        bucket: STORAGE_BUCKETS.REVISIONS,
+        prefix: STORAGE_PREFIXES.REVISION,
+        fallbackExtension: ".pdf",
+        allowedExtensions: [".pdf"],
+      },
+      async (storageKey) =>
+        revisionsService.createRevision(lodgeId, title, year, storageKey),
+    );
+    if (id === null) {
       return sendError(res, 500, "Failed to upload file");
     }
 
-    const id = await revisionsService.createRevision(lodgeId, title, year, storageKey);
     return res.status(201).json({ success: true, id });
   } catch (err) {
-    if (storageKey) {
-      try {
-        await deleteFromStorage(storageKey);
-      } catch {
-        // ignore cleanup failure
-      }
-    }
     logger.error("Failed to create revision", err);
     return sendError(res, 500, "Failed to create revision");
   }

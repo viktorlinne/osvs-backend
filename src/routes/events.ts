@@ -12,7 +12,6 @@ import {
   unlinkLodgeHandler,
   listForUserHandler,
   listEventLodgesHandler,
-  getEventStatsHandler,
   rsvpHandler,
   getUserRsvpHandler,
   getUserFoodHandler,
@@ -102,14 +101,6 @@ router.get("/:id", authMiddleware, wrapAsync(getEventHandler));
  *         description: Array of lodges
  */
 router.get("/:id/lodges", authMiddleware, wrapAsync(listEventLodgesHandler));
-
-// Admin-only: event statistics
-router.get(
-  "/:id/stats",
-  authMiddleware,
-  requireRole("Admin"),
-  wrapAsync(getEventStatsHandler),
-);
 
 // Create (Admin/Editor)
 /**

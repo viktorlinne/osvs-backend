@@ -6,7 +6,6 @@ export * from "./postsService";
 export * from "./revisionsService";
 export * from "./documentsService";
 export * from "./sessionService";
-export * from "./paymentsService";
 export * from "./tokenService";
 export * from "./userService";
 export { default as sessionService } from "./sessionService";

@@ -17,8 +17,6 @@ export type EventRecord = {
 type EventRow = Record<string, unknown>;
 type UserIdRow = { uid?: unknown };
 type LodgeRow = { id?: unknown; name?: unknown };
-type CountRow = { cnt?: unknown };
-type RsvpStatsRow = { answered?: unknown; going?: unknown };
 type RsvpRow = { rsvp?: unknown };
 type BookFoodRow = { bookFood?: unknown };
 type AttendanceStateRow = {
@@ -240,21 +238,6 @@ export async function selectUsersToRemoveOnUnlink(
   return asRows<UserIdRow>(rows);
 }
 
-export async function deletePendingEventPaymentsForUids(
-  eventId: number,
-  uids: number[],
-  conn?: PoolConnection,
-) {
-  if (!Array.isArray(uids) || uids.length === 0) return;
-  const placeholders = uids.map(() => "?").join(",");
-  const params: Array<unknown> = [eventId, ...uids];
-  const executor = getExecutor(conn);
-  await executor(
-    `DELETE FROM event_payments WHERE eid = ? AND status = 'Pending' AND uid IN (${placeholders})`,
-    params,
-  );
-}
-
 export async function deleteEventAttendancesForUids(
   eventId: number,
   uids: number[],
@@ -326,46 +309,6 @@ export async function isUserInvitedToEvent(eventId: number, userId: number) {
   `;
   const [rows] = await pool.execute(sql, [eventId, userId]);
   return asRows<EventRow>(rows).length > 0;
-}
-
-export async function upsertUserRsvp(
-  userId: number,
-  eventId: number,
-  rsvpValue: number,
-) {
-  const sql =
-    "INSERT INTO events_attendances (uid, eid, rsvp) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE rsvp = VALUES(rsvp)";
-  await pool.execute(sql, [userId, eventId, rsvpValue]);
-}
-
-export async function countInvitedUsersForEvent(eventId: number) {
-  const sql = `
-    SELECT COUNT(DISTINCT ul.uid) AS cnt
-    FROM lodges_events le
-    JOIN users_lodges ul ON ul.lid = le.lid
-    WHERE le.eid = ?
-  `;
-  const [rows] = await pool.execute(sql, [eventId]);
-  const arr = asRows<CountRow>(rows);
-  if (arr.length === 0) return 0;
-  return Number(arr[0].cnt ?? 0);
-}
-
-export async function countRsvpStatsForEvent(eventId: number) {
-  const sql = `
-    SELECT
-      SUM(CASE WHEN rsvp IN (0, 1) THEN 1 ELSE 0 END) AS answered,
-      SUM(CASE WHEN rsvp = 1 THEN 1 ELSE 0 END) AS going
-    FROM events_attendances
-    WHERE eid = ?
-  `;
-  const [rows] = await pool.execute(sql, [eventId]);
-  const arr = asRows<RsvpStatsRow>(rows);
-  if (arr.length === 0) return { answered: 0, going: 0 };
-  return {
-    answered: Number(arr[0].answered ?? 0),
-    going: Number(arr[0].going ?? 0),
-  };
 }
 
 export async function getUserRsvpFromDb(userId: number, eventId: number) {
@@ -547,13 +490,11 @@ export default {
   bulkInsertEventPayments,
   bulkInsertEventAttendances,
   selectUsersToRemoveOnUnlink,
-  deletePendingEventPaymentsForUids,
   deleteEventAttendancesForUids,
   deleteEventPaymentsForUids,
   deleteLodgeEvent,
   listEventsForUser,
   isUserInvitedToEvent,
-  upsertUserRsvp,
   getUserRsvpFromDb,
   getUserBookFoodFromDb,
   getEventAttendanceFromDb,
@@ -561,8 +502,6 @@ export default {
   upsertEventAttendance,
   selectEventAttendances,
   upsertEventPaymentStatus,
-  countInvitedUsersForEvent,
-  countRsvpStatsForEvent,
   findEventPaymentByUidEid,
   insertEventPayment,
   findEventPaymentById,

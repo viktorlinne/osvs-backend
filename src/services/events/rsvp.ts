@@ -117,14 +117,6 @@ export async function setUserBookFood(
   return value === 1;
 }
 
-export async function getEventStats(
-  eventId: number,
-): Promise<{ invited: number; answered: number; going: number }> {
-  const invited = await eventsRepo.countInvitedUsersForEvent(eventId);
-  const rsvpCounts = await eventsRepo.countRsvpStatsForEvent(eventId);
-  return { invited, answered: rsvpCounts.answered, going: rsvpCounts.going };
-}
-
 export async function listEventAttendances(
   eventId: number,
 ): Promise<EventAttendanceRow[]> {

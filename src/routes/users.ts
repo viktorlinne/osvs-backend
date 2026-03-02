@@ -8,7 +8,6 @@ import { requireRole } from "../middleware/authorize";
 
 const router = express.Router();
 
-// Minimal placeholder routes used in tests. Expand as needed.
 /**
  * @openapi
  * /users/me:
@@ -22,7 +21,7 @@ const router = express.Router();
  *       200:
  *         description: Current user
  */
-router.get("/me", authMiddleware, wrapAsync(usersController.placeholderMe));
+router.get("/me", authMiddleware, wrapAsync(usersController.meHandler));
 
 router.get(
   "/me/attended",

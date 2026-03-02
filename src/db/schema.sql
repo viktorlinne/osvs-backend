@@ -295,16 +295,6 @@ CREATE TABLE `lodges_posts` (
   CONSTRAINT `fk_lodges_posts_post` FOREIGN KEY (`pid`) REFERENCES `posts` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Lodges ↔ Revisions (link lodges to revisions)
-CREATE TABLE `lodges_revisions` (
-  `lid` int(11) NOT NULL,
-  `rid` int(11) NOT NULL,
-  PRIMARY KEY (`lid`, `rid`),
-  KEY `fk_lodges_revisions_revision` (`rid`),
-  CONSTRAINT `fk_lodges_revisions_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
-  CONSTRAINT `fk_lodges_revisions_revision` FOREIGN KEY (`rid`) REFERENCES `revisions` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
-
 -- =====================================================
 -- PAYMENT TABLES
 -- =====================================================
@@ -904,19 +894,6 @@ VALUES
   (1, 2),
   (2, 2),
   (3, 2);
-
-DELETE FROM
-  `lodges_revisions`
-WHERE
-  `rid` IN (1, 2, 3, 4);
-
-INSERT INTO
-  `lodges_revisions` (`lid`, `rid`)
-VALUES
-  (1, 1),
-  (2, 2),
-  (3, 3),
-  (4, 4);
 
 -- Event attendances (RSVP)
 DELETE FROM

@@ -24,7 +24,6 @@ import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
 import lodgesRouter from "./routes/lodges";
 import postsRouter from "./routes/posts";
-import uploadsRouter from "./routes/uploads";
 import eventsRouter from "./routes/events";
 import paymentsRouter from "./routes/payments";
 import achievementsRouter from "./routes/achievements";
@@ -155,8 +154,6 @@ app.use("/api/admin", adminRouter);
 app.use("/api/lodges", lodgesRouter);
 // Post routes
 app.use("/api/posts", postsRouter);
-// Uploads (claim direct-client uploads)
-app.use("/api/uploads", uploadsRouter);
 // Events routes
 app.use("/api/events", eventsRouter);
 // Achievements routes

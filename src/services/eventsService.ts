@@ -1,9 +1,4 @@
 export {
-  getEventPrice,
-  findOrCreateEventPaymentForUser,
-  getEventPaymentById,
-} from "./events/payments";
-export {
   listEvents,
   listUpcomingEvents,
   getEventById,
@@ -24,14 +19,7 @@ export {
   setUserBookFood,
   listEventAttendances,
   patchEventAttendanceByAdmin,
-  getEventStats,
 } from "./events/rsvp";
-
-import {
-  getEventPrice,
-  findOrCreateEventPaymentForUser,
-  getEventPaymentById,
-} from "./events/payments";
 import {
   listEvents,
   listUpcomingEvents,
@@ -53,13 +41,9 @@ import {
   setUserBookFood,
   listEventAttendances,
   patchEventAttendanceByAdmin,
-  getEventStats,
 } from "./events/rsvp";
 
 export default {
-  getEventPrice,
-  findOrCreateEventPaymentForUser,
-  getEventPaymentById,
   listEvents,
   listUpcomingEvents,
   getEventById,
@@ -78,5 +62,4 @@ export default {
   setUserBookFood,
   listEventAttendances,
   patchEventAttendanceByAdmin,
-  getEventStats,
 };

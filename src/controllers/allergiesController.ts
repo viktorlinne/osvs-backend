@@ -4,7 +4,9 @@ import {
   getUserAllergies,
   setUserAllergies,
 } from "../services/allergiesService";
+import { parseNumericIds } from "../validators";
 import { sendError } from "../utils/response";
+import { parseNumericParam } from "./helpers/request";
 
 export async function listAllergiesHandler(
   _req: Request,
@@ -25,16 +27,15 @@ export async function setMemberAllergiesHandler(
   _next: NextFunction,
 ) {
   try {
-    const matrikelnummer = Number(req.params.matrikelnummer);
-    if (!Number.isFinite(matrikelnummer))
-      return sendError(res, 400, "Invalid id");
+    const matrikelnummer = parseNumericParam(
+      res,
+      req.params.matrikelnummer,
+      "Invalid id",
+    );
+    if (matrikelnummer === null) return;
 
     const body = req.body as { allergyIds?: unknown };
-    const allergyIds = Array.isArray(body?.allergyIds)
-      ? body.allergyIds
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value))
-      : [];
+    const allergyIds = parseNumericIds(body?.allergyIds);
 
     await setUserAllergies(matrikelnummer, allergyIds);
     const rows = await getUserAllergies(matrikelnummer);

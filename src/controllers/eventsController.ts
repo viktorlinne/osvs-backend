@@ -252,17 +252,6 @@ export async function listEventLodgesHandler(
   return res.status(200).json({ lodges });
 }
 
-export async function getEventStatsHandler(
-  req: AuthenticatedRequest,
-  res: Response,
-  _next: NextFunction,
-) {
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
-  if (id === null) return;
-  const stats = await eventsService.getEventStats(id);
-  return res.status(200).json({ stats });
-}
-
 export async function rsvpHandler(
   req: AuthenticatedRequest,
   res: Response,

@@ -3,14 +3,6 @@ import type { AuthenticatedRequest } from "../types/auth";
 import { membershipRepo } from "../repositories";
 import { sendError } from "../utils/response";
 
-export async function createCheckoutSessionHandler() {}
-
-export async function createMembershipHandler() {}
-
-export async function getPaymentHandler() {}
-
-export async function getByTokenHandler() {}
-
 export async function getMyMembershipsHandler(
   req: AuthenticatedRequest,
   res: Response,
@@ -39,16 +31,6 @@ export async function getMyMembershipsHandler(
   }
 }
 
-export async function createEventPaymentHandler() {}
-
-export async function getEventPaymentHandler() {}
-
-export async function getEventByTokenHandler() {}
-
-export async function webhookHandler() {}
-
 export default {
-  createMembershipHandler,
-  createCheckoutSessionHandler,
   getMyMembershipsHandler,
 };

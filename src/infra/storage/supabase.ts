@@ -1,9 +1,10 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { StorageAdapter, StorageUploadResult } from "./adapter";
+import { STORAGE_BUCKETS } from "../../config/storage";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const DEFAULT_BUCKET = process.env.SUPABASE_BUCKET_POSTS ?? "posts";
+const DEFAULT_BUCKET = STORAGE_BUCKETS.POSTS;
 const signedUrlExpires = Number(process.env.SUPABASE_UPLOAD_EXPIRY_SEC ?? "300");
 
 let client: SupabaseClient | null = null;
@@ -30,20 +31,20 @@ if (!client) {
   const supabase = client as SupabaseClient;
   function resolveBucketFromKey(key: string) {
     const first = String(key || "").split("/")[0];
-    const postsBucket = process.env.SUPABASE_BUCKET_POSTS ?? "posts";
-    const profilesBucket = process.env.SUPABASE_BUCKET_PROFILES ?? "profiles";
-    const documentsBucket = process.env.SUPABASE_BUCKET_DOCUMENTS ?? "documents";
-    const revisionsBucket = process.env.SUPABASE_BUCKET_REVISIONS ?? "revisions";
-    const staticBucket = process.env.SUPABASE_BUCKET_STATIC ?? "static";
+    const postsBucket = STORAGE_BUCKETS.POSTS;
+    const profilesBucket = STORAGE_BUCKETS.PROFILES;
+    const documentsBucket = STORAGE_BUCKETS.DOCUMENTS;
+    const revisionsBucket = STORAGE_BUCKETS.REVISIONS;
+    const staticBucket = STORAGE_BUCKETS.STATIC;
 
-    if (!first) return process.env.SUPABASE_BUCKET_POSTS ?? DEFAULT_BUCKET;
+    if (!first) return STORAGE_BUCKETS.POSTS ?? DEFAULT_BUCKET;
     if (first === postsBucket) return postsBucket;
     if (first === profilesBucket) return profilesBucket;
     if (first === documentsBucket) return documentsBucket;
     if (first === revisionsBucket) return revisionsBucket;
     if (first === staticBucket) return staticBucket;
     // fallback to posts bucket
-    return process.env.SUPABASE_BUCKET_POSTS ?? DEFAULT_BUCKET;
+    return STORAGE_BUCKETS.POSTS ?? DEFAULT_BUCKET;
   }
 
   supabaseStorageAdapter = {

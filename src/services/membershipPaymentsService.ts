@@ -64,26 +64,6 @@ export async function createMembershipPayment(
   return toMembershipPayment(row);
 }
 
-export async function getById(id: number): Promise<MembershipPayment | null> {
-  const row = await membershipRepo.findById(id);
-  return toMembershipPayment(row);
-}
-
-export async function createMembershipPaymentIfMissing(
-  uid: number,
-  year: number,
-  amount?: number,
-): Promise<MembershipPayment | null> {
-  // Check if a payment for this user and year already exists
-  const rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
-  if (Array.isArray(rows) && rows.length > 0) {
-    return toMembershipPayment(rows[0]);
-  }
-
-  // Create a new pending payment
-  return await createMembershipPayment({ uid, year, amount });
-}
-
 export async function createMembershipPaymentsIfMissingBulk(
   uids: number[],
   year: number,
@@ -116,7 +96,5 @@ export async function createMembershipPaymentsIfMissingBulk(
 
 export default {
   createMembershipPayment,
-  getById,
-  createMembershipPaymentIfMissing,
   createMembershipPaymentsIfMissingBulk,
 };

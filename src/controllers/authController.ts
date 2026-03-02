@@ -13,6 +13,7 @@ import {
 } from "../services/userService";
 import { hashPassword } from "../services/authService";
 import { REFRESH_COOKIE, PROFILE_PLACEHOLDER } from "../config/constants";
+import { STORAGE_BUCKETS, STORAGE_PREFIXES } from "../config/storage";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import {
@@ -123,8 +124,8 @@ export async function register(
   const file = req.file;
   if (file) {
     const newKey = await uploadToStorage(file, {
-      folder: "profiles",
-      prefix: "profile_",
+      folder: STORAGE_BUCKETS.PROFILES,
+      prefix: STORAGE_PREFIXES.PROFILE,
       size: { width: 200, height: 200 },
     });
     if (!newKey) {

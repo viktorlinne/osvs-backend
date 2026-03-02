@@ -1,13 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import * as documentsService from "../services/documentsService";
-import {
-  deleteFromStorage,
-  getPublicUrl,
-  uploadRawToStorage,
-} from "../utils/fileUpload";
+import { getPublicUrl } from "../utils/fileUpload";
+import { STORAGE_BUCKETS, STORAGE_KEYS, STORAGE_PREFIXES } from "../config/storage";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
+import { uploadRawAndPersist } from "./helpers/storage";
 
 export async function listDocumentsHandler(
   _req: AuthenticatedRequest,
@@ -18,7 +16,9 @@ export async function listDocumentsHandler(
   const withUrls = await Promise.all(
     rows.map(async (row) => ({
       ...row,
-      pictureUrl: await getPublicUrl(row.picture ?? "documents/documentPlaceholder.pdf"),
+      pictureUrl: await getPublicUrl(
+        row.picture ?? STORAGE_KEYS.DOCUMENT_PLACEHOLDER,
+      ),
     })),
   );
   return res.status(200).json({ documents: withUrls });
@@ -35,28 +35,23 @@ export async function createDocumentHandler(
   if (!title) return sendError(res, 400, "Title is required");
   if (!req.file) return sendError(res, 400, "File is required");
 
-  let storageKey: string | null = null;
   try {
-    storageKey = await uploadRawToStorage(req.file, {
-      bucket: "documents",
-      prefix: "document_",
-      fallbackExtension: ".pdf",
-      allowedExtensions: [".pdf"],
-    });
-    if (!storageKey) {
+    const id = await uploadRawAndPersist(
+      req.file,
+      {
+        bucket: STORAGE_BUCKETS.DOCUMENTS,
+        prefix: STORAGE_PREFIXES.DOCUMENT,
+        fallbackExtension: ".pdf",
+        allowedExtensions: [".pdf"],
+      },
+      async (storageKey) => documentsService.createDocument(title, storageKey),
+    );
+    if (id === null) {
       return sendError(res, 500, "Failed to upload file");
     }
 
-    const id = await documentsService.createDocument(title, storageKey);
     return res.status(201).json({ success: true, id });
   } catch (err) {
-    if (storageKey) {
-      try {
-        await deleteFromStorage(storageKey);
-      } catch {
-        // ignore cleanup failure
-      }
-    }
     logger.error("Failed to create document", err);
     return sendError(res, 500, "Failed to create document");
   }

@@ -12,6 +12,7 @@ import {
   getPublicUrl,
   deleteProfilePicture,
 } from "../utils/fileUpload";
+import { STORAGE_BUCKETS, STORAGE_KEYS, STORAGE_PREFIXES } from "../config/storage";
 import logger from "../utils/logger";
 import { getCached, setCached, delPattern } from "../infra/cache";
 import { sendError } from "../utils/response";
@@ -54,7 +55,7 @@ export async function listPostsHandler(
       rows.map(async (r) => ({
         id: r.id,
         title: r.title,
-        pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
+        pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
         description: r.description ? String(r.description).slice(0, 200) : "",
       })),
     );
@@ -91,7 +92,7 @@ export async function listPublicumPostsPublicHandler(
         title: r.title,
         createdAt: r.createdAt,
         description: r.description,
-        pictureUrl: await getPublicUrl(r.picture ?? "posts/postPlaceholder.png"),
+        pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
       })),
     );
     void setCached(cacheKey, dto);
@@ -118,7 +119,7 @@ export async function getPostHandler(
   const post = await postsService.getPostById(postId);
   if (!post) return sendError(res, 404, "Inlagg hittades inte");
 
-  const pictureUrl = await getPublicUrl(post.picture ?? "posts/postPlaceholder.png");
+  const pictureUrl = await getPublicUrl(post.picture ?? STORAGE_KEYS.POST_PLACEHOLDER);
   return res.status(200).json({ post: { ...post, pictureUrl } });
 }
 
@@ -127,32 +128,43 @@ export async function createPostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const parsed = unwrapValidation(res, validateCreatePostBody(req.body));
-  if (!parsed) return;
-
-  const { title, description, lodgeIds = [], publicum } = parsed;
-
-  const file = req.file;
   let pictureKey: string | null = null;
-  if (file) {
-    const key = await uploadToStorage(file, {
-      folder: "posts",
-      prefix: "post_",
-      size: { width: 800, height: 600 },
-    });
-    if (!key) return sendError(res, 500, "Misslyckades att lagra bilden");
-    pictureKey = key;
-  }
+  try {
+    const parsed = unwrapValidation(res, validateCreatePostBody(req.body));
+    if (!parsed) return;
 
-  const id = await postsService.createPost(
-    title,
-    description,
-    publicum,
-    pictureKey,
-    lodgeIds,
-  );
-  void delPattern("posts:*");
-  return res.status(201).json({ success: true, id });
+    const { title, description, lodgeIds = [], publicum } = parsed;
+
+    const file = req.file;
+    if (file) {
+      const key = await uploadToStorage(file, {
+        folder: STORAGE_BUCKETS.POSTS,
+        prefix: STORAGE_PREFIXES.POST,
+        size: { width: 800, height: 600 },
+      });
+      if (!key) return sendError(res, 500, "Misslyckades att lagra bilden");
+      pictureKey = key;
+    }
+
+    const id = await postsService.createPost(
+      title,
+      description,
+      publicum,
+      pictureKey,
+      lodgeIds,
+    );
+    void delPattern("posts:*");
+    return res.status(201).json({ success: true, id });
+  } catch (err) {
+    if (pictureKey) {
+      try {
+        await deleteProfilePicture(pictureKey);
+      } catch {
+        // ignore cleanup failures
+      }
+    }
+    throw err;
+  }
 }
 
 export async function updatePostHandler(
@@ -207,8 +219,8 @@ export async function updatePostHandler(
 
     if (req.file) {
       const key = await uploadToStorage(req.file, {
-        folder: "posts",
-        prefix: "post_",
+        folder: STORAGE_BUCKETS.POSTS,
+        prefix: STORAGE_PREFIXES.POST,
         size: { width: 800, height: 600 },
       });
       if (!key) return sendError(res, 500, "Misslyckades att lagra bilden");

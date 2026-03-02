@@ -36,6 +36,7 @@ import { getUserLodge, setUserLodge } from "../services/lodgeService";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import { PROFILE_PLACEHOLDER } from "../config/constants";
+import { STORAGE_BUCKETS, STORAGE_PREFIXES } from "../config/storage";
 import {
   parseNumericParam,
   requireAuthMatrikelnummer,
@@ -55,8 +56,8 @@ export async function updatePictureHandler(
     if (!file) return sendError(res, 400, "No file uploaded");
 
     const newKey = await uploadToStorage(file, {
-      folder: "profiles",
-      prefix: "profile_",
+      folder: STORAGE_BUCKETS.PROFILES,
+      prefix: STORAGE_PREFIXES.PROFILE,
       size: { width: 200, height: 200 },
     });
     if (!newKey) return sendError(res, 500, "Failed to upload file");
@@ -112,8 +113,8 @@ export async function updateOtherPictureHandler(
     if (!file) return sendError(res, 400, "No file uploaded");
 
     const newKey = await uploadToStorage(file, {
-      folder: "profiles",
-      prefix: "profile_",
+      folder: STORAGE_BUCKETS.PROFILES,
+      prefix: STORAGE_PREFIXES.PROFILE,
       size: { width: 200, height: 200 },
     });
     if (!newKey) return sendError(res, 500, "Failed to upload file");
@@ -147,8 +148,20 @@ export async function updateOtherPictureHandler(
   }
 }
 
-export async function placeholderMe(_req: AuthenticatedRequest, res: Response) {
-  return res.status(200).json({});
+export async function meHandler(req: AuthenticatedRequest, res: Response) {
+  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  if (!uid) return;
+
+  const user = await findUserById(uid);
+  if (!user) return sendError(res, 404, "User not found");
+
+  const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
+  return res.status(200).json({
+    user: {
+      ...toPublicUser(user),
+      pictureUrl,
+    },
+  });
 }
 
 export async function updateMeHandler(
@@ -491,7 +504,7 @@ export async function setLodgeHandler(
 }
 
 export default {
-  placeholderMe,
+  meHandler,
   updateMeHandler,
   updatePictureHandler,
   updateOtherPictureHandler,
