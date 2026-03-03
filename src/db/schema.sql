@@ -595,6 +595,24 @@ VALUES
   ),
   (
     2,
+    'member@example.com',
+    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
+    NULL,
+    'Member',
+    'Example',
+    '1900-01-01',
+    'Testare',
+    NULL,
+    '0707070707',
+    NULL,
+    'Stad',
+    'Adress 1',
+    '22233',
+    '',
+    0
+  ),
+  (
+    3,
     'editor@example.com',
     "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
@@ -612,7 +630,7 @@ VALUES
     0
   ),
   (
-    3,
+    4,
     'johan@bankel.com',
     "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
@@ -630,7 +648,7 @@ VALUES
     0
   ),
   (
-    4,
+    5,
     'joja@me.com',
     "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
     NULL,
@@ -857,7 +875,7 @@ VALUES
 DELETE FROM
   `users_roles`
 WHERE
-  `uid` IN (1, 2, 3, 4);
+  `uid` IN (1, 2, 3, 4, 5);
 
 INSERT INTO
   `users_roles` (`uid`, `rid`)
@@ -865,20 +883,21 @@ VALUES
   (1, 1),
   (1, 2),
   (1, 3),
-  (2, 1),
-  (2, 2),
-  (3, 1),
+  (2, 3),
   (3, 2),
   (3, 3),
   (4, 1),
   (4, 2),
-  (4, 3);
+  (4, 3),
+  (5, 1),
+  (5, 2),
+  (5, 3);
 
 -- Users ↔ Achievements
 DELETE FROM
   `users_achievements`
 WHERE
-  `uid` IN (1, 2, 3, 4);
+  `uid` IN (1, 2, 3, 4, 5);
 
 INSERT INTO
   `users_achievements` (`uid`, `aid`, `awardedAt`)
@@ -886,13 +905,14 @@ VALUES
   (1, 1, '2025-12-01 10:00:00'),
   (2, 1, '2025-12-01 10:00:00'),
   (3, 1, '2025-12-01 10:00:00'),
-  (4, 1, '2025-12-01 10:00:00');
+  (4, 1, '2025-12-01 10:00:00'),
+  (5, 1, '2025-12-01 10:00:00');
 
 -- Users ↔ Officials
 DELETE FROM
   `users_officials`
 WHERE
-  `uid` IN (1, 2, 3, 4);
+  `uid` IN (1, 2, 3, 4, 5);
 
 INSERT INTO
   `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
@@ -900,13 +920,14 @@ VALUES
   (1, 1, '2025-01-01 10:00:00', NULL),
   (2, 2, '2025-12-01 10:00:00', NULL),
   (3, 3, '2025-12-01 10:00:00', NULL),
-  (4, 4, '2025-12-01 10:00:00', NULL);
+  (4, 4, '2025-12-01 10:00:00', NULL),
+  (5, 5, '2025-12-01 10:00:00', NULL);
 
 -- Users ↔ Lodges
 DELETE FROM
   `users_lodges`
 WHERE
-  `uid` IN (1, 2, 3, 4);
+  `uid` IN (1, 2, 3, 4, 5);
 
 INSERT INTO
   `users_lodges` (`uid`, `lid`)
@@ -914,13 +935,14 @@ VALUES
   (1, 1),
   (2, 2),
   (3, 4),
-  (4, 4);
+  (4, 4),
+  (5, 5);
 
 -- Users ↔ Allergies
 DELETE FROM
   `users_allergies`
 WHERE
-  `uid` IN (1, 2, 3, 4);
+  `uid` IN (1, 2, 3, 4, 5);
 
 INSERT INTO
   `users_allergies` (`uid`, `alid`)
@@ -928,7 +950,8 @@ VALUES
   (1, 1),
   (2, 2),
   (3, 3),
-  (4, 4);
+  (4, 4),
+  (5, 5);
 
 -- Lodges ↔ Events (predictable state)
 DELETE FROM

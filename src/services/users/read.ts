@@ -160,11 +160,30 @@ export async function listUsersMapPins(): Promise<UserMapPin[]> {
   return rows
     .map((row) => {
       const rec = row as Record<string, unknown>;
+      const parsedRank = Number(rec.highestGradeRank);
+      const highestGradeRank =
+        Number.isFinite(parsedRank) && parsedRank >= 1 && parsedRank <= 10
+          ? parsedRank
+          : null;
+
       return {
         id: Number(rec.id),
         name: String(rec.name ?? "").trim(),
         lat: Number(rec.lat),
         lng: Number(rec.lng),
+        lodgeId: Number.isFinite(Number(rec.lodgeId))
+          ? Number(rec.lodgeId)
+          : null,
+        lodgeName:
+          typeof rec.lodgeName === "string" && rec.lodgeName.trim().length > 0
+            ? rec.lodgeName.trim()
+            : null,
+        highestGradeRank,
+        highestGrade:
+          typeof rec.highestGrade === "string" &&
+          rec.highestGrade.trim().length > 0
+            ? rec.highestGrade.trim()
+            : null,
       };
     })
     .filter(

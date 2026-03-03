@@ -56,6 +56,10 @@ type UserMapPinRow = {
   name?: unknown;
   lat?: unknown;
   lng?: unknown;
+  lodgeId?: unknown;
+  lodgeName?: unknown;
+  highestGradeRank?: unknown;
+  highestGrade?: unknown;
 };
 
 export type UserGeocodeSource = "AUTO" | "MANUAL";
@@ -548,8 +552,25 @@ export async function listUsersMapPins() {
       u.matrikelnummer AS id,
       CONCAT(u.firstname, ' ', u.lastname) AS name,
       u.lat,
-      u.lng
+      u.lng,
+      ul_current.lid AS lodgeId,
+      l.name AS lodgeName,
+      g.highest_grade_rank AS highestGradeRank,
+      a.title AS highestGrade
     FROM users u
+    LEFT JOIN (
+      SELECT uid, MIN(lid) AS lid
+      FROM users_lodges
+      GROUP BY uid
+    ) ul_current ON ul_current.uid = u.matrikelnummer
+    LEFT JOIN lodges l ON l.id = ul_current.lid
+    LEFT JOIN (
+      SELECT ua.uid, MAX(ua.aid) AS highest_grade_rank
+      FROM users_achievements ua
+      WHERE ua.aid BETWEEN 1 AND 10
+      GROUP BY ua.uid
+    ) g ON g.uid = u.matrikelnummer
+    LEFT JOIN achievements a ON a.id = g.highest_grade_rank
     WHERE u.lat IS NOT NULL AND u.lng IS NOT NULL
     ORDER BY u.firstname ASC, u.lastname ASC, u.matrikelnummer ASC
   `;
