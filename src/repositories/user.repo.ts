@@ -355,6 +355,18 @@ export async function countAttendedEventsSinceLatestAchievement(userId: number) 
   return Number(arr[0].cnt ?? 0);
 }
 
+export async function countAttendedEventsForUser(userId: number) {
+  const sql = `
+    SELECT COUNT(*) AS cnt
+    FROM events_attendances
+    WHERE uid = ? AND attended = 1
+  `;
+  const [rows] = await exec(sql, [userId]);
+  const arr = asRows<CountRow>(rows);
+  if (arr.length === 0) return 0;
+  return Number(arr[0].cnt ?? 0);
+}
+
 export async function listAchievements() {
   const [rows] = await exec(
     "SELECT id, title FROM achievements ORDER BY id ASC",
@@ -420,6 +432,7 @@ export async function listUsers(filters?: {
   achievementId?: number;
   lodgeId?: number;
   officialId?: number;
+  accommodationAvailable?: boolean;
 }) {
   const where: string[] = [];
   const params: Array<string | number | null> = [];
@@ -460,6 +473,10 @@ export async function listUsers(filters?: {
       "EXISTS (SELECT 1 FROM users_officials uo WHERE uo.uid = u.matrikelnummer AND uo.oid = ? AND uo.unAppointedAt IS NULL)",
     );
     params.push(filters.officialId);
+  }
+
+  if (filters?.accommodationAvailable === true) {
+    where.push("u.accommodationAvailable = 1");
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
@@ -599,6 +616,7 @@ export default {
   listAttendedEventsForUser,
   getLatestAchievementAwardedAt,
   countAttendedEventsSinceLatestAchievement,
+  countAttendedEventsForUser,
   listAchievements,
   selectUserAllergies,
   setUserAllergies,

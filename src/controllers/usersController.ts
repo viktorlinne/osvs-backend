@@ -331,6 +331,13 @@ export async function listUsersHandler(
     const achievementId = q.achievementId ? Number(q.achievementId) : undefined;
     const lodgeId = q.lodgeId ? Number(q.lodgeId) : undefined;
     const officialId = q.officialId ? Number(q.officialId) : undefined;
+    const accommodationAvailable =
+      q.accommodationAvailable === true ||
+      q.accommodationAvailable === "true" ||
+      q.accommodationAvailable === 1 ||
+      q.accommodationAvailable === "1"
+        ? true
+        : undefined;
 
     const rows = await listPublicUsers({
       name: name || undefined,
@@ -339,6 +346,7 @@ export async function listUsersHandler(
         : undefined,
       lodgeId: Number.isFinite(lodgeId) ? lodgeId : undefined,
       officialId: Number.isFinite(officialId) ? officialId : undefined,
+      accommodationAvailable,
     });
     // Resolve public picture URLs
     const withUrls = await Promise.all(

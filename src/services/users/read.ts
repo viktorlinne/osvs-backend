@@ -62,10 +62,12 @@ export async function getUserAchievements(
 export async function getUserAttendedEventsSummary(
   userId: number,
 ): Promise<AttendedEventsSummary> {
-  const [eventRows, lastAchievementRaw, sinceCountRaw] = await Promise.all([
+  const [eventRows, lastAchievementRaw, sinceCountRaw, totalCountRaw] =
+    await Promise.all([
     userRepo.listAttendedEventsForUser(userId),
     userRepo.getLatestAchievementAwardedAt(userId),
     userRepo.countAttendedEventsSinceLatestAchievement(userId),
+    userRepo.countAttendedEventsForUser(userId),
   ]);
 
   const events = eventRows
@@ -83,6 +85,7 @@ export async function getUserAttendedEventsSummary(
       ? sinceCountRaw
       : 0,
     lastAchievementAt: toIsoString(lastAchievementRaw),
+    totalMeetingsCount: Number.isFinite(totalCountRaw) ? totalCountRaw : 0,
   };
 }
 
@@ -142,6 +145,7 @@ export async function listPublicUsers(filters?: {
   achievementId?: number;
   lodgeId?: number;
   officialId?: number;
+  accommodationAvailable?: boolean;
 }) {
   const rows = await userRepo.listUsers(filters);
   return rows
