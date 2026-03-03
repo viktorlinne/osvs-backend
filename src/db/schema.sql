@@ -535,8 +535,7 @@ VALUES
     'Enligt ett protokoll från Förtroenderådets sammanträde i maj 1974 framgår det, att det gamla önskemålet, att Ordenssamfundet VS finge flera loger än nuvarande fyra, tycktes gå i uppfyllelse. Det gäller en loge i Halmstad, dit många av bröderna från både Göteborg och Ängelholm flyttat. Logen Capella instiftades således den 28 november 1975. Idag har logen 68 Bröder och 25 i Damklubben.',
     'capella@osvs.se',
     'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/halmstad.webp'
-  ) 
-  ON DUPLICATE KEY
+  ) ON DUPLICATE KEY
 UPDATE
   `name` =
 VALUES
@@ -554,7 +553,7 @@ VALUES
 VALUES
   (`picture`);
 
-  -- Users
+-- Users
 INSERT INTO
   `users` (
     `matrikelnummer`,
@@ -578,7 +577,7 @@ VALUES
   (
     1,
     'viktor.linne@gmail.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
+    '$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU',
     NULL,
     'Viktor',
     'Linné',
@@ -587,16 +586,16 @@ VALUES
     NULL,
     '0705788520',
     NULL,
-    'Stockholm',
-    'Storgatan 1',
-    '11122',
+    'Vallda',
+    'Motionsvägen 74',
+    '43490',
     '',
     1
   ),
   (
     2,
     'member@example.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
+    '$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU',
     NULL,
     'Member',
     'Example',
@@ -614,7 +613,7 @@ VALUES
   (
     3,
     'editor@example.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
+    '$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU',
     NULL,
     'Editor',
     'Example',
@@ -632,7 +631,7 @@ VALUES
   (
     4,
     'johan@bankel.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
+    '$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU',
     NULL,
     'Johan',
     'Bankel',
@@ -650,7 +649,7 @@ VALUES
   (
     5,
     'joja@me.com',
-    "$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU",
+    '$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU',
     NULL,
     'Johan',
     'Jakobsson',
@@ -662,6 +661,24 @@ VALUES
     'Stad',
     'Adress 1',
     '11111',
+    '',
+    0
+  ),
+  (
+    6,
+    'fredrik.wassberg@xerab.se',
+    '$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU',
+    NULL,
+    'Fredrik',
+    'Wassberg',
+    '1900-01-01',
+    'Arbete',
+    NULL,
+    '0707070707',
+    NULL,
+    'Fjärås',
+    'Kornvägen 22',
+    '43973',
     '',
     0
   ) ON DUPLICATE KEY
@@ -712,7 +729,7 @@ VALUES
 VALUES
   (`accommodationAvailable`);
 
-    -- Events
+-- Events
 INSERT INTO
   `events` (
     `id`,
@@ -875,7 +892,7 @@ VALUES
 DELETE FROM
   `users_roles`
 WHERE
-  `uid` IN (1, 2, 3, 4, 5);
+  `uid` IN (1, 2, 3, 4, 5, 6);
 
 INSERT INTO
   `users_roles` (`uid`, `rid`)
@@ -891,13 +908,16 @@ VALUES
   (4, 3),
   (5, 1),
   (5, 2),
-  (5, 3);
+  (5, 3),
+  (6, 1),
+  (6, 2),
+  (6, 3);
 
 -- Users ↔ Achievements
 DELETE FROM
   `users_achievements`
 WHERE
-  `uid` IN (1, 2, 3, 4, 5);
+  `uid` IN (1, 2, 3, 4, 5, 6);
 
 INSERT INTO
   `users_achievements` (`uid`, `aid`, `awardedAt`)
@@ -906,13 +926,14 @@ VALUES
   (2, 1, '2025-12-01 10:00:00'),
   (3, 1, '2025-12-01 10:00:00'),
   (4, 1, '2025-12-01 10:00:00'),
-  (5, 1, '2025-12-01 10:00:00');
+  (5, 1, '2025-12-01 10:00:00'),
+  (6, 1, '2025-12-01 10:00:00');
 
 -- Users ↔ Officials
 DELETE FROM
   `users_officials`
 WHERE
-  `uid` IN (1, 2, 3, 4, 5);
+  `uid` IN (1, 2, 3, 4, 5, 6);
 
 INSERT INTO
   `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
@@ -921,13 +942,14 @@ VALUES
   (2, 2, '2025-12-01 10:00:00', NULL),
   (3, 3, '2025-12-01 10:00:00', NULL),
   (4, 4, '2025-12-01 10:00:00', NULL),
-  (5, 5, '2025-12-01 10:00:00', NULL);
+  (5, 5, '2025-12-01 10:00:00', NULL),
+  (6, 6, '2025-12-01 10:00:00', NULL);
 
 -- Users ↔ Lodges
 DELETE FROM
   `users_lodges`
 WHERE
-  `uid` IN (1, 2, 3, 4, 5);
+  `uid` IN (1, 2, 3, 4, 5, 6);
 
 INSERT INTO
   `users_lodges` (`uid`, `lid`)
@@ -936,13 +958,14 @@ VALUES
   (2, 2),
   (3, 4),
   (4, 4),
-  (5, 5);
+  (5, 5),
+  (6, 5);
 
 -- Users ↔ Allergies
 DELETE FROM
   `users_allergies`
 WHERE
-  `uid` IN (1, 2, 3, 4, 5);
+  `uid` IN (1, 2, 3, 4, 5, 6);
 
 INSERT INTO
   `users_allergies` (`uid`, `alid`)
@@ -951,7 +974,8 @@ VALUES
   (2, 2),
   (3, 3),
   (4, 4),
-  (5, 5);
+  (5, 5),
+  (6, 5);
 
 -- Lodges ↔ Events (predictable state)
 DELETE FROM
