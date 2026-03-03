@@ -255,8 +255,8 @@ VALUES
     NULL,
     '0707070707',
     NULL,
-    'Stad',
-    'Adress 1',
+    'Stockholm',
+    'Storgatan 1',
     '22233',
     '',
     0
@@ -273,8 +273,8 @@ VALUES
     NULL,
     '0707070707',
     NULL,
-    'Stad',
-    'Adress 1',
+    'Stockholm',
+    'Storgatan 1',
     '22233',
     '',
     0
@@ -291,9 +291,9 @@ VALUES
     NULL,
     '0707070707',
     NULL,
-    'Stad',
-    'Adress 1',
-    '11111',
+    'Stockholm',
+    'Storgatan 1',
+    '22233',
     '',
     0
   ),
@@ -309,9 +309,9 @@ VALUES
     NULL,
     '0707070707',
     NULL,
-    'Stad',
-    'Adress 1',
-    '11111',
+    'Stockholm',
+    'Storgatan 1',
+    '22233',
     '',
     0
   ),
@@ -332,7 +332,25 @@ VALUES
     '43973',
     '',
     0
-  ) ON DUPLICATE KEY
+  ),
+(
+  7,
+  'admin@example.com',
+  '$argon2id$v=19$m=65536,t=3,p=1$fb9hqs9kIy2ak8yk8i8uSA$ef0butA8uW/UCq5Qo7RPNg1DyKu+6VNCjMlP0fzfFeU',
+  NULL,
+  'Admin',
+  'Example',
+  '1900-01-01',
+  'Testare',
+  NULL,
+  '0707070707',
+  NULL,
+  'Stockholm',
+  'Storgatan 1',
+  '22233',
+  '',
+  0
+) ON DUPLICATE KEY
 UPDATE
   `email` =
 VALUES
@@ -547,7 +565,11 @@ VALUES
   (5, 3),
   (6, 1),
   (6, 2),
-  (6, 3);
+  (6, 3),
+  (7, 1),
+  (7, 2),
+  (7, 3);
+
 
 -- Users ↔ Achievements
 INSERT INTO
@@ -558,7 +580,8 @@ VALUES
   (3, 1, '2025-12-01 10:00:00'),
   (4, 1, '2025-12-01 10:00:00'),
   (5, 1, '2025-12-01 10:00:00'),
-  (6, 1, '2025-12-01 10:00:00');
+  (6, 1, '2025-12-01 10:00:00'),
+  (7, 1, '2025-12-01 10:00:00');
 
 -- Users ↔ Officials
 INSERT INTO
@@ -569,7 +592,8 @@ VALUES
   (3, 3, '2025-12-01 10:00:00', NULL),
   (4, 4, '2025-12-01 10:00:00', NULL),
   (5, 5, '2025-12-01 10:00:00', NULL),
-  (6, 6, '2025-12-01 10:00:00', NULL);
+  (6, 6, '2025-12-01 10:00:00', NULL),
+  (7, 7, '2025-12-01 10:00:00', NULL);
 
 -- Users ↔ Lodges
 INSERT INTO
@@ -580,7 +604,8 @@ VALUES
   (3, 4),
   (4, 4),
   (5, 5),
-  (6, 5);
+  (6, 5),
+  (7, 5);
 
 -- Users ↔ Allergies
 INSERT INTO
@@ -591,7 +616,8 @@ VALUES
   (3, 3),
   (4, 4),
   (5, 5),
-  (6, 5);
+  (6, 6),
+  (7, 7);
 
 -- Lodges ↔ Events (predictable state)
 INSERT INTO
