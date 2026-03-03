@@ -40,6 +40,11 @@ export type SetLodgeBody = {
   lodgeId?: number | string | null;
 };
 
+export type SetUserLocationBody = {
+  lat?: number | string;
+  lng?: number | string;
+};
+
 export type ListUsersQuery = {
   name?: string;
   achievementId?: string | number;

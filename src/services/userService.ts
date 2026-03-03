@@ -11,6 +11,7 @@ export {
   listAchievements,
   listRoles,
   listPublicUsers,
+  listUsersMapPins,
   getPublicUserById,
 } from "./users/read";
 export {
@@ -22,6 +23,8 @@ export {
   setUserAchievement,
   setUserRoles,
   createUser,
+  setUserManualLocation,
+  clearUserLocationOverride,
 } from "./users/write";
 
 import { isValidUserRecord, trimUserInput } from "./users/shared";
@@ -37,6 +40,7 @@ import {
   listAchievements,
   listRoles,
   listPublicUsers,
+  listUsersMapPins,
   getPublicUserById,
 } from "./users/read";
 import {
@@ -48,6 +52,8 @@ import {
   setUserAchievement,
   setUserRoles,
   createUser,
+  setUserManualLocation,
+  clearUserLocationOverride,
 } from "./users/write";
 
 export default {
@@ -64,6 +70,7 @@ export default {
   listAchievements,
   listRoles,
   listPublicUsers,
+  listUsersMapPins,
   getPublicUserById,
   updateUserProfile,
   updatePassword,
@@ -73,4 +80,6 @@ export default {
   setUserAchievement,
   setUserRoles,
   createUser,
+  setUserManualLocation,
+  clearUserLocationOverride,
 };

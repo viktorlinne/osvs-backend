@@ -51,6 +51,15 @@ type OfficialHistoryRow = {
   unappointedAt?: unknown;
 };
 type ActiveOfficialOidRow = { oid?: unknown };
+type UserMapPinRow = {
+  id?: unknown;
+  name?: unknown;
+  lat?: unknown;
+  lng?: unknown;
+};
+
+export type UserGeocodeSource = "AUTO" | "MANUAL";
+export type UserGeocodeStatus = "OK" | "FAILED" | "NEEDS_MANUAL";
 
 function asRows<T>(rows: unknown): T[] {
   return Array.isArray(rows) ? (rows as T[]) : [];
@@ -228,6 +237,52 @@ export async function updateUserProfile(
 
   const sql = `UPDATE users SET ${fields.join(", ")} WHERE matrikelnummer = ?`;
   params.push(String(userId));
+  await exec(sql, params);
+}
+
+export async function updateUserGeocode(
+  userId: number,
+  data: Partial<{
+    lat: number | null;
+    lng: number | null;
+    geocodeSource: UserGeocodeSource;
+    geocodeStatus: UserGeocodeStatus | null;
+    geocodeLastAttemptAt: Date | null;
+    geocodeQueryHash: string | null;
+  }>,
+) {
+  const fields: string[] = [];
+  const params: Array<string | number | Date | null> = [];
+
+  if (Object.prototype.hasOwnProperty.call(data, "lat")) {
+    fields.push("lat = ?");
+    params.push(data.lat ?? null);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "lng")) {
+    fields.push("lng = ?");
+    params.push(data.lng ?? null);
+  }
+  if (typeof data.geocodeSource !== "undefined") {
+    fields.push("geocode_source = ?");
+    params.push(data.geocodeSource);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "geocodeStatus")) {
+    fields.push("geocode_status = ?");
+    params.push(data.geocodeStatus ?? null);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "geocodeLastAttemptAt")) {
+    fields.push("geocode_last_attempt_at = ?");
+    params.push(data.geocodeLastAttemptAt ?? null);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, "geocodeQueryHash")) {
+    fields.push("geocode_query_hash = ?");
+    params.push(data.geocodeQueryHash ?? null);
+  }
+
+  if (fields.length === 0) return;
+
+  const sql = `UPDATE users SET ${fields.join(", ")} WHERE matrikelnummer = ?`;
+  params.push(userId);
   await exec(sql, params);
 }
 
@@ -487,6 +542,21 @@ export async function listUsers(filters?: {
   return asRows<UserRow>(rows);
 }
 
+export async function listUsersMapPins() {
+  const sql = `
+    SELECT
+      u.matrikelnummer AS id,
+      CONCAT(u.firstname, ' ', u.lastname) AS name,
+      u.lat,
+      u.lng
+    FROM users u
+    WHERE u.lat IS NOT NULL AND u.lng IS NOT NULL
+    ORDER BY u.firstname ASC, u.lastname ASC, u.matrikelnummer ASC
+  `;
+  const [rows] = await exec(sql);
+  return asRows<UserMapPinRow>(rows);
+}
+
 export async function getUserPublicById(id: number) {
   const [rows] = await exec(
     `SELECT matrikelnummer, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable
@@ -611,7 +681,9 @@ export default {
   assignUserToLodge,
   deleteUserRoles,
   insertUserRolesBulk,
+  updateUserGeocode,
   listUsers,
+  listUsersMapPins,
   getUserPublicById,
   listAttendedEventsForUser,
   getLatestAchievementAwardedAt,

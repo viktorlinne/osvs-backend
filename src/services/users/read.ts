@@ -7,6 +7,7 @@ import type {
   PublicUser,
   Role,
   RoleValue,
+  UserMapPin,
   UserRecord,
 } from "../../types";
 import { RoleValues } from "../../types";
@@ -152,6 +153,27 @@ export async function listPublicUsers(filters?: {
     .filter(isValidUserRecord)
     .map((r) => toPublicUser(r))
     .filter(Boolean) as PublicUser[];
+}
+
+export async function listUsersMapPins(): Promise<UserMapPin[]> {
+  const rows = await userRepo.listUsersMapPins();
+  return rows
+    .map((row) => {
+      const rec = row as Record<string, unknown>;
+      return {
+        id: Number(rec.id),
+        name: String(rec.name ?? "").trim(),
+        lat: Number(rec.lat),
+        lng: Number(rec.lng),
+      };
+    })
+    .filter(
+      (row) =>
+        Number.isFinite(row.id) &&
+        row.name.length > 0 &&
+        Number.isFinite(row.lat) &&
+        Number.isFinite(row.lng),
+    );
 }
 
 export async function getPublicUserById(id: number) {

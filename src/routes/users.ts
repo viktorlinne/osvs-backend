@@ -4,7 +4,7 @@ import { wrapAsync } from "../middleware/asyncHandler";
 import authMiddleware from "../middleware/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
 // validators removed: runtime validation replaced by local DTOs/types
-import { requireRole } from "../middleware/authorize";
+import { allowSelfOrRoles, requireRole } from "../middleware/authorize";
 
 const router = express.Router();
 
@@ -97,6 +97,7 @@ router.post(
  *         description: Array of public users
  */
 router.get("/", authMiddleware, wrapAsync(usersController.listUsersHandler));
+router.get("/map", authMiddleware, wrapAsync(usersController.listUsersMapHandler));
 
 router.get(
   "/:matrikelnummer",
@@ -136,6 +137,20 @@ router.put(
   authMiddleware,
   requireRole("Admin", "Editor"),
   wrapAsync(usersController.updateUserHandler)
+);
+
+router.put(
+  "/:matrikelnummer/location",
+  authMiddleware,
+  allowSelfOrRoles("Admin", "Editor"),
+  wrapAsync(usersController.setUserLocationHandler)
+);
+
+router.delete(
+  "/:matrikelnummer/location-override",
+  authMiddleware,
+  allowSelfOrRoles("Admin", "Editor"),
+  wrapAsync(usersController.clearUserLocationOverrideHandler)
 );
 
 // Update another user's profile picture

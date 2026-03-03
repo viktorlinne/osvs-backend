@@ -7,6 +7,7 @@ import type {
 import {
   validateAddAchievementBody,
   validateSetLodgeBody,
+  validateSetUserLocationBody,
   validateSetRolesBody,
   validateUpdateUserProfileBody,
 } from "../validators";
@@ -26,9 +27,12 @@ import {
   getUserRoles,
   updateUserProfile,
   listPublicUsers,
+  listUsersMapPins,
   getPublicUserById,
   findById as findUserById,
   setUserRoles,
+  setUserManualLocation,
+  clearUserLocationOverride,
 } from "../services/userService";
 import { toPublicUser } from "../utils/serialize";
 import { getUserLodge, setUserLodge } from "../services/lodgeService";
@@ -362,6 +366,71 @@ export async function listUsersHandler(
   }
 }
 
+export async function listUsersMapHandler(
+  _req: AuthenticatedRequest,
+  res: Response,
+) {
+  try {
+    const rows = await listUsersMapPins();
+    return res.status(200).json({ users: rows });
+  } catch (err) {
+    logger.error("Failed to list user map pins", err);
+    return sendError(res, 500, "Failed to list user map pins");
+  }
+}
+
+export async function setUserLocationHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+) {
+  try {
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    if (!callerId) return;
+
+    const targetId = parseNumericParam(
+      res,
+      req.params.matrikelnummer,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
+
+    const payload = unwrapValidation(
+      res,
+      validateSetUserLocationBody(req.body),
+    );
+    if (!payload) return;
+
+    await setUserManualLocation(targetId, payload.lat, payload.lng);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error("Failed to set manual user location", err);
+    return sendError(res, 500, "Failed to set manual user location");
+  }
+}
+
+export async function clearUserLocationOverrideHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+) {
+  try {
+    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    if (!callerId) return;
+
+    const targetId = parseNumericParam(
+      res,
+      req.params.matrikelnummer,
+      "Invalid target user id",
+    );
+    if (targetId === null) return;
+
+    await clearUserLocationOverride(targetId);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    logger.error("Failed to clear user location override", err);
+    return sendError(res, 500, "Failed to clear user location override");
+  }
+}
+
 export async function getPublicUserHandler(
   req: AuthenticatedRequest,
   res: Response,
@@ -526,6 +595,9 @@ export default {
   setLodgeHandler,
   updateUserHandler,
   listUsersHandler,
+  listUsersMapHandler,
+  setUserLocationHandler,
+  clearUserLocationOverrideHandler,
   getPublicUserHandler,
 };
 

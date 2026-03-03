@@ -9,6 +9,88 @@ import * as userRepo from "../../repositories/user.repo";
 import { trimUserInput } from "./shared";
 import { findById } from "./read";
 import { toPublicUser } from "../../utils/serialize";
+import { geocodeSwedishAddress } from "./geocoding";
+
+function normalizeAddressPart(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function hasAddressChanged(
+  before: Record<string, unknown> | null,
+  patch: Partial<{
+    address?: string | null;
+    zipcode?: string | null;
+    city?: string | null;
+  }>,
+): boolean {
+  if (!before) return false;
+
+  const touchesAddress =
+    Object.prototype.hasOwnProperty.call(patch, "address") ||
+    Object.prototype.hasOwnProperty.call(patch, "zipcode") ||
+    Object.prototype.hasOwnProperty.call(patch, "city");
+
+  if (!touchesAddress) return false;
+
+  const currentAddress = normalizeAddressPart(before.address);
+  const currentZipcode = normalizeAddressPart(before.zipcode);
+  const currentCity = normalizeAddressPart(before.city);
+
+  const nextAddress = Object.prototype.hasOwnProperty.call(patch, "address")
+    ? normalizeAddressPart(patch.address)
+    : currentAddress;
+  const nextZipcode = Object.prototype.hasOwnProperty.call(patch, "zipcode")
+    ? normalizeAddressPart(patch.zipcode)
+    : currentZipcode;
+  const nextCity = Object.prototype.hasOwnProperty.call(patch, "city")
+    ? normalizeAddressPart(patch.city)
+    : currentCity;
+
+  return (
+    currentAddress !== nextAddress ||
+    currentZipcode !== nextZipcode ||
+    currentCity !== nextCity
+  );
+}
+
+async function runAutoGeocodeForUser(userId: number, force = false): Promise<void> {
+  const row = await userRepo.findById(userId);
+  if (!row) return;
+
+  const rec = row as Record<string, unknown>;
+  const geocodeSource = String(rec.geocode_source ?? "AUTO").toUpperCase();
+  if (!force && geocodeSource === "MANUAL") return;
+
+  const address = String(rec.address ?? "");
+  const zipcode = String(rec.zipcode ?? "");
+  const city = String(rec.city ?? "");
+  const attemptedAt = new Date();
+
+  const lookup = await geocodeSwedishAddress({ address, zipcode, city });
+  if (lookup.ok) {
+    await userRepo.updateUserGeocode(userId, {
+      lat: lookup.lat,
+      lng: lookup.lng,
+      geocodeSource: "AUTO",
+      geocodeStatus: "OK",
+      geocodeLastAttemptAt: attemptedAt,
+      geocodeQueryHash: lookup.queryHash,
+    });
+    return;
+  }
+
+  await userRepo.updateUserGeocode(userId, {
+    lat: null,
+    lng: null,
+    geocodeSource: "AUTO",
+    geocodeStatus: "NEEDS_MANUAL",
+    geocodeLastAttemptAt: attemptedAt,
+    geocodeQueryHash: lookup.queryHash,
+  });
+}
 
 export async function updateUserProfile(
   userId: number,
@@ -25,10 +107,47 @@ export async function updateUserProfile(
     accommodationAvailable?: boolean | null;
   }>,
 ): Promise<void> {
+  const before = await userRepo.findById(userId);
+  const shouldRegeocode = hasAddressChanged(
+    (before as Record<string, unknown> | undefined) ?? null,
+    data,
+  );
+
   if (typeof data.dateOfBirth === "string") {
     data.dateOfBirth = normalizeToSqlDate(data.dateOfBirth);
   }
   await userRepo.updateUserProfile(userId, data);
+
+  if (shouldRegeocode) {
+    try {
+      await runAutoGeocodeForUser(userId);
+    } catch (err) {
+      logger.warn({ err, userId }, "Auto geocoding failed after profile update");
+    }
+  }
+}
+
+export async function setUserManualLocation(
+  userId: number,
+  lat: number,
+  lng: number,
+): Promise<void> {
+  await userRepo.updateUserGeocode(userId, {
+    lat,
+    lng,
+    geocodeSource: "MANUAL",
+    geocodeStatus: "OK",
+  });
+}
+
+export async function clearUserLocationOverride(userId: number): Promise<void> {
+  await userRepo.updateUserGeocode(userId, {
+    lat: null,
+    lng: null,
+    geocodeSource: "AUTO",
+    geocodeStatus: null,
+  });
+  await runAutoGeocodeForUser(userId, true);
 }
 
 export async function updatePassword(
@@ -279,6 +398,13 @@ export async function createUser(
   }
 
   if (!insertId) return undefined;
+
+  try {
+    await runAutoGeocodeForUser(insertId, true);
+  } catch (err) {
+    logger.warn({ err, userId: insertId }, "Auto geocoding failed for new user");
+  }
+
   try {
     await paymentsService.createMembershipPayment({
       uid: insertId,

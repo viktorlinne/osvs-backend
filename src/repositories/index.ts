@@ -8,3 +8,4 @@ export { default as officialsRepo } from "./officials.repo";
 export { default as allergiesRepo } from "./allergies.repo";
 export { default as revisionsRepo } from "./revisions.repo";
 export { default as documentsRepo } from "./documents.repo";
+export { default as geocodeRepo } from "./geocode.repo";

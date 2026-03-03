@@ -125,11 +125,28 @@ CREATE TABLE `users` (
   `city` varchar(256) NOT NULL,
   `address` varchar(256) NOT NULL,
   `zipcode` varchar(10) NOT NULL,
+  `lat` decimal(10, 7) DEFAULT NULL,
+  `lng` decimal(10, 7) DEFAULT NULL,
+  `geocode_source` enum('AUTO', 'MANUAL') NOT NULL DEFAULT 'AUTO',
+  `geocode_status` enum('OK', 'FAILED', 'NEEDS_MANUAL') DEFAULT NULL,
+  `geocode_last_attempt_at` datetime DEFAULT NULL,
+  `geocode_query_hash` char(64) DEFAULT NULL,
   `notes` text DEFAULT NULL,
   `accommodationAvailable` tinyint(1) DEFAULT 0,
   UNIQUE KEY `uq_users_email` (`email`),
   UNIQUE KEY `uq_users_matrikelnummer` (`matrikelnummer`),
   PRIMARY KEY (`matrikelnummer`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
+CREATE TABLE `geocode_cache` (
+  `query_hash` char(64) NOT NULL,
+  `query_text` varchar(255) NOT NULL,
+  `lat` decimal(10, 7) DEFAULT NULL,
+  `lng` decimal(10, 7) DEFAULT NULL,
+  `status` enum('OK', 'FAILED') NOT NULL,
+  `raw_json` json DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP() ON UPDATE CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`query_hash`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Posts
@@ -423,6 +440,51 @@ UPDATE
 VALUES
   (`title`);
 
+-- Posts
+INSERT INTO
+  `posts` (
+    `id`,
+    `title`,
+    `description`,
+    `picture`,
+    `publicum`
+  )
+VALUES
+  (
+    1,
+    'Welcome to OSVS',
+    'This is the first post on our new platform!',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    0
+  ),
+  (
+    2,
+    'Upcoming Event',
+    'Join us for our annual gathering next month.',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    0
+  ),
+  (
+    3,
+    'This years charitable cause',
+    'Our charitable cause this year is to support local food banks.',
+    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    1
+  ) ON DUPLICATE KEY
+UPDATE
+  `title` =
+VALUES
+  (`title`),
+  `description` =
+VALUES
+  (`description`),
+  `picture` =
+VALUES
+  (`picture`),
+  `publicum` =
+VALUES
+  (`publicum`);
+
 -- Lodges
 INSERT INTO
   `lodges` (
@@ -473,7 +535,8 @@ VALUES
     'Enligt ett protokoll från Förtroenderådets sammanträde i maj 1974 framgår det, att det gamla önskemålet, att Ordenssamfundet VS finge flera loger än nuvarande fyra, tycktes gå i uppfyllelse. Det gäller en loge i Halmstad, dit många av bröderna från både Göteborg och Ängelholm flyttat. Logen Capella instiftades således den 28 november 1975. Idag har logen 68 Bröder och 25 i Damklubben.',
     'capella@osvs.se',
     'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/halmstad.webp'
-  ) ON DUPLICATE KEY
+  ) 
+  ON DUPLICATE KEY
 UPDATE
   `name` =
 VALUES
@@ -491,7 +554,7 @@ VALUES
 VALUES
   (`picture`);
 
--- Users
+  -- Users
 INSERT INTO
   `users` (
     `matrikelnummer`,
@@ -630,6 +693,82 @@ VALUES
   `accommodationAvailable` =
 VALUES
   (`accommodationAvailable`);
+
+    -- Events
+INSERT INTO
+  `events` (
+    `id`,
+    `title`,
+    `description`,
+    `lodgeMeeting`,
+    `food`,
+    `price`,
+    `startDate`,
+    `endDate`
+  )
+VALUES
+  (
+    1,
+    'Founders Meeting',
+    'Annual founders meeting and dinner.',
+    1,
+    1,
+    275.00,
+    '2026-03-14 18:00:00',
+    '2026-03-14 21:00:00'
+  ),
+  (
+    2,
+    'Summer Gathering',
+    'Open summer gathering with activities.',
+    0,
+    0,
+    0.00,
+    '2026-12-20 10:00:00',
+    '2026-12-20 18:00:00'
+  ),
+  (
+    3,
+    'Winter Gathering',
+    'Open winter gathering with activities.',
+    0,
+    0,
+    0.00,
+    '2025-12-20 10:00:00',
+    '2025-12-20 18:00:00'
+  ),
+  (
+    4,
+    'Spring Gathering',
+    'Open spring gathering with activities.',
+    0,
+    0,
+    0.00,
+    '2026-03-20 10:00:00',
+    '2026-03-20 18:00:00'
+  ) ON DUPLICATE KEY
+UPDATE
+  `title` =
+VALUES
+  (`title`),
+  `description` =
+VALUES
+  (`description`),
+  `lodgeMeeting` =
+VALUES
+  (`lodgeMeeting`),
+  `food` =
+VALUES
+  (`food`),
+  `price` =
+VALUES
+  (`price`),
+  `startDate` =
+VALUES
+  (`startDate`),
+  `endDate` =
+VALUES
+  (`endDate`);
 
 DELETE FROM
   `revisions`
@@ -791,82 +930,6 @@ VALUES
   (3, 3),
   (4, 4);
 
--- Events
-INSERT INTO
-  `events` (
-    `id`,
-    `title`,
-    `description`,
-    `lodgeMeeting`,
-    `food`,
-    `price`,
-    `startDate`,
-    `endDate`
-  )
-VALUES
-  (
-    1,
-    'Founders Meeting',
-    'Annual founders meeting and dinner.',
-    1,
-    1,
-    275.00,
-    '2026-03-14 18:00:00',
-    '2026-03-14 21:00:00'
-  ),
-  (
-    2,
-    'Summer Gathering',
-    'Open summer gathering with activities.',
-    0,
-    0,
-    0.00,
-    '2026-12-20 10:00:00',
-    '2026-12-20 18:00:00'
-  ),
-  (
-    3,
-    'Winter Gathering',
-    'Open winter gathering with activities.',
-    0,
-    0,
-    0.00,
-    '2025-12-20 10:00:00',
-    '2025-12-20 18:00:00'
-  ),
-  (
-    4,
-    'Spring Gathering',
-    'Open spring gathering with activities.',
-    0,
-    0,
-    0.00,
-    '2026-03-20 10:00:00',
-    '2026-03-20 18:00:00'
-  ) ON DUPLICATE KEY
-UPDATE
-  `title` =
-VALUES
-  (`title`),
-  `description` =
-VALUES
-  (`description`),
-  `lodgeMeeting` =
-VALUES
-  (`lodgeMeeting`),
-  `food` =
-VALUES
-  (`food`),
-  `price` =
-VALUES
-  (`price`),
-  `startDate` =
-VALUES
-  (`startDate`),
-  `endDate` =
-VALUES
-  (`endDate`);
-
 -- Lodges ↔ Events (predictable state)
 DELETE FROM
   `lodges_events`
@@ -894,108 +957,6 @@ VALUES
   (1, 2),
   (2, 2),
   (3, 2);
-
--- Event attendances (RSVP)
-DELETE FROM
-  `events_attendances`
-WHERE
-  `uid` IN (1, 2, 3);
-
-INSERT INTO
-  `events_attendances` (`uid`, `eid`, `rsvp`, `bookFood`, `attended`)
-VALUES
-  (1, 1, 1, 1, 0),
-  (2, 1, 0, 0, 0),
-  (3, 2, 1, 0, 0);
-
--- Posts
-INSERT INTO
-  `posts` (
-    `id`,
-    `title`,
-    `description`,
-    `picture`,
-    `publicum`
-  )
-VALUES
-  (
-    1,
-    'Welcome to OSVS',
-    'This is the first post on our new platform!',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
-    0
-  ),
-  (
-    2,
-    'Upcoming Event',
-    'Join us for our annual gathering next month.',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
-    0
-  ),
-  (
-    3,
-    'This years charitable cause',
-    'Our charitable cause this year is to support local food banks.',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
-    1
-  ) ON DUPLICATE KEY
-UPDATE
-  `title` =
-VALUES
-  (`title`),
-  `description` =
-VALUES
-  (`description`),
-  `picture` =
-VALUES
-  (`picture`),
-  `publicum` =
-VALUES
-  (`publicum`);
-
--- Membership payments (yearly) - predictable state for these users/years
-DELETE FROM
-  `membership_payments`
-WHERE
-  `uid` IN (1, 2, 3, 4)
-  AND `year` IN (2025, 2026);
-
-INSERT INTO
-  `membership_payments` (
-    `uid`,
-    `amount`,
-    `year`,
-    `status`
-  )
-VALUES
-  (1, 600.00, 2026, 'Paid'),
-  (
-    2,
-    600.00,
-    2026,
-    'Pending'
-  ),
-  (3, 600.00, 2026, 'Paid');
-
--- Event payments - predictable state for these users/events
-DELETE FROM
-  `event_payments`
-WHERE
-  `uid` IN (1, 2, 3, 4)
-  AND `eid` IN (1, 2);
-
-INSERT INTO
-  `event_payments` (
-    `uid`,
-    `eid`,
-    `amount`,
-    `status`
-  )
-VALUES
-  (1, 1, 275.00, 'Paid'),
-  (2, 1, 275.00, 'Pending'),
-  (3, 2, 0.00, 'Paid'),
-  (4, 2, 0.00, 'Pending');
 
 -- =====================================================
 -- RE-ENABLE FOREIGN KEY CHECKS

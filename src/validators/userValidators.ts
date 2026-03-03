@@ -17,6 +17,11 @@ export type ValidSetLodgeBody = {
   lodgeId: number | null;
 };
 
+export type ValidSetUserLocationBody = {
+  lat: number;
+  lng: number;
+};
+
 export function validateAddAchievementBody(
   input: unknown,
 ): ValidationResult<AddAchievementBody> {
@@ -89,6 +94,25 @@ export function validateSetLodgeBody(
   return ok({ lodgeId: numeric });
 }
 
+export function validateSetUserLocationBody(
+  input: unknown,
+): ValidationResult<ValidSetUserLocationBody> {
+  const body = asObject(input);
+  if (!body) return fail("Body must be an object");
+
+  const lat = Number(body.lat);
+  const lng = Number(body.lng);
+
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+    return fail("lat must be a number between -90 and 90");
+  }
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+    return fail("lng must be a number between -180 and 180");
+  }
+
+  return ok({ lat, lng });
+}
+
 export function validateUpdateUserProfileBody(
   input: unknown,
 ): ValidationResult<UpdateUserProfileBody> {
@@ -139,4 +163,3 @@ export function validateUpdateUserProfileBody(
   if (errors.length > 0) return fail(errors);
   return ok(out);
 }
-

@@ -89,6 +89,13 @@ export type PublicUser = {
   notes?: string | null;
 };
 
+export type UserMapPin = {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+};
+
 export type CreateUserInput = {
   email: string;
   passwordHash: string;
