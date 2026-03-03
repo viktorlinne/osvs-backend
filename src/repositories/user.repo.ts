@@ -359,7 +359,11 @@ export async function getUserAchievements(userId: number) {
 
 export async function listAttendedEventsForUser(userId: number) {
   const sql = `
-    SELECT e.id, e.title, e.startDate, e.endDate
+    SELECT
+      e.id,
+      e.title,
+      DATE_FORMAT(e.startDate, '%Y-%m-%d %H:%i:%s') AS startDate,
+      DATE_FORMAT(e.endDate, '%Y-%m-%d %H:%i:%s') AS endDate
     FROM events_attendances ea
     JOIN events e ON e.id = ea.eid
     WHERE ea.uid = ? AND ea.attended = 1

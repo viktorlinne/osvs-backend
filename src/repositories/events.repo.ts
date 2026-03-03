@@ -50,27 +50,28 @@ function deriveFoodFromPrice(price: unknown): number {
 
 export async function listEvents(): Promise<EventRow[]> {
   const sql =
-    "SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events ORDER BY startDate DESC";
+    "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events ORDER BY startDate DESC";
   const [rows] = await pool.execute(sql);
   return asRows<EventRow>(rows);
 }
 
 export async function listUpcomingEvents(
   limit: number,
+  nowStockholm: string,
   conn?: PoolConnection,
 ): Promise<EventRow[]> {
   const executor = getExecutor(conn);
   const safeLimit = Number.isFinite(limit)
     ? Math.max(1, Math.min(50, Math.floor(limit)))
     : 10;
-  const sql = `SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events WHERE startDate >= NOW() ORDER BY startDate ASC LIMIT ${safeLimit}`;
-  const [rows] = await executor(sql);
+  const sql = `SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE startDate >= ? ORDER BY startDate ASC LIMIT ${safeLimit}`;
+  const [rows] = await executor(sql, [nowStockholm]);
   return asRows<EventRow>(rows);
 }
 
 export async function findEventById(id: number): Promise<EventRow | null> {
   const [rows] = await pool.execute(
-    "SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events WHERE id = ? LIMIT 1",
+    "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE id = ? LIMIT 1",
     [id],
   );
   const arr = asRows<EventRow>(rows);
@@ -283,7 +284,15 @@ export async function deleteLodgeEvent(
 
 export async function listEventsForUser(userId: number): Promise<EventRow[]> {
   const sql = `
-    SELECT DISTINCT e.id, e.title, e.description, e.lodgeMeeting, e.food, e.price, e.startDate, e.endDate
+    SELECT DISTINCT
+      e.id,
+      e.title,
+      e.description,
+      e.lodgeMeeting,
+      e.food,
+      e.price,
+      DATE_FORMAT(e.startDate, '%Y-%m-%d %H:%i:%s') AS startDate,
+      DATE_FORMAT(e.endDate, '%Y-%m-%d %H:%i:%s') AS endDate
     FROM events e
     JOIN lodges_events le ON le.eid = e.id
     JOIN users_lodges ul ON ul.lid = le.lid

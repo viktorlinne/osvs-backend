@@ -3,6 +3,11 @@ import type { AuthenticatedRequest } from "../types/auth";
 import type { ListEventsQuery, CreateEventBody, UpdateEventBody } from "../types";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
+import {
+  compareSqlDateTime,
+  isAtOrBeforeNowStockholm,
+  normalizeEventDateTimeInput,
+} from "../utils/eventDateTime";
 import * as eventsService from "../services/eventsService";
 import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
@@ -101,6 +106,15 @@ export async function createEventHandler(
   if (!title || !description || !startDate || !endDate) {
     return sendError(res, 400, "Missing required fields");
   }
+  const normalizedStartDate = normalizeEventDateTimeInput(startDate);
+  const normalizedEndDate = normalizeEventDateTimeInput(endDate);
+  if (!normalizedStartDate || !normalizedEndDate) {
+    return sendError(res, 400, "Invalid event datetime format");
+  }
+
+  if (compareSqlDateTime(normalizedStartDate, normalizedEndDate) >= 0) {
+    return sendError(res, 400, "startDate must be before endDate");
+  }
 
   const normalizedLodgeIds = Array.isArray(lodgeIds)
     ? lodgeIds
@@ -112,7 +126,14 @@ export async function createEventHandler(
   let id: number;
   if (normalizedLodgeIds.length > 0) {
     id = await eventsService.createEventWithLodges(
-      { title, description, lodgeMeeting, price, startDate, endDate },
+      {
+        title,
+        description,
+        lodgeMeeting,
+        price,
+        startDate: normalizedStartDate,
+        endDate: normalizedEndDate,
+      },
       normalizedLodgeIds,
     );
   } else {
@@ -121,8 +142,8 @@ export async function createEventHandler(
       description,
       lodgeMeeting,
       price,
-      startDate,
-      endDate,
+      startDate: normalizedStartDate,
+      endDate: normalizedEndDate,
     });
   }
 
@@ -156,8 +177,32 @@ export async function updateEventHandler(
   if (typeof raw.price === "number" && Number.isFinite(raw.price)) {
     payload.price = raw.price;
   }
-  if (typeof raw.startDate === "string") payload.startDate = raw.startDate;
-  if (typeof raw.endDate === "string") payload.endDate = raw.endDate;
+  const normalizedStartDate =
+    typeof raw.startDate === "string"
+      ? normalizeEventDateTimeInput(raw.startDate)
+      : null;
+  const normalizedEndDate =
+    typeof raw.endDate === "string"
+      ? normalizeEventDateTimeInput(raw.endDate)
+      : null;
+
+  if (typeof raw.startDate === "string" && !normalizedStartDate) {
+    return sendError(res, 400, "Invalid startDate format");
+  }
+  if (typeof raw.endDate === "string" && !normalizedEndDate) {
+    return sendError(res, 400, "Invalid endDate format");
+  }
+
+  if (normalizedStartDate) payload.startDate = normalizedStartDate;
+  if (normalizedEndDate) payload.endDate = normalizedEndDate;
+
+  if (
+    normalizedStartDate &&
+    normalizedEndDate &&
+    compareSqlDateTime(normalizedStartDate, normalizedEndDate) >= 0
+  ) {
+    return sendError(res, 400, "startDate must be before endDate");
+  }
 
   await eventsService.updateEvent(id, payload);
   void delPattern("events:*");
@@ -271,8 +316,7 @@ export async function rsvpHandler(
     const ev = await eventsService.getEventById(id);
     if (!ev) return sendError(res, 404, "Event not found");
 
-    const now = new Date();
-    if (new Date(ev.startDate) <= now) {
+    if (isAtOrBeforeNowStockholm(ev.startDate)) {
       return sendError(res, 400, "Cannot RSVP for past or started events");
     }
 
@@ -343,8 +387,7 @@ export async function bookFoodHandler(
   if (!ev) return sendError(res, 404, "Event not found");
   if (!ev.food) return sendError(res, 400, "Food booking is not enabled for this event");
 
-  const now = new Date();
-  if (new Date(ev.startDate) <= now) {
+  if (isAtOrBeforeNowStockholm(ev.startDate)) {
     return sendError(res, 400, "Cannot book food for past or started events");
   }
 

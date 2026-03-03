@@ -1,6 +1,7 @@
 import pool from "../../config/db";
 import * as eventsRepo from "../../repositories/events.repo";
 import type { EventRecord } from "../../types";
+import { getNowStockholmSqlDateTime } from "../../utils/eventDateTime";
 import { mapEventRow } from "./common";
 
 const RSVP_UNANSWERED = 2;
@@ -12,7 +13,8 @@ export async function listEvents(): Promise<EventRecord[]> {
 }
 
 export async function listUpcomingEvents(limit = 10): Promise<EventRecord[]> {
-  return (await eventsRepo.listUpcomingEvents(limit))
+  const nowStockholm = getNowStockholmSqlDateTime();
+  return (await eventsRepo.listUpcomingEvents(limit, nowStockholm))
     .map(mapEventRow)
     .filter((e) => Number.isFinite(e.id));
 }
