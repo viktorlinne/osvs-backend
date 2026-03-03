@@ -60,10 +60,11 @@ export async function listUpcomingEvents(
   conn?: PoolConnection,
 ): Promise<EventRow[]> {
   const executor = getExecutor(conn);
-  const [rows] = await executor(
-    "SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events WHERE startDate >= NOW() ORDER BY startDate ASC LIMIT ?",
-    [limit],
-  );
+  const safeLimit = Number.isFinite(limit)
+    ? Math.max(1, Math.min(50, Math.floor(limit)))
+    : 10;
+  const sql = `SELECT id, title, description, lodgeMeeting, food, price, startDate, endDate FROM events WHERE startDate >= NOW() ORDER BY startDate ASC LIMIT ${safeLimit}`;
+  const [rows] = await executor(sql);
   return asRows<EventRow>(rows);
 }
 
