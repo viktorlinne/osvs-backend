@@ -8,6 +8,7 @@
     "build": "tsc",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "start": "node dist/index.js",
+    "smoke": "ts-node --files scripts/smoke.ts",
     "migrate": "ts-node src/db/migrate.ts",
     "cleanup:tokens": "ts-node src/scripts/cleanup_tokens.ts",
     "cron:tokens": "ts-node src/scripts/cron_runner.ts",

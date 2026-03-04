@@ -181,6 +181,9 @@ try {
   logger.warn({ err }, "Swagger UI mount failed");
 }
 
+// API health check for smoke/infrastructure probes
+app.get("/api/health", (_req, res) => res.status(200).json({ status: "ok" }));
+
 // root health check
 app.get("/", (_req, res) => res.send("Backend is running"));
 

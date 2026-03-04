@@ -1,9 +1,9 @@
 export const STORAGE_BUCKETS = {
-  POSTS: process.env.SUPABASE_BUCKET_POSTS ?? "posts",
-  PROFILES: process.env.SUPABASE_BUCKET_PROFILES ?? "profiles",
-  DOCUMENTS: process.env.SUPABASE_BUCKET_DOCUMENTS ?? "documents",
-  REVISIONS: process.env.SUPABASE_BUCKET_REVISIONS ?? "revisions",
-  STATIC: process.env.SUPABASE_BUCKET_STATIC ?? "static",
+  POSTS: process.env.SUPABASE_BUCKET_POSTS || "posts",
+  PROFILES: process.env.SUPABASE_BUCKET_PROFILES || "profiles",
+  DOCUMENTS: process.env.SUPABASE_BUCKET_DOCUMENTS || "documents",
+  REVISIONS: process.env.SUPABASE_BUCKET_REVISIONS || "revisions",
+  STATIC: process.env.SUPABASE_BUCKET_STATIC || "static",
 } as const;
 
 export const STORAGE_PREFIXES = {
