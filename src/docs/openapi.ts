@@ -76,7 +76,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { error: "Validation failed" },
+            example: { message: "Validering misslyckades" },
           },
         },
       },
@@ -85,7 +85,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { error: "Unauthorized" },
+            example: { message: "Obehorig" },
           },
         },
       },
@@ -94,7 +94,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { error: "Forbidden" },
+            example: { message: "Atkomst nekad" },
           },
         },
       },
@@ -103,7 +103,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { error: "Not found" },
+            example: { message: "Hittades inte" },
           },
         },
       },
@@ -112,7 +112,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { error: "Conflict" },
+            example: { message: "Konfliktfel" },
           },
         },
       },
@@ -121,7 +121,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { error: "Too many requests" },
+            example: { message: "For manga forfragningar" },
           },
         },
       },
@@ -130,11 +130,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: {
-              error: "InternalError",
-              message: "Internal server error",
-              status: 500,
-            },
+            example: { message: "Internt serverfel" },
           },
         },
       },
@@ -142,24 +138,10 @@ export const swaggerSpec = {
     schemas: {
       ErrorResponse: {
         type: "object",
-        description:
-          "Unified documented error envelope. Runtime always includes `error` and may include metadata fields.",
-        required: ["error"],
+        description: "Unified error envelope used by all endpoints.",
+        required: ["message"],
         properties: {
-          error: {
-            oneOf: [
-              { type: "string" },
-              { type: "array", items: { type: "string" } },
-            ],
-            example: "Unauthorized",
-          },
-          message: { type: "string", example: "Internal server error" },
-          status: { type: "integer", example: 500 },
-          requestId: {
-            type: "string",
-            example: "4de41d7b-0103-44a2-b391-fcc4e00f42d7",
-          },
-          details: { type: "object", additionalProperties: true },
+          message: { type: "string", example: "Obehorig" },
         },
       },
       MessageResponse: {

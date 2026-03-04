@@ -65,11 +65,7 @@ export async function listPostsHandler(
   } catch (err) {
     const requestId = res.locals.requestId ?? _req.requestId;
     logger.error({ msg: "Failed to list posts", err, requestId });
-    return res.status(500).json({
-      error: "InternalError",
-      message: "Misslyckades att lista inlagg",
-      requestId,
-    });
+    return sendError(res, 500, "Misslyckades att lista inlagg");
   }
 }
 
@@ -100,11 +96,7 @@ export async function listPublicumPostsPublicHandler(
   } catch (err) {
     const requestId = res.locals.requestId ?? _req.requestId;
     logger.error({ msg: "Failed to list publicum posts", err, requestId });
-    return res.status(500).json({
-      error: "InternalError",
-      message: "Misslyckades att lista publicum",
-      requestId,
-    });
+    return sendError(res, 500, "Misslyckades att lista publicum");
   }
 }
 

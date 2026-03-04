@@ -132,15 +132,6 @@ app.use(
   }),
 );
 
-// Serve static files (profile pictures, etc.)
-app.use(express.static("public"));
-
-// Expose configured uploads directory under /uploads so storage adapters
-// that write to a writable temp dir are still publicly accessible.
-const baseUploadsDir =
-  process.env.UPLOADS_DIR || path.join(os.tmpdir(), "uploads");
-app.use("/uploads", express.static(baseUploadsDir));
-
 // attach request id middleware
 app.use(requestId);
 
@@ -171,7 +162,11 @@ app.use("/api/payments", paymentsRouter);
 
 // Swagger UI setup
 if (process.env.NODE_ENV !== "production") {
-  logger.info("Setting up Swagger UI for API documentation at " + process.env.BACKEND_URL + "/api/docs");
+  logger.info(
+    "Setting up Swagger UI for API documentation at " +
+      process.env.BACKEND_URL +
+      "/api/docs",
+  );
   try {
     // Raw JSON
     app.get("/api/openapi.json", (_req, res) => res.json(swaggerSpec));
@@ -184,7 +179,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 app.get("/api/health", (_req, res) =>
-  res.status(200).json({ status: "OK" + Date.now() }),
+  res.status(200).json({ status: "OK " + Date.now() }),
 );
 app.get("/", (_req, res) => res.send("Backend is running"));
 

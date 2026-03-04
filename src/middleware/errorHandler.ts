@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ValidationError, ConflictError, HttpError } from "../utils/errors";
 import logger from "../utils/logger";
 import * as Sentry from "@sentry/node";
+import { sendError } from "../utils/response";
 
 export default function errorHandler(
   err: unknown,
@@ -15,38 +16,36 @@ export default function errorHandler(
   if (err instanceof SyntaxError) {
     const maybe = err as SyntaxError & { status?: number; body?: unknown };
     if (maybe.status === 400 && "body" in maybe) {
-      logger.warn({ msg: "Invalid JSON body", err, requestId });
-      return res.status(400).json({
-        error: "InvalidJson",
-        message: "Invalid JSON in request body",
-        status: 400,
+      const parseError = maybe as SyntaxError & {
+        status?: number;
+        type?: string;
+      };
+      logger.warn({
+        msg: "Invalid JSON body",
         requestId,
+        err: {
+          name: parseError.name,
+          message: parseError.message,
+          status: parseError.status,
+          type: parseError.type,
+        },
       });
+      return sendError(res, 400, "Invalid JSON in request body");
     }
   }
 
   // Known validation error (400)
   if (err instanceof ValidationError) {
     logger.warn({ msg: "Validation error", missing: err.missing, requestId });
-    return res.status(400).json({
-      error: "ValidationFailed",
-      message: "Validation failed",
-      status: 400,
-      details: { missing: err.missing },
-      requestId,
-    });
+    const detail =
+      err.missing.length > 0 ? `: ${err.missing.join(", ")}` : "";
+    return sendError(res, 400, `Validation failed${detail}`);
   }
 
   // Conflict error (409)
   if (err instanceof ConflictError) {
     logger.warn({ msg: "Conflict error", field: err.field, requestId });
-    return res.status(409).json({
-      error: "Conflict",
-      message: "Conflict error",
-      status: 409,
-      details: { field: err.field ?? null },
-      requestId,
-    });
+    return sendError(res, 409, "Conflict error");
   }
 
   // HttpError with status
@@ -55,15 +54,10 @@ export default function errorHandler(
       msg: "HttpError",
       status: err.status,
       message: err.message,
-      requestId,
-    });
-    return res.status(err.status).json({
-      error: err.message,
-      message: err.message,
-      status: err.status,
       details: err.details,
       requestId,
     });
+    return sendError(res, err.status, err.message);
   }
 
   // Unknown error: capture and return 500
@@ -84,12 +78,5 @@ export default function errorHandler(
     logger.error({ msg: "Unhandled error", err, requestId });
   }
 
-  const includeStack = process.env.NODE_ENV !== "production";
-  return res.status(500).json({
-    error: "InternalError",
-    message: "Internal server error",
-    status: 500,
-    requestId,
-    ...(includeStack && err instanceof Error ? { stack: err.stack } : {}),
-  });
+  return sendError(res, 500, "Internal server error");
 }
