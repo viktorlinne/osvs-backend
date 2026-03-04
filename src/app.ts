@@ -169,43 +169,39 @@ app.use("/api/documents", documentsRouter);
 // Payments routes
 app.use("/api/payments", paymentsRouter);
 
-// OpenAPI / Swagger UI
-try {
-  // mount raw JSON for programmatic access
-  app.get("/api/openapi.json", (_req, res) => res.json(swaggerSpec));
+// Swagger UI setup
+if (process.env.NODE_ENV !== "production") {
+  logger.info("Setting up Swagger UI for API documentation at " + process.env.BACKEND_URL + "/api/docs");
+  try {
+    // Raw JSON
+    app.get("/api/openapi.json", (_req, res) => res.json(swaggerSpec));
 
-  // Serve swagger UI at /api/docs (only useful when running locally or on staging)
-  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-} catch (err) {
-  // Do not break startup if swagger UI fails to mount
-  logger.warn({ err }, "Swagger UI mount failed");
+    // Swagger UI
+    app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  } catch (err) {
+    logger.warn({ err }, "Swagger UI mount failed");
+  }
 }
 
-// API health check for smoke/infrastructure probes
-app.get("/api/health", (_req, res) => res.status(200).json({ status: "ok" }));
-
-// root health check
+app.get("/api/health", (_req, res) =>
+  res.status(200).json({ status: "OK" + Date.now() }),
+);
 app.get("/", (_req, res) => res.send("Backend is running"));
 
 app.use(errorHandler);
 
-// Process-level error handlers for visibility during development/ops
+// Last resort error handler to catch any unhandled errors and prevent crashes
 process.on("uncaughtException", (err) => {
   try {
     Sentry.captureException(err as Error);
-  } catch {
-    // ignore Sentry errors
-  }
+  } catch {}
   logger.fatal({ msg: "uncaughtException", err });
-  // depending on your deploy strategy you might want to exit
 });
 
 process.on("unhandledRejection", (reason) => {
   try {
     Sentry.captureException(reason as Error);
-  } catch {
-    // ignore Sentry errors
-  }
+  } catch {}
   logger.error({ msg: "unhandledRejection", reason });
 });
 
