@@ -1,6 +1,4 @@
 import express from "express";
-import path from "path";
-import os from "os";
 import { randomUUID } from "crypto";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -189,15 +187,17 @@ app.use(errorHandler);
 process.on("uncaughtException", (err) => {
   try {
     Sentry.captureException(err as Error);
-  } catch {}
-  logger.fatal({ msg: "uncaughtException", err });
+  } catch {
+    logger.fatal({ msg: "uncaughtException", err });
+  }
 });
 
 process.on("unhandledRejection", (reason) => {
   try {
     Sentry.captureException(reason as Error);
-  } catch {}
-  logger.error({ msg: "unhandledRejection", reason });
+  } catch {
+    logger.error({ msg: "unhandledRejection", reason });
+  }
 });
 
 export default app;
