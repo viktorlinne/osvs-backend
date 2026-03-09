@@ -327,7 +327,7 @@ export async function rsvpHandler(
     return res.status(200).json({ success: true, status });
   } catch (err) {
     if (err instanceof ValidationError) return sendError(res, 400, err.message);
-    logger.error("Failed to set RSVP", err);
+    logger.error("Misslyckades att sätta RSVP", err);
     return _next(err);
   }
 }
