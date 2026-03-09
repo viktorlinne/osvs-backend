@@ -16,6 +16,7 @@ import {
 } from "../utils/authTokens";
 import { revokeJti } from "./tokenService";
 import {
+  ACCESS_EXPIRES_MS,
   DEFAULT_TOKEN_FUTURE_MS,
   REFRESH_COOKIE,
   REFRESH_DAYS,
@@ -23,11 +24,21 @@ import {
 import logger from "../utils/logger";
 import { revokeAllSessions } from "./userService";
 
+export type SessionMetadata = {
+  inactivityTimeoutMs: number;
+  inactivityExpiresAt: string;
+  refreshWindowDays: number;
+};
+
+type SessionResponse = {
+  session: SessionMetadata;
+};
+
 export async function loginWithEmail(
   email: string,
   password: string,
   res: Response
-): Promise<Record<string, unknown> | null> {
+): Promise<SessionResponse | null> {
   const user = await findByEmail(email);
   if (!user || !user.matrikelnummer || !user.passwordHash) return null;
   const ok = await verifyPassword(password, user.passwordHash);
@@ -47,50 +58,15 @@ export async function loginWithEmail(
   await createRefreshToken(refreshToken, user.matrikelnummer, refreshExpires);
 
   setAuthCookies(res, accessToken, refreshToken, refreshDays);
-  return {};
+  return { session: getSessionMetadataFromAccessToken(accessToken) };
 }
 
 export async function refreshFromCookie(res: Response, refresh: string) {
-  if (!refresh) return null;
-  const stored = await findRefreshToken(refresh);
-  if (!stored) return null;
-  if (stored.isRevoked) return null;
-  if (stored.expiresAt < new Date()) {
-    await revokeRefreshToken(refresh);
-    return null;
-  }
-  const user = await findById(stored.uid);
-  if (!user) return null;
-  const roles = user.matrikelnummer
-    ? await getUserRoles(user.matrikelnummer)
-    : [];
-  const jti = cryptoSafeId();
-  const payload = { matrikelnummer: user.matrikelnummer, roles, jti };
-  const accessToken = createAccessToken(payload);
+  return renewSessionFromCookie(res, refresh);
+}
 
-  // rotate refresh token via tokenService helper
-  const newRefresh = generateRefreshToken();
-  const refreshDays = REFRESH_DAYS;
-  const refreshExpires = new Date(
-    Date.now() + refreshDays * 24 * 60 * 60 * 1000
-  );
-  const rotated = await rotateRefreshToken(
-    refresh,
-    newRefresh,
-    user.matrikelnummer,
-    refreshExpires
-  );
-  if (!rotated) {
-    try {
-      await revokeAllSessions(stored.uid);
-    } catch (err) {
-      logger.error("Failed to revoke all sessions after concurrent reuse", err);
-    }
-    return null;
-  }
-
-  setAuthCookies(res, accessToken, newRefresh, refreshDays);
-  return {};
+export async function heartbeatFromCookie(res: Response, refresh: string) {
+  return renewSessionFromCookie(res, refresh);
 }
 
 import type { Request } from "express";
@@ -149,4 +125,102 @@ function jwtDecode(token: string) {
   }
 }
 
-export default { loginWithEmail, refreshFromCookie, logoutFromRequest };
+function normalizeExpiryDate(value?: Date | number | null) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value);
+  }
+  return new Date(Date.now() + ACCESS_EXPIRES_MS);
+}
+
+function getRefreshActivityTimestamp(value: {
+  createdAt?: Date | null;
+  lastUsed?: Date | null;
+}) {
+  const activityAt = value.lastUsed ?? value.createdAt ?? null;
+  if (!activityAt || Number.isNaN(activityAt.getTime())) return null;
+  return activityAt;
+}
+
+function isRefreshSessionInactive(value: {
+  createdAt?: Date | null;
+  lastUsed?: Date | null;
+}) {
+  const activityAt = getRefreshActivityTimestamp(value);
+  if (!activityAt) return true;
+  return Date.now() - activityAt.getTime() > ACCESS_EXPIRES_MS;
+}
+
+async function renewSessionFromCookie(
+  res: Response,
+  refresh: string,
+): Promise<SessionResponse | null> {
+  if (!refresh) return null;
+
+  const stored = await findRefreshToken(refresh);
+  if (!stored) return null;
+  if (stored.isRevoked) return null;
+
+  if (stored.expiresAt < new Date() || isRefreshSessionInactive(stored)) {
+    await revokeRefreshToken(refresh);
+    return null;
+  }
+
+  const user = await findById(stored.uid);
+  if (!user) return null;
+
+  const roles = user.matrikelnummer
+    ? await getUserRoles(user.matrikelnummer)
+    : [];
+  const jti = cryptoSafeId();
+  const payload = { matrikelnummer: user.matrikelnummer, roles, jti };
+  const accessToken = createAccessToken(payload);
+
+  const newRefresh = generateRefreshToken();
+  const refreshDays = REFRESH_DAYS;
+  const refreshExpires = new Date(
+    Date.now() + refreshDays * 24 * 60 * 60 * 1000,
+  );
+  const rotated = await rotateRefreshToken(
+    refresh,
+    newRefresh,
+    user.matrikelnummer,
+    refreshExpires,
+  );
+  if (!rotated) {
+    try {
+      await revokeAllSessions(stored.uid);
+    } catch (err) {
+      logger.error("Failed to revoke all sessions after concurrent reuse", err);
+    }
+    return null;
+  }
+
+  setAuthCookies(res, accessToken, newRefresh, refreshDays);
+  return { session: getSessionMetadataFromAccessToken(accessToken) };
+}
+
+export function getSessionMetadata(expiresAt?: Date | number | null): SessionMetadata {
+  const expiry = normalizeExpiryDate(expiresAt);
+  return {
+    inactivityTimeoutMs: ACCESS_EXPIRES_MS,
+    inactivityExpiresAt: expiry.toISOString(),
+    refreshWindowDays: REFRESH_DAYS,
+  };
+}
+
+export function getSessionMetadataFromAccessToken(token: string): SessionMetadata {
+  const decoded = jwtDecode(token) as { exp?: number } | null;
+  return getSessionMetadata(
+    decoded?.exp ? decoded.exp * 1000 : undefined,
+  );
+}
+
+export default {
+  loginWithEmail,
+  refreshFromCookie,
+  heartbeatFromCookie,
+  logoutFromRequest,
+  getSessionMetadata,
+  getSessionMetadataFromAccessToken,
+};

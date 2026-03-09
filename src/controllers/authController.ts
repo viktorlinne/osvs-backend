@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { RequestWithBody, RequestWithCookies } from "../types/requests";
 import sessionService from "../services/sessionService";
+import { getSessionMetadata } from "../services/sessionService";
 import {
   revokeAllSessions,
   createUser,
@@ -51,7 +52,21 @@ export async function refresh(
     : undefined;
   if (!refresh) return sendError(res, 401, "Saknar uppdateringstoken");
   const out = await sessionService.refreshFromCookie(res, String(refresh));
-  if (!out) return sendError(res, 401, "Saknar uppdateringstokenF");
+  if (!out) return sendError(res, 401, "Ogiltig eller utgången session");
+  return res.json(out);
+}
+
+export async function heartbeat(
+  req: RequestWithCookies,
+  res: Response,
+  _next: NextFunction,
+): Promise<Response | void> {
+  const refresh = req.cookies
+    ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
+    : undefined;
+  if (!refresh) return sendError(res, 401, "Saknar uppdateringstoken");
+  const out = await sessionService.heartbeatFromCookie(res, String(refresh));
+  if (!out) return sendError(res, 401, "Ogiltig eller utgången session");
   return res.json(out);
 }
 
@@ -221,6 +236,7 @@ export async function me(
     allergies,
     officials,
     officialHistory,
+    session: getSessionMetadata(req.user?.exp ? req.user.exp * 1000 : undefined),
   });
 }
 
@@ -242,6 +258,7 @@ export async function revokeAll(
 export default {
   login,
   refresh,
+  heartbeat,
   logout,
   register,
   me,

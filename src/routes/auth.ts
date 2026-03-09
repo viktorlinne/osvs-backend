@@ -130,6 +130,20 @@ router.post("/refresh", wrapAsync(authController.refresh));
  *       401:
  *         description: Missing or invalid refresh token
  */
+router.post("/heartbeat", wrapAsync(authController.heartbeat));
+/**
+ * @openapi
+ * /auth/heartbeat:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Keep authenticated session alive while active
+ *     responses:
+ *       200:
+ *         description: Session refreshed after heartbeat
+ *       401:
+ *         description: Missing, invalid, or inactive refresh token
+ */
 
 /**
  * @openapi

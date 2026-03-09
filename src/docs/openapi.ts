@@ -19,6 +19,11 @@ const notFound = { "404": { $ref: "#/components/responses/NotFound" } };
 const conflict = { "409": { $ref: "#/components/responses/Conflict" } };
 const internal = { "500": { $ref: "#/components/responses/InternalServerError" } };
 const rateLimited = { "429": { $ref: "#/components/responses/TooManyRequests" } };
+const authSessionExample = {
+  inactivityTimeoutMs: 900000,
+  inactivityExpiresAt: "2026-03-09T13:15:00.000Z",
+  refreshWindowDays: 30,
+};
 
 export const swaggerSpec = {
   openapi: "3.0.3",
@@ -67,7 +72,8 @@ export const swaggerSpec = {
         type: "apiKey",
         in: "cookie",
         name: REFRESH_COOKIE,
-        description: "HTTP-only refresh token cookie used by `/auth/refresh`.",
+        description:
+          "HTTP-only refresh token cookie used by `/auth/refresh` and `/auth/heartbeat`.",
       },
     },
     responses: {
@@ -148,6 +154,36 @@ export const swaggerSpec = {
         type: "object",
         required: ["message"],
         properties: { message: { type: "string", example: "Logged out from this device" } },
+      },
+      SessionMetadata: {
+        type: "object",
+        required: [
+          "inactivityTimeoutMs",
+          "inactivityExpiresAt",
+          "refreshWindowDays",
+        ],
+        properties: {
+          inactivityTimeoutMs: {
+            type: "integer",
+            example: authSessionExample.inactivityTimeoutMs,
+          },
+          inactivityExpiresAt: {
+            type: "string",
+            format: "date-time",
+            example: authSessionExample.inactivityExpiresAt,
+          },
+          refreshWindowDays: {
+            type: "integer",
+            example: authSessionExample.refreshWindowDays,
+          },
+        },
+      },
+      AuthSessionResponse: {
+        type: "object",
+        required: ["session"],
+        properties: {
+          session: { $ref: "#/components/schemas/SessionMetadata" },
+        },
       },
       SuccessResponse: {
         type: "object",
@@ -717,7 +753,7 @@ export const swaggerSpec = {
         responses: {
           "200": {
             description:
-              "Login succeeded. Body is an empty object and auth cookies are set.",
+              "Login succeeded. Auth cookies are set and session timing metadata is returned.",
             headers: {
               "Set-Cookie": {
                 description:
@@ -727,11 +763,8 @@ export const swaggerSpec = {
             },
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  additionalProperties: false,
-                  example: {},
-                },
+                schema: { $ref: "#/components/schemas/AuthSessionResponse" },
+                example: { session: authSessionExample },
               },
             },
           },
@@ -747,12 +780,12 @@ export const swaggerSpec = {
         tags: ["Auth"],
         summary: "Refresh session",
         description:
-          "Rotates refresh token and sets new access token cookie using the refresh cookie.",
+          "Rotates the refresh token and issues fresh auth cookies if the session has not exceeded the inactivity window.",
         operationId: "refreshSession",
         security: [{ refreshCookieAuth: [] }],
         responses: {
           "200": {
-            description: "Session refreshed.",
+            description: "Session refreshed and timing metadata updated.",
             headers: {
               "Set-Cookie": {
                 description:
@@ -762,10 +795,42 @@ export const swaggerSpec = {
             },
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  additionalProperties: false,
-                  example: {},
+                schema: { $ref: "#/components/schemas/AuthSessionResponse" },
+                example: { session: authSessionExample },
+              },
+            },
+          },
+          ...unauthorized,
+          ...internal,
+        },
+      },
+    },
+    "/auth/heartbeat": {
+      post: {
+        tags: ["Auth"],
+        summary: "Heartbeat session",
+        description:
+          "Keeps an active session alive from the refresh cookie while enforcing the same inactivity window as `/auth/refresh`.",
+        operationId: "heartbeatSession",
+        security: [{ refreshCookieAuth: [] }],
+        responses: {
+          "200": {
+            description: "Session heartbeat accepted and timing metadata updated.",
+            headers: {
+              "Set-Cookie": {
+                description:
+                  `Rotates ${REFRESH_COOKIE} and sets fresh ${ACCESS_COOKIE} cookie.`,
+                schema: { type: "string" },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AuthSessionResponse" },
+                example: {
+                  session: {
+                    ...authSessionExample,
+                    inactivityExpiresAt: "2026-03-09T13:16:00.000Z",
+                  },
                 },
               },
             },
@@ -812,6 +877,23 @@ export const swaggerSpec = {
                       type: "array",
                       items: { $ref: "#/components/schemas/OfficialHistory" },
                     },
+                    session: {
+                      $ref: "#/components/schemas/SessionMetadata",
+                    },
+                  },
+                  example: {
+                    user: {
+                      matrikelnummer: 7,
+                      email: "admin@example.com",
+                      firstname: "Admin",
+                      lastname: "Example",
+                    },
+                    roles: ["Admin"],
+                    achievements: [],
+                    allergies: [],
+                    officials: [],
+                    officialHistory: [],
+                    session: authSessionExample,
                   },
                 },
               },
