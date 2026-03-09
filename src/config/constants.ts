@@ -20,9 +20,6 @@ export const PROFILE_PICTURE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 // Public placeholder key stored under public/uploads
 export const PROFILE_PLACEHOLDER = STORAGE_KEYS.PROFILE_PLACEHOLDER;
 
-// Password reset token lifetime (1 hour)
-export const PASSWORD_RESET_TOKEN_MS = 60 * 60 * 1000;
-
 // Default fallback used when a token's exp can't be decoded (1 hour)
 export const DEFAULT_TOKEN_FUTURE_MS = 60 * 60 * 1000;
 
@@ -35,6 +32,5 @@ export default {
   ACCESS_EXPIRES_MS,
   REFRESH_TOKEN_DEFAULT_DAYS,
   PROFILE_PICTURE_MAX_SIZE,
-  PASSWORD_RESET_TOKEN_MS,
   DEFAULT_TOKEN_FUTURE_MS,
 };
