@@ -12,8 +12,6 @@ import {
   validateUpdateUserProfileBody,
 } from "../validators";
 import {
-  uploadToStorage,
-  deleteProfilePicture,
   getPublicUrl,
 } from "../utils/fileUpload";
 import {
@@ -46,6 +44,7 @@ import {
   requireAuthMatrikelnummer,
   unwrapValidation,
 } from "./helpers/request";
+import { uploadImageAndReplace } from "./helpers/storage";
 
 export async function updatePictureHandler(
   req: AuthenticatedRequest & { file?: Request["file"] },
@@ -53,42 +52,24 @@ export async function updatePictureHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = requireAuthMatrikelnummer(req, res, "Invalid token payload");
+    const uid = requireAuthMatrikelnummer(req, res, "Ogiltig session");
     if (!uid) return;
 
     const file = req.file;
-    if (!file) return sendError(res, 400, "No file uploaded");
+    if (!file) {
+      return sendError(res, 400, "Formuläret innehåller fel", {
+        fields: { picture: "Profilbild är obligatorisk" },
+      });
+    }
 
-    const newKey = await uploadToStorage(file, {
+    const { storageKey: newKey } = await uploadImageAndReplace(file, {
       folder: STORAGE_BUCKETS.PROFILES,
       prefix: STORAGE_PREFIXES.PROFILE,
       size: { width: 200, height: 200 },
+    }, async (uploadedKey) => {
+      const oldStorageKey = await updatePicture(uid, uploadedKey);
+      return { value: oldStorageKey, oldStorageKey };
     });
-    if (!newKey) return sendError(res, 500, "Failed to upload file");
-
-    // Update DB and get old key to delete
-    let oldKey: string | null = null;
-    try {
-      oldKey = await updatePicture(uid, newKey);
-    } catch (err) {
-      logger.error("Failed to update picture in DB:", err);
-      // Clean up uploaded file if DB update fails
-      try {
-        await deleteProfilePicture(newKey);
-      } catch (err) {
-        logger.error("Failed to cleanup uploaded file after DB error:", err);
-      }
-      throw err;
-    }
-
-    // Delete old file (best-effort)
-    if (oldKey) {
-      try {
-        await deleteProfilePicture(oldKey);
-      } catch (err) {
-        logger.warn("Failed to delete old profile picture:", err);
-      }
-    }
 
     const url = await getPublicUrl(newKey);
     return res.json({ pictureKey: newKey, pictureUrl: url });
@@ -103,47 +84,31 @@ export async function updateOtherPictureHandler(
   _next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Invalid token payload");
+    const callerId = requireAuthMatrikelnummer(req, res, "Ogiltig session");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
     const file = req.file;
-    if (!file) return sendError(res, 400, "No file uploaded");
+    if (!file) {
+      return sendError(res, 400, "Formuläret innehåller fel", {
+        fields: { picture: "Profilbild är obligatorisk" },
+      });
+    }
 
-    const newKey = await uploadToStorage(file, {
+    const { storageKey: newKey } = await uploadImageAndReplace(file, {
       folder: STORAGE_BUCKETS.PROFILES,
       prefix: STORAGE_PREFIXES.PROFILE,
       size: { width: 200, height: 200 },
+    }, async (uploadedKey) => {
+      const oldStorageKey = await updatePicture(targetId, uploadedKey);
+      return { value: oldStorageKey, oldStorageKey };
     });
-    if (!newKey) return sendError(res, 500, "Failed to upload file");
-
-    // Update DB and get old key to delete
-    let oldKey: string | null = null;
-    try {
-      oldKey = await updatePicture(targetId, newKey);
-    } catch (err) {
-      logger.error("Failed to update picture in DB:", err);
-      try {
-        await deleteProfilePicture(newKey);
-      } catch (err) {
-        logger.error("Failed to cleanup uploaded file after DB error:", err);
-      }
-      throw err;
-    }
-
-    if (oldKey) {
-      try {
-        await deleteProfilePicture(oldKey);
-      } catch (err) {
-        logger.warn("Failed to delete old profile picture:", err);
-      }
-    }
 
     const url = await getPublicUrl(newKey);
     return res.json({ pictureKey: newKey, pictureUrl: url });
@@ -153,11 +118,11 @@ export async function updateOtherPictureHandler(
 }
 
 export async function meHandler(req: AuthenticatedRequest, res: Response) {
-  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
   if (!uid) return;
 
   const user = await findUserById(uid);
-  if (!user) return sendError(res, 404, "User not found");
+  if (!user) return sendError(res, 404, "Användaren hittades inte");
 
   const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
   return res.status(200).json({
@@ -174,7 +139,7 @@ export async function updateMeHandler(
   _next: NextFunction,
 ) {
   try {
-    const uid = requireAuthMatrikelnummer(req, res, "Invalid token payload");
+    const uid = requireAuthMatrikelnummer(req, res, "Ogiltig session");
     if (!uid) return;
 
     const payload = unwrapValidation(res, validateUpdateUserProfileBody(req.body));
@@ -183,7 +148,7 @@ export async function updateMeHandler(
     await updateUserProfile(uid, payload as UpdateUserProfileBody);
 
     const updated = await findUserById(uid);
-    if (!updated) return sendError(res, 404, "User not found");
+    if (!updated) return sendError(res, 404, "Användaren hittades inte");
 
     const publicUser = toPublicUser(updated);
     const pictureUrl = await getPublicUrl(
@@ -201,13 +166,13 @@ export async function updateUserHandler(
   _next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
@@ -217,7 +182,7 @@ export async function updateUserHandler(
     await updateUserProfile(targetId, payload as UpdateUserProfileBody);
 
     const updated = await findUserById(targetId);
-    if (!updated) return sendError(res, 404, "User not found");
+    if (!updated) return sendError(res, 404, "Användaren hittades inte");
 
     const publicUser = toPublicUser(updated);
     const pictureUrl = await getPublicUrl(
@@ -232,15 +197,16 @@ export async function updateUserHandler(
 export async function addAchievementHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
@@ -257,77 +223,80 @@ export async function addAchievementHandler(
 
     return res.status(201).json({ success: true, id: newId, awardedAt: when });
   } catch (err) {
-    logger.error("Failed to set an achievement", err);
-    return sendError(res, 500, "Failed to set achievement");
+    logger.error("Misslyckades att tilldela utmärkelse", err);
+    return next(err);
   }
 }
 
 export async function getAchievementsHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
     const rows = await getUserAchievements(targetId);
     return res.status(200).json({ achievements: rows });
   } catch (err) {
-    logger.error("Failed to get achievements", err);
-    return sendError(res, 500, "Failed to get achievements");
+    logger.error("Misslyckades att hämta utmärkelser", err);
+    return next(err);
   }
 }
 
 export async function getMyAttendedEventsHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!uid) return;
 
     const summary = await getUserAttendedEventsSummary(uid);
     return res.status(200).json(summary);
   } catch (err) {
-    logger.error("Failed to get my attended events", err);
-    return sendError(res, 500, "Failed to get attended events");
+    logger.error("Misslyckades att hämta mina närvarade möten", err);
+    return next(err);
   }
 }
 
 export async function getUserAttendedEventsHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
     const summary = await getUserAttendedEventsSummary(targetId);
     return res.status(200).json(summary);
   } catch (err) {
-    logger.error("Failed to get user attended events", err);
-    return sendError(res, 500, "Failed to get attended events");
+    logger.error("Misslyckades att hämta användarens närvarade möten", err);
+    return next(err);
   }
 }
 
 export async function listUsersHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction,
 ) {
   try {
     const q = _req.query as ListUsersQuery;
@@ -361,36 +330,38 @@ export async function listUsersHandler(
     );
     return res.status(200).json({ users: withUrls });
   } catch (err) {
-    logger.error("Failed to list users", err);
-    return sendError(res, 500, "Failed to list users");
+    logger.error("Misslyckades att lista användare", err);
+    return next(err);
   }
 }
 
 export async function listUsersMapHandler(
   _req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
     const rows = await listUsersMapPins();
     return res.status(200).json({ users: rows });
   } catch (err) {
-    logger.error("Failed to list user map pins", err);
-    return sendError(res, 500, "Failed to list user map pins");
+    logger.error("Misslyckades att lista användare på kartan", err);
+    return next(err);
   }
 }
 
 export async function setUserLocationHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
@@ -403,48 +374,49 @@ export async function setUserLocationHandler(
     await setUserManualLocation(targetId, payload.lat, payload.lng);
     return res.status(200).json({ success: true });
   } catch (err) {
-    logger.error("Failed to set manual user location", err);
-    return sendError(res, 500, "Failed to set manual user location");
+    logger.error("Misslyckades att sätta manuell användarposition", err);
+    return next(err);
   }
 }
 
 export async function clearUserLocationOverrideHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
     await clearUserLocationOverride(targetId);
     return res.status(200).json({ success: true });
   } catch (err) {
-    logger.error("Failed to clear user location override", err);
-    return sendError(res, 500, "Failed to clear user location override");
+    logger.error("Misslyckades att rensa användarens platsåsidosättning", err);
+    return next(err);
   }
 }
 
 export async function getPublicUserHandler(
   req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction,
 ) {
   try {
     const matrikelnummer = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid user id",
+      "Ogiltigt användar-id",
     );
     if (matrikelnummer === null) return;
     const user = await getPublicUserById(matrikelnummer);
-    if (!user) return sendError(res, 404, "User not found");
+    if (!user) return sendError(res, 404, "Användaren hittades inte");
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
     const achievements = await getUserAchievements(matrikelnummer);
     const allergies = await getUserAllergies(matrikelnummer);
@@ -464,23 +436,24 @@ export async function getPublicUserHandler(
       officialHistory,
     });
   } catch (err) {
-    logger.error("Failed to get public user", err);
-    return sendError(res, 500, "Failed to get user");
+    logger.error("Misslyckades att hämta användaren", err);
+    return next(err);
   }
 }
 
 export async function setRolesHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
@@ -489,78 +462,76 @@ export async function setRolesHandler(
     const { roleIds } = parsed;
     const numericIds = roleIds.map((r) => Number(r));
 
-    try {
-      await setUserRoles(targetId, numericIds as number[]);
-    } catch (err) {
-      logger.error("Failed to set roles (service)", err);
-      return sendError(res, 500, "Failed to set roles");
-    }
+    await setUserRoles(targetId, numericIds as number[]);
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    logger.error("Failed to set roles", err);
-    return sendError(res, 500, "Failed to set roles");
+    logger.error("Misslyckades att sätta roller", err);
+    return next(err);
   }
 }
 
 export async function getRolesHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
     const roles = await getUserRoles(targetId);
     return res.status(200).json({ roles });
   } catch (err) {
-    logger.error("Failed to get roles", err);
-    return sendError(res, 500, "Failed to get roles");
+    logger.error("Misslyckades att hämta roller", err);
+    return next(err);
   }
 }
 
 export async function getLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
     const lodge = await getUserLodge(targetId);
     return res.status(200).json({ lodge });
   } catch (err) {
-    logger.error("Failed to get user lodge", err);
-    return sendError(res, 500, "Failed to get user lodge");
+    logger.error("Misslyckades att hämta användarens loge", err);
+    return next(err);
   }
 }
 
 export async function setLodgeHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
-    const callerId = requireAuthMatrikelnummer(req, res, "Unauthorized");
+    const callerId = requireAuthMatrikelnummer(req, res, "Obehörig");
     if (!callerId) return;
 
     const targetId = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid target user id",
+      "Ogiltigt användar-id",
     );
     if (targetId === null) return;
 
@@ -569,14 +540,17 @@ export async function setLodgeHandler(
     const { lodgeId } = parsed;
 
     const numericLid = lodgeId === null ? null : Number(lodgeId);
-    if (numericLid !== null && !Number.isFinite(numericLid))
-      return sendError(res, 400, "Invalid lodgeId");
+    if (numericLid !== null && !Number.isFinite(numericLid)) {
+      return sendError(res, 400, "Formuläret innehåller fel", {
+        fields: { lodgeId: "Ogiltig loge" },
+      });
+    }
 
     await setUserLodge(targetId, numericLid);
     return res.status(200).json({ success: true });
   } catch (err) {
-    logger.error("Failed to set user lodge", err);
-    return sendError(res, 500, "Failed to set user lodge");
+    logger.error("Misslyckades att sätta användarens loge", err);
+    return next(err);
   }
 }
 

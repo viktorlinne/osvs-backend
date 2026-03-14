@@ -9,18 +9,6 @@ import { requireRole } from "../middleware/authorize";
 
 const router = express.Router();
 
-// Public list of officials
-/**
- * @openapi
- * /officials:
- *   get:
- *     tags:
- *       - Officials
- *     summary: List official types
- *     responses:
- *       200:
- *         description: Array of official types
- */
 router.get("/", listOfficialsHandler);
 
 // Set another member's officials (Admin/Editor required)

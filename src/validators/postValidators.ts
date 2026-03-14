@@ -2,6 +2,7 @@ import {
   ValidationResult,
   asObject,
   fail,
+  failFields,
   ok,
   parseNumericIds,
   toNonEmptyString,
@@ -30,19 +31,22 @@ export function parsePublicumBoolean(
     if (TRUE_VALUES.has(normalized)) return ok(true);
     if (FALSE_VALUES.has(normalized)) return ok(false);
   }
-  return fail("publicum must be a boolean");
+  return failFields({ publicum: "Ogiltigt värde för Publicum" });
 }
 
 export function validateCreatePostBody(
   input: unknown,
 ): ValidationResult<ValidCreatePostBody> {
   const body = asObject(input);
-  if (!body) return fail("Body must be an object");
+  if (!body) return fail("Ogiltig begäran");
 
   const title = toNonEmptyString(body.title);
   const description = toNonEmptyString(body.description);
   if (!title || !description) {
-    return fail("Saknar titel eller beskrivning");
+    return failFields({
+      ...(title ? {} : { title: "Titel är obligatorisk" }),
+      ...(description ? {} : { description: "Beskrivning är obligatorisk" }),
+    });
   }
 
   const lodgeIds = parseNumericIds(body.lodgeIds);

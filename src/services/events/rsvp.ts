@@ -107,7 +107,7 @@ export async function setUserBookFood(
   const rsvpVal = await eventsRepo.getUserRsvpFromDb(userId, eventId);
   if (toDbFlag(rsvpVal) !== 1) {
     if (bookFood) {
-      throw badRequest("RSVP must be 'going' before booking food");
+      throw badRequest("Du måste ha osat ja innan mat kan bokas");
     }
     return false;
   }
@@ -132,7 +132,7 @@ export async function patchEventAttendanceByAdmin(
   patch: PatchAttendanceInput,
 ): Promise<EventAttendanceRow> {
   const invited = await eventsRepo.isUserInvitedToEvent(eventId, userId);
-  if (!invited) throw forbidden("User is not invited to this event");
+  if (!invited) throw forbidden("Användaren är inte inbjuden till mötet");
 
   const touchesAttendance =
     typeof patch.rsvp === "boolean" ||
@@ -140,7 +140,7 @@ export async function patchEventAttendanceByAdmin(
     typeof patch.attended === "boolean";
   const touchesPayment = typeof patch.paymentPaid === "boolean";
   if (!touchesAttendance && !touchesPayment) {
-    throw badRequest("No valid attendance fields provided");
+    throw badRequest("Minst ett giltigt närvarofält måste skickas");
   }
 
   const conn = await pool.getConnection();
@@ -194,6 +194,6 @@ export async function patchEventAttendanceByAdmin(
 
   const rows = await listEventAttendances(eventId);
   const updated = rows.find((row) => row.uid === userId);
-  if (!updated) throw badRequest("Failed to load updated attendance");
+  if (!updated) throw badRequest("Kunde inte läsa in den uppdaterade närvaron");
   return updated;
 }

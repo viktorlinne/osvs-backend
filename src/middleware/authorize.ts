@@ -15,10 +15,10 @@ export function requireRole(...requiredRoles: RoleValue[]) {
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction,
-    ) => {
+  ) => {
     try {
       const payload = req.user;
-      if (!payload) return sendError(res, 401, "Unauthorized");
+      if (!payload) return sendError(res, 401, "Obehörig");
       const matrikelnummer = payload.matrikelnummer;
       logger.info(
         { matrikelnummer, requiredRoles },
@@ -38,12 +38,12 @@ export function requireRole(...requiredRoles: RoleValue[]) {
         "authorize: roles fetched",
       );
       if (!has) {
-        return sendError(res, 403, "Forbidden");
+        return sendError(res, 403, "Åtkomst nekad");
       }
       return next();
     } catch (err) {
-      logger.warn("Authorization check failed", err);
-      return sendError(res, 500, "Authorization check failed");
+      logger.warn({ err }, "Behörighetskontrollen misslyckades");
+      return next(err);
     }
   };
 }
@@ -61,7 +61,7 @@ export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
   ) => {
     try {
       const payload = req.user;
-      if (!payload) return sendError(res, 401, "Unauthorized");
+      if (!payload) return sendError(res, 401, "Obehörig");
 
       const paramId = req.params?.matrikelnummer as string | undefined;
       const targetId = paramId ? Number(paramId) : undefined;
@@ -85,13 +85,13 @@ export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
 
       // If no targetId provided and caller doesn't have role, complain
       if (typeof targetId === "undefined" || Number.isNaN(targetId)) {
-        return sendError(res, 400, "Missing target user id");
+        return sendError(res, 400, "Saknar användar-id");
       }
 
-      return sendError(res, 403, "Forbidden");
+      return sendError(res, 403, "Åtkomst nekad");
     } catch (err) {
-      logger.warn("Authorization check failed", err);
-      return sendError(res, 500, "Authorization check failed");
+      logger.warn({ err }, "Behörighetskontrollen misslyckades");
+      return next(err);
     }
   };
 }

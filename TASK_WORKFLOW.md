@@ -18,6 +18,7 @@ Before coding:
 
 - Identify affected route module(s) in `src/routes/*`.
 - Identify controller/service/repository involved.
+- Identify affected validators / shared error helpers (`src/validators/*`, `src/utils/errors.ts`, `src/middleware/errorHandler.ts`, `src/utils/response.ts`).
 - Confirm whether DB schema needs changes.
 - Check whether OpenAPI needs updates (most endpoint changes do).
 
@@ -41,6 +42,8 @@ If any endpoint behavior, request, or response changes:
    - request schema
    - response schema + error schema
    - status codes
+   - Swedish examples for the shared error envelope:
+     `{ message, details?: { fields?: Record<string, string> } }`
 
 Output:
 
@@ -77,6 +80,8 @@ Output:
    - orchestrate repo calls
    - perform domain logic checks
    - avoid Express-specific concerns
+3. Throw typed errors from `src/utils/errors.ts` for user-facing failures.
+4. Do not rely on raw `Error("...")` strings for API behavior unless they are converted centrally.
 
 Output:
 
@@ -88,9 +93,11 @@ Output:
 
 1. Controller:
    - parse inputs
-   - validate (existing validator style)
+   - validate with the existing validator style (`ValidationResult<T>`, `unwrapValidation`, param helpers)
    - call service
-   - return consistent response shapes
+   - return consistent success response shapes
+   - use `sendError` only for expected early exits
+   - otherwise let `wrapAsync` + `src/middleware/errorHandler.ts` serialize typed errors
 2. Route module:
    - mount endpoint in the correct `src/routes/*.ts`
    - apply correct middleware (auth/roles) consistent with the rest of the module
@@ -111,6 +118,7 @@ Since there is no test suite:
   - steps using curl/Postman
   - expected response payloads
   - edge cases (unauthorized, invalid input, not found)
+  - field-level validation errors in `details.fields` where relevant
 
 If asked to add verification:
 

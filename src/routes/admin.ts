@@ -6,20 +6,6 @@ import { wrapAsync } from "../middleware/asyncHandler";
 
 const router = Router();
 
-// List available roles
-/**
- * @openapi
- * /admin/roles:
- *   get:
- *     tags:
- *       - Admin
- *     summary: List available roles (Admin only)
- *     security:
- *       - cookieAuth: []
- *     responses:
- *       200:
- *         description: Array of roles
- */
 router.get(
   "/roles",
   authMiddleware,

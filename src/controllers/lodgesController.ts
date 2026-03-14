@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "../types/auth";
 import * as lodgeService from "../services/lodgeService";
 import { validateCreateLodgeBody, validateUpdateLodgeBody } from "../validators";
 import { sendError } from "../utils/response";
+import { parseNumericParam, unwrapValidation } from "./helpers/request";
 
 export async function listLodgesHandler(
   _req: AuthenticatedRequest,
@@ -18,10 +19,10 @@ export async function getLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid lodge id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt loge-id");
+  if (id === null) return;
   const lodge = await lodgeService.findLodgeById(id);
-  if (!lodge) return sendError(res, 404, "Not found");
+  if (!lodge) return sendError(res, 404, "Logen hittades inte");
   return res.status(200).json({ lodge });
 }
 
@@ -30,10 +31,10 @@ export async function createLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const parsed = validateCreateLodgeBody(req.body);
-  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+  const parsed = unwrapValidation(res, validateCreateLodgeBody(req.body));
+  if (!parsed) return;
 
-  const { name, city, description, email, picture } = parsed.data;
+  const { name, city, description, email, picture } = parsed;
   const id = await lodgeService.createLodge(
     name,
     city,
@@ -49,14 +50,14 @@ export async function updateLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) return sendError(res, 400, "Invalid lodge id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt loge-id");
+  if (id === null) return;
 
   const raw = req.body as Record<string, unknown>;
-  const parsed = validateUpdateLodgeBody(raw);
-  if (!parsed.ok) return sendError(res, 400, parsed.errors);
+  const parsed = unwrapValidation(res, validateUpdateLodgeBody(raw));
+  if (!parsed) return;
 
-  const { name, city, description, email, picture } = parsed.data;
+  const { name, city, description, email, picture } = parsed;
 
   await lodgeService.updateLodge(
     id,

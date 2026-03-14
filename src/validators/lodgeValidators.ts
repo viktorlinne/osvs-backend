@@ -3,6 +3,7 @@ import {
   ValidationResult,
   asObject,
   fail,
+  failFields,
   ok,
   toNonEmptyString,
   toNullableString,
@@ -16,16 +17,21 @@ export type ValidCreateLodgeBody = {
   picture?: string | null;
 };
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function validateCreateLodgeBody(
   input: unknown,
 ): ValidationResult<ValidCreateLodgeBody> {
   const body = asObject(input);
-  if (!body) return fail("Body must be an object");
+  if (!body) return fail("Ogiltig begäran");
 
   const name = toNonEmptyString(body.name);
   const city = toNonEmptyString(body.city);
   if (!name || !city) {
-    return fail(["name: required", "city: required"]);
+    return failFields({
+      ...(name ? {} : { name: "Namn är obligatoriskt" }),
+      ...(city ? {} : { city: "Stad är obligatorisk" }),
+    });
   }
 
   const description = toNullableString(body.description);
@@ -38,7 +44,11 @@ export function validateCreateLodgeBody(
     (typeof body.email !== "undefined" && typeof email === "undefined") ||
     (typeof body.picture !== "undefined" && typeof picture === "undefined")
   ) {
-    return fail("description/email/picture must be string or null");
+    return fail("Ogiltig begäran");
+  }
+
+  if (email && !EMAIL_PATTERN.test(email)) {
+    return failFields({ email: "Ogiltig e-postadress" });
   }
 
   return ok({ name, city, description, email, picture });
@@ -48,27 +58,27 @@ export function validateUpdateLodgeBody(
   input: unknown,
 ): ValidationResult<UpdateLodgeBody> {
   const body = asObject(input);
-  if (!body) return fail("Body must be an object");
+  if (!body) return fail("Ogiltig begäran");
 
   const out: UpdateLodgeBody = {};
-  const errors: string[] = [];
+  const fields: Record<string, string> = {};
 
   if (Object.prototype.hasOwnProperty.call(body, "name")) {
     const name = toNonEmptyString(body.name);
-    if (!name) errors.push("name must be a non-empty string");
+    if (!name) fields.name = "Namn är obligatoriskt";
     else out.name = name;
   }
 
   if (Object.prototype.hasOwnProperty.call(body, "city")) {
     const city = toNonEmptyString(body.city);
-    if (!city) errors.push("city must be a non-empty string");
+    if (!city) fields.city = "Stad är obligatorisk";
     else out.city = city;
   }
 
   if (Object.prototype.hasOwnProperty.call(body, "description")) {
     const description = toNullableString(body.description);
     if (typeof description === "undefined") {
-      errors.push("description must be string or null");
+      fields.description = "Ogiltigt värde";
     } else {
       out.description = description;
     }
@@ -77,7 +87,9 @@ export function validateUpdateLodgeBody(
   if (Object.prototype.hasOwnProperty.call(body, "email")) {
     const email = toNullableString(body.email);
     if (typeof email === "undefined") {
-      errors.push("email must be string or null");
+      fields.email = "Ogiltigt värde";
+    } else if (email && !EMAIL_PATTERN.test(email)) {
+      fields.email = "Ogiltig e-postadress";
     } else {
       out.email = email;
     }
@@ -86,13 +98,12 @@ export function validateUpdateLodgeBody(
   if (Object.prototype.hasOwnProperty.call(body, "picture")) {
     const picture = toNullableString(body.picture);
     if (typeof picture === "undefined") {
-      errors.push("picture must be string or null");
+      fields.picture = "Ogiltigt värde";
     } else {
       out.picture = picture;
     }
   }
 
-  if (errors.length > 0) return fail(errors);
+  if (Object.keys(fields).length > 0) return failFields(fields);
   return ok(out);
 }
-

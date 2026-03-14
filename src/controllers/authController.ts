@@ -17,15 +17,13 @@ import { REFRESH_COOKIE, PROFILE_PLACEHOLDER } from "../config/constants";
 import { STORAGE_BUCKETS, STORAGE_PREFIXES } from "../config/storage";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
-import {
-  getPublicUrl,
-  uploadToStorage,
-  deleteProfilePicture,
-} from "../utils/fileUpload";
+import { getPublicUrl } from "../utils/fileUpload";
 import { toPublicUser } from "../utils/serialize";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { LoginBody, RegisterBody } from "../types";
 import { requireAuthMatrikelnummer } from "./helpers/request";
+import { uploadImageAndPersist } from "./helpers/storage";
+import { HttpError } from "../utils/errors";
 
 export async function login(
   req: RequestWithBody<LoginBody>,
@@ -34,7 +32,7 @@ export async function login(
 ): Promise<Response | void> {
   const { email, password } = req.body;
   if (!email || !password) {
-    return sendError(res, 400, "email and password required");
+    return sendError(res, 400, "E-post och lösenord är obligatoriska");
   }
 
   const out = await sessionService.loginWithEmail(email, password, res);
@@ -76,7 +74,7 @@ export async function logout(
   _next: NextFunction,
 ): Promise<Response | void> {
   await sessionService.logoutFromRequest(req, res);
-  return res.status(200).json({ message: "Logged out from this device" });
+  return res.status(200).json({ message: "Utloggad från den här enheten" });
 }
 
 export async function register(
@@ -116,74 +114,68 @@ export async function register(
     .filter(
       ([, value]) => value === undefined || value === null || value === "",
     )
-    .map(([key]) => `${key}: required`);
-  if (missing.length > 0) return sendError(res, 400, missing);
+    .map(([key]) => key);
+  if (missing.length > 0) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: Object.fromEntries(
+        missing.map((field) => [field, "Det här fältet är obligatoriskt"]),
+      ),
+    });
+  }
 
   let numericLodgeId: number | undefined;
   if (typeof lodgeId !== "undefined" && lodgeId !== null) {
     numericLodgeId = Number(lodgeId);
     if (!Number.isFinite(numericLodgeId)) {
-      return sendError(res, 400, "Invalid lodgeId");
+      return sendError(res, 400, "Formuläret innehåller fel", {
+        fields: { lodgeId: "Ogiltig loge" },
+      });
     }
   } else {
     numericLodgeId = undefined;
   }
 
   if (!req.file) {
-    return sendError(res, 400, "Profile picture is required");
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { picture: "Profilbild är obligatorisk" },
+    });
   }
 
   const hash = await hashPassword(password as string);
 
-  let pictureKey: string | null = null;
   const file = req.file;
-  if (file) {
-    const newKey = await uploadToStorage(file, {
+  const user = await uploadImageAndPersist(
+    file,
+    {
       folder: STORAGE_BUCKETS.PROFILES,
       prefix: STORAGE_PREFIXES.PROFILE,
       size: { width: 200, height: 200 },
-    });
-    if (!newKey) {
-      return sendError(res, 500, "Failed to upload profile picture");
-    }
-    pictureKey = newKey;
-  }
-
-  let user;
-  try {
-    user = await createUser(
-      {
-        email: email as string,
-        passwordHash: hash,
-        homeNumber: (homeNumber as string) ?? null,
-        work: (work as string) ?? null,
-        firstname: firstname as string,
-        lastname: lastname as string,
-        dateOfBirth: dateOfBirth as string,
-        mobile: mobile as string,
-        city: city as string,
-        address: address as string,
-        zipcode: zipcode as string,
-        picture: pictureKey,
-        notes: (notes as string) ?? null,
-      },
-      numericLodgeId,
-    );
-  } catch (err) {
-    if (pictureKey) {
-      try {
-        await deleteProfilePicture(pictureKey);
-      } catch (delErr) {
-        logger.error(
-          "Failed to cleanup uploaded picture after registration error",
-          delErr,
-        );
+    },
+    async (pictureKey) => {
+      const createdUser = await createUser(
+        {
+          email: email as string,
+          passwordHash: hash,
+          homeNumber: (homeNumber as string) ?? null,
+          work: (work as string) ?? null,
+          firstname: firstname as string,
+          lastname: lastname as string,
+          dateOfBirth: dateOfBirth as string,
+          mobile: mobile as string,
+          city: city as string,
+          address: address as string,
+          zipcode: zipcode as string,
+          picture: pictureKey,
+          notes: (notes as string) ?? null,
+        },
+        numericLodgeId,
+      );
+      if (!createdUser) {
+        throw new HttpError(500, "Kunde inte skapa användaren");
       }
-    }
-    throw err;
-  }
-
-  if (!user) return sendError(res, 500, "Failed to create user");
+      return createdUser;
+    },
+  );
   const roles = user.matrikelnummer
     ? await getUserRoles(user.matrikelnummer)
     : [];
@@ -197,11 +189,11 @@ export async function me(
   res: Response,
   _next: NextFunction,
 ): Promise<Response | void> {
-  const uid = requireAuthMatrikelnummer(req, res, "Invalid token payload");
+  const uid = requireAuthMatrikelnummer(req, res, "Ogiltig session");
   if (!uid) return;
 
   const user = await findById(uid);
-  if (!user) return sendError(res, 404, "User not found");
+  if (!user) return sendError(res, 404, "Användaren hittades inte");
 
   const roles = user.matrikelnummer
     ? await getUserRoles(user.matrikelnummer)
@@ -245,14 +237,15 @@ export async function revokeAll(
   res: Response,
   _next: NextFunction,
 ): Promise<Response | void> {
-  const uid = requireAuthMatrikelnummer(req, res, "Invalid token payload");
+  const uid = requireAuthMatrikelnummer(req, res, "Ogiltig session");
   if (!uid) return;
   try {
     await revokeAllSessions(uid);
   } catch (err) {
     logger.error("Failed to revoke all sessions", err);
+    return sendError(res, 500, "Kunde inte återkalla alla sessioner");
   }
-  return res.status(200).json({ message: "All sessions revoked" });
+  return res.status(200).json({ message: "Alla sessioner har återkallats" });
 }
 
 export default {

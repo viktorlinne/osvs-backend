@@ -6,7 +6,7 @@ import type { ValidationResult } from "../../validators";
 export function requireAuthMatrikelnummer(
   req: AuthenticatedRequest,
   res: Response,
-  message = "Unauthorized",
+  message = "Obehörig",
 ): number | null {
   const uid = req.user?.matrikelnummer;
   if (!uid) {
@@ -34,7 +34,12 @@ export function unwrapValidation<T>(
   parsed: ValidationResult<T>,
 ): T | null {
   if (!parsed.ok) {
-    sendError(res, 400, parsed.errors);
+    sendError(
+      res,
+      400,
+      parsed.message ?? parsed.errors,
+      parsed.fields ? { fields: parsed.fields } : undefined,
+    );
     return null;
   }
   return parsed.data;

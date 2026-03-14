@@ -1,7 +1,11 @@
 import pool from "../../config/db";
 import type { CreateUserInput, PublicUser } from "../../types";
 import { normalizeToSqlDate } from "../../utils/dates";
-import { ValidationError, ConflictError } from "../../utils/errors";
+import {
+  ValidationError,
+  ConflictError,
+  requiredFieldErrors,
+} from "../../utils/errors";
 import logger from "../../utils/logger";
 import { revokeAllRefreshTokensForUser } from "../tokenService";
 import * as paymentsService from "../membershipPaymentsService";
@@ -277,12 +281,12 @@ export async function createUser(
   });
 
   if (missing.length > 0) {
-    throw new ValidationError(missing);
+    throw new ValidationError(requiredFieldErrors(missing));
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    throw new ValidationError(["email"]);
+    throw new ValidationError({ email: "Ogiltig e-postadress" });
   }
 
   const sqlDate = (() => {
@@ -290,7 +294,7 @@ export async function createUser(
       return normalizeToSqlDate(dateOfBirth);
     } catch (e) {
       logger.error(e);
-      throw new ValidationError(["dateOfBirth"]);
+      throw new ValidationError({ dateOfBirth: "Ogiltigt födelsedatum" });
     }
   })();
 
@@ -338,7 +342,7 @@ export async function createUser(
       const exists = await userRepo.lodgeExists(Number(lodgeId), conn);
       if (!exists) {
         await conn.rollback();
-        throw new ValidationError(["lodgeId"]);
+        throw new ValidationError({ lodgeId: "Ogiltig loge" });
       }
       try {
         await userRepo.assignUserToLodge(insertId, Number(lodgeId), conn);
@@ -385,7 +389,7 @@ export async function createUser(
       const field = key && key.includes("email") ? "email" : key;
       throw new ConflictError(
         field,
-        `Duplicate entry${field ? ` on ${field}` : ""}`,
+        field === "email" ? "E-postadressen används redan" : "Konflikt",
       );
     }
     throw err;

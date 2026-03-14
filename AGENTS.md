@@ -128,15 +128,26 @@ Repositories contain only SQL queries.
 
 # Error Handling
 
-Error responses are currently inconsistent across the codebase.
+Error responses are standardized across the API.
 
-When adding new endpoints, prefer this structure:
+Use this structure for client-facing failures:
 
 {
-"message": "Error description"
+  "message": "Svenskt felmeddelande",
+  "details": {
+    "fields": {
+      "email": "Ogiltig e-postadress"
+    }
+  }
 }
 
-Do not introduce new error formats.
+Rules:
+
+- `message` is always present and user-facing.
+- `details.fields` is only for validation/form errors.
+- Use `src/utils/errors.ts` for typed errors and `src/middleware/errorHandler.ts` for final serialization.
+- Controllers may use `sendError` / request helpers for expected early exits, but unexpected/domain failures should flow to the global error handler.
+- Do not introduce new error payload shapes.
 
 # Security Rules
 
@@ -168,19 +179,9 @@ Avoid creating additional background tasks unless necessary.
 
 # Known Issues (Do Not Ignore)
 
-Build currently fails due to TypeScript errors in:
-
-controllers/documentsController.ts  
-controllers/revisionsController.ts  
-infra/storage/supabase.ts
-
-Fix build errors before introducing new major features.
-
 Some controllers bypass the service layer (example: paymentsController).
 
 Avoid repeating this pattern.
-
-Error response formats are inconsistent across the project.
 
 # Missing Tooling
 

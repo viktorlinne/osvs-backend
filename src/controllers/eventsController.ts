@@ -9,7 +9,6 @@ import {
   normalizeEventDateTimeInput,
 } from "../utils/eventDateTime";
 import * as eventsService from "../services/eventsService";
-import { ValidationError } from "../utils/errors";
 import { getCached, setCached, delPattern } from "../infra/cache";
 import {
   validateFoodBookingBody,
@@ -26,7 +25,7 @@ import {
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction,
 ) {
   const cacheKey = "events:all";
   const cached = await getCached(cacheKey);
@@ -81,10 +80,10 @@ export async function getEventHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
   const ev = await eventsService.getEventById(id);
-  if (!ev) return sendError(res, 404, "Not found");
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
   return res.status(200).json({ event: ev });
 }
 
@@ -103,18 +102,39 @@ export async function createEventHandler(
     lodgeIds,
   } = req.body as CreateEventBody;
 
-  if (!title || !description || !startDate || !endDate) {
-    return sendError(res, 400, "Missing required fields");
+  const requiredFieldErrors: Record<string, string> = {
+    ...(title ? {} : { title: "Titel är obligatorisk" }),
+    ...(description ? {} : { description: "Beskrivning är obligatorisk" }),
+    ...(startDate ? {} : { startDate: "Startdatum är obligatoriskt" }),
+    ...(endDate ? {} : { endDate: "Slutdatum är obligatoriskt" }),
+  };
+  if (Object.keys(requiredFieldErrors).length > 0) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: requiredFieldErrors,
+    });
   }
   const normalizedStartDate = normalizeEventDateTimeInput(startDate);
   const normalizedEndDate = normalizeEventDateTimeInput(endDate);
   if (!normalizedStartDate || !normalizedEndDate) {
-    return sendError(res, 400, "Invalid event datetime format");
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: {
+        ...(normalizedStartDate ? {} : { startDate: "Ogiltigt datum eller tid" }),
+        ...(normalizedEndDate ? {} : { endDate: "Ogiltigt datum eller tid" }),
+      },
+    });
   }
 
   if (compareSqlDateTime(normalizedStartDate, normalizedEndDate) >= 0) {
-    return sendError(res, 400, "startDate must be before endDate");
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: {
+        startDate: "Startdatum måste vara före slutdatum",
+        endDate: "Slutdatum måste vara efter startdatum",
+      },
+    });
   }
+
+  const normalizedTitle = String(title).trim();
+  const normalizedDescription = String(description).trim();
 
   const normalizedLodgeIds = Array.isArray(lodgeIds)
     ? lodgeIds
@@ -127,8 +147,8 @@ export async function createEventHandler(
   if (normalizedLodgeIds.length > 0) {
     id = await eventsService.createEventWithLodges(
       {
-        title,
-        description,
+        title: normalizedTitle,
+        description: normalizedDescription,
         lodgeMeeting,
         price,
         startDate: normalizedStartDate,
@@ -138,8 +158,8 @@ export async function createEventHandler(
     );
   } else {
     id = await eventsService.createEvent({
-      title,
-      description,
+      title: normalizedTitle,
+      description: normalizedDescription,
       lodgeMeeting,
       price,
       startDate: normalizedStartDate,
@@ -156,7 +176,7 @@ export async function updateEventHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
   logger.info({ id }, "eventsController: updateEventHandler called");
   const raw = req.body as UpdateEventBody;
@@ -187,10 +207,14 @@ export async function updateEventHandler(
       : null;
 
   if (typeof raw.startDate === "string" && !normalizedStartDate) {
-    return sendError(res, 400, "Invalid startDate format");
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { startDate: "Ogiltigt datum eller tid" },
+    });
   }
   if (typeof raw.endDate === "string" && !normalizedEndDate) {
-    return sendError(res, 400, "Invalid endDate format");
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { endDate: "Ogiltigt datum eller tid" },
+    });
   }
 
   if (normalizedStartDate) payload.startDate = normalizedStartDate;
@@ -201,7 +225,12 @@ export async function updateEventHandler(
     normalizedEndDate &&
     compareSqlDateTime(normalizedStartDate, normalizedEndDate) >= 0
   ) {
-    return sendError(res, 400, "startDate must be before endDate");
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: {
+        startDate: "Startdatum måste vara före slutdatum",
+        endDate: "Slutdatum måste vara efter startdatum",
+      },
+    });
   }
 
   await eventsService.updateEvent(id, payload);
@@ -214,7 +243,7 @@ export async function deleteEventHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
   await eventsService.deleteEvent(id);
   void delPattern("events:*");
@@ -226,14 +255,14 @@ export async function linkLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid ids");
+  const id = parseNumericParam(res, req.params.id, "Ogiltiga id:n");
   if (id === null) return;
   const parsed = unwrapValidation(res, validateLinkLodgeBody(req.body));
   if (!parsed) return;
 
   const { lodgeId } = parsed;
   if (!Number.isFinite(id) || !Number.isFinite(Number(lodgeId))) {
-    return sendError(res, 400, "Invalid ids");
+    return sendError(res, 400, "Ogiltiga id:n");
   }
 
   await eventsService.linkLodgeToEvent(id, Number(lodgeId));
@@ -246,7 +275,7 @@ export async function unlinkLodgeHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid ids");
+  const id = parseNumericParam(res, req.params.id, "Ogiltiga id:n");
   if (id === null) return;
 
   let bodyLodge: number | string | undefined;
@@ -259,7 +288,7 @@ export async function unlinkLodgeHandler(
   const queryLodge = (req.query as ListEventsQuery)?.lodgeId;
   const lodgeId = Number(bodyLodge ?? queryLodge);
   if (!Number.isFinite(id) || !Number.isFinite(lodgeId)) {
-    return sendError(res, 400, "Invalid ids");
+    return sendError(res, 400, "Ogiltiga id:n");
   }
 
   await eventsService.unlinkLodgeFromEvent(id, lodgeId);
@@ -272,7 +301,7 @@ export async function listForUserHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
   if (!uid) return;
   const rows = await eventsService.listEventsForUser(uid);
   const dto = rows.map((r) => ({
@@ -291,7 +320,7 @@ export async function listEventLodgesHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
   const lodges = await eventsService.listLodgesForEvent(id);
   return res.status(200).json({ lodges });
@@ -302,34 +331,34 @@ export async function rsvpHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  try {
-    const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
-    if (!uid) return;
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
+  if (!uid) return;
 
-    const id = parseNumericParam(res, req.params.id, "Invalid id");
-    if (id === null) return;
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
+  if (id === null) return;
 
-    const parsed = unwrapValidation(res, validateRsvpBody(req.body));
-    if (!parsed) return;
-    const { status } = parsed;
+  const parsed = unwrapValidation(res, validateRsvpBody(req.body));
+  if (!parsed) return;
+  const { status } = parsed;
 
-    const ev = await eventsService.getEventById(id);
-    if (!ev) return sendError(res, 404, "Event not found");
+  const ev = await eventsService.getEventById(id);
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
 
-    if (isAtOrBeforeNowStockholm(ev.startDate)) {
-      return sendError(res, 400, "Cannot RSVP for past or started events");
-    }
-
-    const invited = await eventsService.isUserInvitedToEvent(uid, id);
-    if (!invited) return sendError(res, 403, "Not invited to this event");
-
-    await eventsService.setUserRsvp(uid, id, status);
-    return res.status(200).json({ success: true, status });
-  } catch (err) {
-    if (err instanceof ValidationError) return sendError(res, 400, err.message);
-    logger.error("Misslyckades att sätta RSVP", err);
-    return _next(err);
+  if (isAtOrBeforeNowStockholm(ev.startDate)) {
+    return sendError(
+      res,
+      400,
+      "Det går inte att osa till påbörjade eller avslutade möten",
+    );
   }
+
+  const invited = await eventsService.isUserInvitedToEvent(uid, id);
+  if (!invited) {
+    return sendError(res, 403, "Du är inte inbjuden till det här mötet");
+  }
+
+  await eventsService.setUserRsvp(uid, id, status);
+  return res.status(200).json({ success: true, status });
 }
 
 export async function getUserRsvpHandler(
@@ -337,10 +366,10 @@ export async function getUserRsvpHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
   if (!uid) return;
 
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
 
   const status = await eventsService.getUserRsvp(uid, id);
@@ -352,17 +381,17 @@ export async function getUserFoodHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
   if (!uid) return;
 
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
 
   const ev = await eventsService.getEventById(id);
-  if (!ev) return sendError(res, 404, "Event not found");
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
 
   const invited = await eventsService.isUserInvitedToEvent(uid, id);
-  if (!invited) return sendError(res, 403, "Not invited to this event");
+  if (!invited) return sendError(res, 403, "Du är inte inbjuden till det här mötet");
 
   if (!ev.food) return res.status(200).json({ bookFood: null });
   const bookFood = await eventsService.getUserBookFood(uid, id);
@@ -374,29 +403,35 @@ export async function bookFoodHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const uid = requireAuthMatrikelnummer(req, res, "Unauthorized");
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
   if (!uid) return;
 
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
 
   const parsed = unwrapValidation(res, validateFoodBookingBody(req.body));
   if (!parsed) return;
 
   const ev = await eventsService.getEventById(id);
-  if (!ev) return sendError(res, 404, "Event not found");
-  if (!ev.food) return sendError(res, 400, "Food booking is not enabled for this event");
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
+  if (!ev.food) {
+    return sendError(res, 400, "Matbokning är inte aktiverad för det här mötet");
+  }
 
   if (isAtOrBeforeNowStockholm(ev.startDate)) {
-    return sendError(res, 400, "Cannot book food for past or started events");
+    return sendError(
+      res,
+      400,
+      "Det går inte att boka mat till påbörjade eller avslutade möten",
+    );
   }
 
   const invited = await eventsService.isUserInvitedToEvent(uid, id);
-  if (!invited) return sendError(res, 403, "Not invited to this event");
+  if (!invited) return sendError(res, 403, "Du är inte inbjuden till det här mötet");
 
   const rsvp = await eventsService.getUserRsvp(uid, id);
   if (rsvp !== "going") {
-    return sendError(res, 400, "RSVP must be 'going' to book food");
+    return sendError(res, 400, "Du måste ha osat ja för att kunna boka mat");
   }
 
   const bookFood = await eventsService.setUserBookFood(uid, id, parsed.bookFood);
@@ -408,11 +443,11 @@ export async function listEventAttendancesHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
 
   const ev = await eventsService.getEventById(id);
-  if (!ev) return sendError(res, 404, "Event not found");
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
 
   const attendances = await eventsService.listEventAttendances(id);
   return res.status(200).json({ attendances });
@@ -423,13 +458,13 @@ export async function patchEventAttendanceHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const id = parseNumericParam(res, req.params.id, "Invalid id");
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
-  const uid = parseNumericParam(res, req.params.uid, "Invalid uid");
+  const uid = parseNumericParam(res, req.params.uid, "Ogiltigt användar-id");
   if (uid === null) return;
 
   const ev = await eventsService.getEventById(id);
-  if (!ev) return sendError(res, 404, "Event not found");
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
 
   const parsed = unwrapValidation(res, validatePatchAttendanceBody(req.body));
   if (!parsed) return;

@@ -1,16 +1,18 @@
-import type { Response } from "express";
+import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import { membershipRepo } from "../repositories";
 import { sendError } from "../utils/response";
+import { requireAuthMatrikelnummer } from "./helpers/request";
 
 export async function getMyMembershipsHandler(
   req: AuthenticatedRequest,
   res: Response,
+  next: NextFunction,
 ) {
-  const uid = req.user?.matrikelnummer;
-  if (!uid) return sendError(res, 401, "Unauthorized");
-
   try {
+    const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
+    if (!uid) return;
+
     const yearQuery = req.query.year;
     let rows: Array<Record<string, unknown>> = [];
     if (
@@ -21,13 +23,13 @@ export async function getMyMembershipsHandler(
       rows = await membershipRepo.findPaymentsForUser(uid);
     } else {
       const year = Number(yearQuery ?? NaN);
-      if (!Number.isFinite(year)) return sendError(res, 400, "Invalid year");
+      if (!Number.isFinite(year)) return sendError(res, 400, "Ogiltigt år");
       rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
     }
 
     return res.json(rows ?? []);
-  } catch {
-    return sendError(res, 500, "Failed to list membership payments");
+  } catch (err) {
+    return next(err);
   }
 }
 

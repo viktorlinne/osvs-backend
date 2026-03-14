@@ -44,13 +44,13 @@ export async function authMiddleware(
       const decodedForJti = decodedPayload;
       const jti =
         typeof decodedForJti?.jti === "string" ? decodedForJti.jti : undefined;
-      if (jti) {
-        const revoked = await isJtiRevoked(jti);
-        if (revoked) {
-          logger.warn({ msg: "Revoked token used", jti: "[redacted]" });
-          return sendError(res, 401, "Token revoked");
+        if (jti) {
+          const revoked = await isJtiRevoked(jti);
+          if (revoked) {
+            logger.warn({ msg: "Revoked token used", jti: "[redacted]" });
+            return sendError(res, 401, "Sessionen har återkallats");
+          }
         }
-      }
     } catch (revErr) {
       logger.warn({ msg: "Failed to check token revocation", err: revErr });
       // fall through — we don't want to fail auth just because revocation DB check failed
@@ -97,7 +97,7 @@ export async function authMiddleware(
       !Array.isArray(decodedObj.roles)
     ) {
       logger.warn({ msg: "Invalid JWT payload shape", payload: decoded });
-      return sendError(res, 401, "Invalid token payload");
+      return sendError(res, 401, "Ogiltig token");
     }
 
     const matrikelnummer = decodedObj.matrikelnummer as number;
@@ -137,7 +137,7 @@ export async function authMiddleware(
     return next();
   } catch (e) {
     logger.warn({ msg: "JWT verification failed", err: e });
-    return sendError(res, 401, "Invalid token");
+    return sendError(res, 401, "Ogiltig token");
   }
 }
 

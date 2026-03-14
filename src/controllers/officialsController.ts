@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from "express";
+import type { NextFunction, Request, Response } from "express";
 import {
   listOfficials,
   getUserOfficials,
@@ -6,34 +6,34 @@ import {
   setUserOfficials,
 } from "../services/officialsService";
 import { parseNumericIds } from "../validators";
-import { sendError } from "../utils/response";
 import { parseNumericParam } from "./helpers/request";
 
 export async function listOfficialsHandler(
   _req: Request,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction,
 ) {
   try {
     const rows = await listOfficials();
     return res.status(200).json({ officials: rows });
-  } catch {
-    return sendError(res, 500, "Failed to list officials");
+  } catch (err) {
+    return next(err);
   }
 }
 
 export async function setMemberOfficialsHandler(
   req: Request,
   res: Response,
-  _next: NextFunction,
+  next: NextFunction,
 ) {
   try {
     const matrikelnummer = parseNumericParam(
       res,
       req.params.matrikelnummer,
-      "Invalid id",
+      "Ogiltigt användar-id",
     );
     if (matrikelnummer === null) return;
+
     const body = req.body as { officialIds?: unknown };
     const officialIds = parseNumericIds(body?.officialIds);
     await setUserOfficials(matrikelnummer, officialIds);
@@ -42,8 +42,8 @@ export async function setMemberOfficialsHandler(
     return res
       .status(200)
       .json({ success: true, officials: rows, officialHistory: history });
-  } catch {
-    return sendError(res, 500, "Failed to set member officials");
+  } catch (err) {
+    return next(err);
   }
 }
 

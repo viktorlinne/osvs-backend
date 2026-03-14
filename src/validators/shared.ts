@@ -1,9 +1,39 @@
+export type ValidationFieldMap = Record<string, string>;
+
 export type ValidationResult<T> =
   | { ok: true; data: T }
-  | { ok: false; errors: string[] };
+  | {
+      ok: false;
+      errors: string[];
+      message?: string;
+      fields?: ValidationFieldMap;
+    };
 
-export function fail<T>(errors: string | string[]): ValidationResult<T> {
-  return { ok: false, errors: Array.isArray(errors) ? errors : [errors] };
+export function fail<T>(
+  errors: string | string[],
+  options?: {
+    message?: string;
+    fields?: ValidationFieldMap;
+  },
+): ValidationResult<T> {
+  return {
+    ok: false,
+    errors: Array.isArray(errors) ? errors : [errors],
+    message: options?.message,
+    fields: options?.fields,
+  };
+}
+
+export function failFields<T>(
+  fields: ValidationFieldMap,
+  message = "Formuläret innehåller fel",
+): ValidationResult<T> {
+  return {
+    ok: false,
+    errors: Object.values(fields),
+    message,
+    fields,
+  };
 }
 
 export function ok<T>(data: T): ValidationResult<T> {

@@ -8,15 +8,13 @@ import {
 } from "../validators";
 import * as postsService from "../services/postsService";
 import {
-  uploadToStorage,
   getPublicUrl,
-  deleteProfilePicture,
 } from "../utils/fileUpload";
 import { STORAGE_BUCKETS, STORAGE_KEYS, STORAGE_PREFIXES } from "../config/storage";
-import logger from "../utils/logger";
 import { getCached, setCached, delPattern } from "../infra/cache";
 import { sendError } from "../utils/response";
 import { parseNumericParam, unwrapValidation } from "./helpers/request";
+import { uploadImageAndPersist } from "./helpers/storage";
 
 export async function listPostsHandler(
   _req: AuthenticatedRequest,
@@ -44,29 +42,23 @@ export async function listPostsHandler(
     title ? encodeURIComponent(title.toLowerCase()) : "all"
   }`;
 
-  try {
-    const cached = await getCached(cacheKey);
-    if (cached && Array.isArray(cached as unknown[])) {
-      return res.status(200).json({ posts: cached });
-    }
-
-    const rows = await postsService.listPosts(normalizedLodgeIds, title);
-    const withUrls = await Promise.all(
-      rows.map(async (r) => ({
-        id: r.id,
-        title: r.title,
-        pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
-        description: r.description ? String(r.description).slice(0, 200) : "",
-      })),
-    );
-
-    void setCached(cacheKey, withUrls);
-    return res.status(200).json({ posts: withUrls });
-  } catch (err) {
-    const requestId = res.locals.requestId ?? _req.requestId;
-    logger.error({ msg: "Failed to list posts", err, requestId });
-    return sendError(res, 500, "Misslyckades att lista inlagg");
+  const cached = await getCached(cacheKey);
+  if (cached && Array.isArray(cached as unknown[])) {
+    return res.status(200).json({ posts: cached });
   }
+
+  const rows = await postsService.listPosts(normalizedLodgeIds, title);
+  const withUrls = await Promise.all(
+    rows.map(async (r) => ({
+      id: r.id,
+      title: r.title,
+      pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
+      description: r.description ? String(r.description).slice(0, 200) : "",
+    })),
+  );
+
+  void setCached(cacheKey, withUrls);
+  return res.status(200).json({ posts: withUrls });
 }
 
 export async function listPublicumPostsPublicHandler(
@@ -75,29 +67,23 @@ export async function listPublicumPostsPublicHandler(
   _next: NextFunction,
 ) {
   const cacheKey = "posts:publicum";
-  try {
-    const cached = await getCached(cacheKey);
-    if (cached && Array.isArray(cached as unknown[])) {
-      return res.status(200).json({ posts: cached });
-    }
-
-    const rows = await postsService.listPublicumPosts();
-    const dto = await Promise.all(
-      rows.map(async (r) => ({
-        id: r.id,
-        title: r.title,
-        createdAt: r.createdAt,
-        description: r.description,
-        pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
-      })),
-    );
-    void setCached(cacheKey, dto);
-    return res.status(200).json({ posts: dto });
-  } catch (err) {
-    const requestId = res.locals.requestId ?? _req.requestId;
-    logger.error({ msg: "Failed to list publicum posts", err, requestId });
-    return sendError(res, 500, "Misslyckades att lista publicum");
+  const cached = await getCached(cacheKey);
+  if (cached && Array.isArray(cached as unknown[])) {
+    return res.status(200).json({ posts: cached });
   }
+
+  const rows = await postsService.listPublicumPosts();
+  const dto = await Promise.all(
+    rows.map(async (r) => ({
+      id: r.id,
+      title: r.title,
+      createdAt: r.createdAt,
+      description: r.description,
+      pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
+    })),
+  );
+  void setCached(cacheKey, dto);
+  return res.status(200).json({ posts: dto });
 }
 
 export async function getPostHandler(
@@ -120,41 +106,34 @@ export async function createPostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  let pictureKey: string | null = null;
   try {
     const parsed = unwrapValidation(res, validateCreatePostBody(req.body));
     if (!parsed) return;
 
     const { title, description, lodgeIds = [], publicum } = parsed;
-
-    const file = req.file;
-    if (file) {
-      const key = await uploadToStorage(file, {
-        folder: STORAGE_BUCKETS.POSTS,
-        prefix: STORAGE_PREFIXES.POST,
-        size: { width: 800, height: 600 },
+    if (!req.file) {
+      return sendError(res, 400, "Formuläret innehåller fel", {
+        fields: { picture: "Bild är obligatorisk" },
       });
-      if (!key) return sendError(res, 500, "Misslyckades att lagra bilden");
-      pictureKey = key;
     }
 
-    const id = await postsService.createPost(
-      title,
-      description,
-      publicum,
-      pictureKey,
-      lodgeIds,
+    const id = await uploadImageAndPersist(req.file, {
+      folder: STORAGE_BUCKETS.POSTS,
+      prefix: STORAGE_PREFIXES.POST,
+      size: { width: 800, height: 600 },
+    }, async (pictureKey) =>
+      postsService.createPost(
+        title,
+        description,
+        publicum,
+        pictureKey,
+        lodgeIds,
+      ),
     );
+
     void delPattern("posts:*");
     return res.status(201).json({ success: true, id });
   } catch (err) {
-    if (pictureKey) {
-      try {
-        await deleteProfilePicture(pictureKey);
-      } catch {
-        // ignore cleanup failures
-      }
-    }
     throw err;
   }
 }
@@ -164,7 +143,6 @@ export async function updatePostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  let newKey: string | null = null;
   try {
     const postId = parseNumericParam(res, req.params.id, "Ogiltigt inlaggs-ID");
     if (postId === null) return;
@@ -177,14 +155,18 @@ export async function updatePostHandler(
       Object.prototype.hasOwnProperty.call(body, "title") &&
       typeof titleRaw !== "string"
     ) {
-      return sendError(res, 400, "title must be a string");
+      return sendError(res, 400, "Formuläret innehåller fel", {
+        fields: { title: "Ogiltig titel" },
+      });
     }
 
     if (
       Object.prototype.hasOwnProperty.call(body, "description") &&
       typeof descriptionRaw !== "string"
     ) {
-      return sendError(res, 400, "description must be a string");
+      return sendError(res, 400, "Formuläret innehåller fel", {
+        fields: { description: "Ogiltig beskrivning" },
+      });
     }
 
     const title = typeof titleRaw === "string" ? titleRaw : undefined;
@@ -200,46 +182,53 @@ export async function updatePostHandler(
         (body as Record<string, unknown>).publicum,
       );
       if (!parsedPublicum.ok) {
-        return sendError(res, 400, parsedPublicum.errors);
+        return sendError(
+          res,
+          400,
+          parsedPublicum.message ?? parsedPublicum.errors,
+          parsedPublicum.fields ? { fields: parsedPublicum.fields } : undefined,
+        );
       }
       publicum = parsedPublicum.data;
     }
 
     if (!title && !description && !req.file && !hasLodgeInput && !hasPublicumInput) {
-      return sendError(res, 400, "Inget att uppdatera");
+      return sendError(res, 400, "Det finns inga ändringar att spara");
     }
 
     if (req.file) {
-      const key = await uploadToStorage(req.file, {
+      await uploadImageAndPersist(req.file, {
         folder: STORAGE_BUCKETS.POSTS,
         prefix: STORAGE_PREFIXES.POST,
         size: { width: 800, height: 600 },
+      }, async (pictureKey) => {
+        await postsService.updatePostAtomic(
+          postId,
+          title ?? null,
+          description ?? null,
+          pictureKey,
+          publicum,
+          lodgeIds,
+          hasLodgeInput,
+        );
+        return true;
       });
-      if (!key) return sendError(res, 500, "Misslyckades att lagra bilden");
-      newKey = key;
+    } else {
+      await postsService.updatePostAtomic(
+        postId,
+        title ?? null,
+        description ?? null,
+        null,
+        publicum,
+        lodgeIds,
+        hasLodgeInput,
+      );
     }
-
-    await postsService.updatePostAtomic(
-      postId,
-      title ?? null,
-      description ?? null,
-      newKey,
-      publicum,
-      lodgeIds,
-      hasLodgeInput,
-    );
 
     void delPattern("posts:*");
 
     return res.status(200).json({ success: true });
   } catch (err) {
-    if (newKey) {
-      try {
-        await deleteProfilePicture(newKey);
-      } catch {
-        // ignore
-      }
-    }
     throw err;
   }
 }
@@ -249,15 +238,10 @@ export async function deletePostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  try {
-    const postId = parseNumericParam(res, req.params.id, "Ogiltigt inlaggs-ID");
-    if (postId === null) return;
+  const postId = parseNumericParam(res, req.params.id, "Ogiltigt inläggs-ID");
+  if (postId === null) return;
 
-    await postsService.deletePostAtomic(postId);
-    void delPattern("posts:*");
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    logger.error("Misslyckades att radera inlagg", err);
-    return sendError(res, 500, "Misslyckades att radera inlagg");
-  }
+  await postsService.deletePostAtomic(postId);
+  void delPattern("posts:*");
+  return res.status(200).json({ success: true });
 }

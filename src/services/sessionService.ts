@@ -75,36 +75,32 @@ export async function logoutFromRequest(
   req: Request,
   res: Response
 ): Promise<void> {
-  try {
-    const token = getAccessTokenFromReq(req);
-    if (token) {
-      try {
-        const decoded = jwtDecode(token) as {
-          exp?: number;
-          jti?: string;
-        } | null;
-        const exp =
-          decoded && decoded.exp
-            ? new Date(decoded.exp * 1000)
-            : new Date(Date.now() + DEFAULT_TOKEN_FUTURE_MS);
-        const jti =
-          decoded && typeof decoded.jti === "string" ? decoded.jti : undefined;
-        if (jti) await revokeJti(jti, exp);
-      } catch (err) {
-        logger.warn("Failed to revoke jti during logout", err);
-      }
+  const token = getAccessTokenFromReq(req);
+  if (token) {
+    try {
+      const decoded = jwtDecode(token) as {
+        exp?: number;
+        jti?: string;
+      } | null;
+      const exp =
+        decoded && decoded.exp
+          ? new Date(decoded.exp * 1000)
+          : new Date(Date.now() + DEFAULT_TOKEN_FUTURE_MS);
+      const jti =
+        decoded && typeof decoded.jti === "string" ? decoded.jti : undefined;
+      if (jti) await revokeJti(jti, exp);
+    } catch (err) {
+      logger.warn("Failed to revoke jti during logout", err);
+      throw err;
     }
-
-    // revoke refresh token if present (use configured cookie name)
-    const refresh = req.cookies
-      ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
-      : undefined;
-    if (refresh) await revokeRefreshToken(refresh);
-
-    clearAuthCookies(res);
-  } catch (err) {
-    logger.error("logout failed", err);
   }
+
+  const refresh = req.cookies
+    ? (req.cookies as Record<string, string>)[REFRESH_COOKIE]
+    : undefined;
+  if (refresh) await revokeRefreshToken(refresh);
+
+  clearAuthCookies(res);
 }
 
 // small helpers

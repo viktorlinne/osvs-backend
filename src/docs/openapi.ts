@@ -19,6 +19,64 @@ const notFound = { "404": { $ref: "#/components/responses/NotFound" } };
 const conflict = { "409": { $ref: "#/components/responses/Conflict" } };
 const internal = { "500": { $ref: "#/components/responses/InternalServerError" } };
 const rateLimited = { "429": { $ref: "#/components/responses/TooManyRequests" } };
+const pictureUploadBadRequest = {
+  "400": {
+    description: "Invalid picture upload or form validation failure.",
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ErrorResponse" },
+        example: {
+          message: "Formuläret innehåller fel",
+          details: {
+            fields: {
+              picture: "Den uppladdade bilden är ogiltig",
+            },
+          },
+        },
+      },
+    },
+  },
+};
+const fileUploadBadRequest = {
+  "400": {
+    description: "Invalid file upload or form validation failure.",
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ErrorResponse" },
+        example: {
+          message: "Formuläret innehåller fel",
+          details: {
+            fields: {
+              file: "Endast PDF-filer är tillåtna",
+            },
+          },
+        },
+      },
+    },
+  },
+};
+const pictureUploadInternal = {
+  "500": {
+    description: "Picture upload/storage failed.",
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ErrorResponse" },
+        example: { message: "Kunde inte ladda upp bilden" },
+      },
+    },
+  },
+};
+const fileUploadInternal = {
+  "500": {
+    description: "File upload/storage failed.",
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ErrorResponse" },
+        example: { message: "Kunde inte ladda upp filen" },
+      },
+    },
+  },
+};
 const authSessionExample = {
   inactivityTimeoutMs: 900000,
   inactivityExpiresAt: "2026-03-09T13:15:00.000Z",
@@ -82,7 +140,15 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { message: "Validering misslyckades" },
+            example: {
+              message: "Formuläret innehåller fel",
+              details: {
+                fields: {
+                  email: "Ogiltig e-postadress",
+                  zipcode: "Det här fältet är obligatoriskt",
+                },
+              },
+            },
           },
         },
       },
@@ -91,7 +157,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { message: "Obehorig" },
+            example: { message: "Obehörig" },
           },
         },
       },
@@ -100,7 +166,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { message: "Atkomst nekad" },
+            example: { message: "Åtkomst nekad" },
           },
         },
       },
@@ -118,7 +184,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { message: "Konfliktfel" },
+            example: { message: "Konflikt" },
           },
         },
       },
@@ -127,7 +193,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { message: "For manga forfragningar" },
+            example: { message: "För många förfrågningar" },
           },
         },
       },
@@ -136,7 +202,7 @@ export const swaggerSpec = {
         content: {
           "application/json": {
             schema: { $ref: "#/components/schemas/ErrorResponse" },
-            example: { message: "Internt serverfel" },
+            example: { message: "Ett internt serverfel uppstod" },
           },
         },
       },
@@ -147,13 +213,27 @@ export const swaggerSpec = {
         description: "Unified error envelope used by all endpoints.",
         required: ["message"],
         properties: {
-          message: { type: "string", example: "Obehorig" },
+          message: { type: "string", example: "Obehörig" },
+          details: {
+            type: "object",
+            nullable: true,
+            properties: {
+              fields: {
+                type: "object",
+                additionalProperties: { type: "string" },
+                example: {
+                  email: "Ogiltig e-postadress",
+                  zipcode: "Det här fältet är obligatoriskt",
+                },
+              },
+            },
+          },
         },
       },
       MessageResponse: {
         type: "object",
         required: ["message"],
-        properties: { message: { type: "string", example: "Logged out from this device" } },
+        properties: { message: { type: "string", example: "Åtgärden genomfördes" } },
       },
       SessionMetadata: {
         type: "object",
@@ -201,14 +281,27 @@ export const swaggerSpec = {
       HealthResponse: {
         type: "object",
         required: ["status"],
-        properties: { status: { type: "string", example: "ok" } },
+        properties: { status: { type: "string", example: "OK 1760000000000" } },
+      },
+      RoleValue: {
+        type: "string",
+        enum: ["Admin", "Editor", "Member"],
+        example: "Admin",
       },
       Role: {
         type: "object",
         properties: {
           id: { type: "integer", example: 1 },
-          role: { type: "string", example: "Admin" },
+          role: { $ref: "#/components/schemas/RoleValue" },
           name: { type: "string", example: "Admin" },
+        },
+      },
+      LodgeReference: {
+        type: "object",
+        required: ["id", "name"],
+        properties: {
+          id: { type: "integer", example: 1 },
+          name: { type: "string", example: "Stamlogen" },
         },
       },
       PublicUser: {
@@ -232,6 +325,126 @@ export const swaggerSpec = {
           archive: { type: "string", nullable: true },
           createdAt: { type: "string", format: "date-time", nullable: true },
           revokedAt: { type: "string", format: "date-time", nullable: true },
+        },
+      },
+      PublicUserResponse: {
+        type: "object",
+        required: ["user"],
+        properties: {
+          user: { $ref: "#/components/schemas/PublicUser" },
+        },
+      },
+      PublicUserWithRelations: {
+        allOf: [
+          { $ref: "#/components/schemas/PublicUser" },
+          {
+            type: "object",
+            properties: {
+              allergies: {
+                type: "array",
+                items: { $ref: "#/components/schemas/Allergy" },
+              },
+              officials: {
+                type: "array",
+                items: { $ref: "#/components/schemas/Official" },
+              },
+              officialHistory: {
+                type: "array",
+                items: { $ref: "#/components/schemas/OfficialHistory" },
+              },
+            },
+          },
+        ],
+      },
+      PublicUserProfileResponse: {
+        type: "object",
+        required: ["user", "achievements", "allergies", "officials", "officialHistory"],
+        properties: {
+          user: { $ref: "#/components/schemas/PublicUserWithRelations" },
+          achievements: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Achievement" },
+          },
+          allergies: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Allergy" },
+          },
+          officials: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Official" },
+          },
+          officialHistory: {
+            type: "array",
+            items: { $ref: "#/components/schemas/OfficialHistory" },
+          },
+        },
+      },
+      AuthContextResponse: {
+        type: "object",
+        required: [
+          "user",
+          "roles",
+          "achievements",
+          "allergies",
+          "officials",
+          "officialHistory",
+          "session",
+        ],
+        properties: {
+          user: { $ref: "#/components/schemas/PublicUserWithRelations" },
+          roles: {
+            type: "array",
+            items: { $ref: "#/components/schemas/RoleValue" },
+          },
+          achievements: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Achievement" },
+          },
+          allergies: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Allergy" },
+          },
+          officials: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Official" },
+          },
+          officialHistory: {
+            type: "array",
+            items: { $ref: "#/components/schemas/OfficialHistory" },
+          },
+          session: { $ref: "#/components/schemas/SessionMetadata" },
+        },
+      },
+      RoleValuesResponse: {
+        type: "object",
+        required: ["roles"],
+        properties: {
+          roles: {
+            type: "array",
+            items: { $ref: "#/components/schemas/RoleValue" },
+          },
+        },
+      },
+      UserWithRolesResponse: {
+        type: "object",
+        required: ["user", "roles"],
+        properties: {
+          user: { $ref: "#/components/schemas/PublicUser" },
+          roles: {
+            type: "array",
+            items: { $ref: "#/components/schemas/RoleValue" },
+          },
+        },
+      },
+      PictureUploadResponse: {
+        type: "object",
+        required: ["pictureKey", "pictureUrl"],
+        properties: {
+          pictureKey: { type: "string", example: "profiles/abc.webp" },
+          pictureUrl: {
+            type: "string",
+            example: "https://cdn.example/profiles/abc.webp",
+          },
         },
       },
       EventSummary: {
@@ -323,6 +536,10 @@ export const swaggerSpec = {
           publicum: { type: "boolean", nullable: true },
           picture: { type: "string", nullable: true },
           pictureUrl: { type: "string", nullable: true },
+          lodges: {
+            type: "array",
+            items: { $ref: "#/components/schemas/LodgeReference" },
+          },
         },
       },
       Revision: {
@@ -411,7 +628,7 @@ export const swaggerSpec = {
           "city",
           "address",
           "zipcode",
-          "file",
+          "picture",
         ],
         properties: {
           email: { type: "string", format: "email", example: "new.user@example.com" },
@@ -427,7 +644,7 @@ export const swaggerSpec = {
           zipcode: { type: "string", example: "37130" },
           notes: { type: "string", nullable: true },
           lodgeId: { type: "integer", nullable: true, example: 1 },
-          file: { type: "string", format: "binary" },
+          picture: { type: "string", format: "binary" },
         },
       },
       UpdateUserProfileRequest: {
@@ -552,7 +769,7 @@ export const swaggerSpec = {
       },
       CreatePostRequest: {
         type: "object",
-        required: ["title", "description"],
+        required: ["title", "description", "picture"],
         properties: {
           title: { type: "string", example: "News title" },
           description: { type: "string", example: "Post body" },
@@ -569,7 +786,7 @@ export const swaggerSpec = {
               { type: "integer", example: 1 },
             ],
           },
-          file: { type: "string", format: "binary" },
+          picture: { type: "string", format: "binary" },
         },
       },
       UpdatePostRequest: {
@@ -590,7 +807,7 @@ export const swaggerSpec = {
               { type: "integer" },
             ],
           },
-          file: { type: "string", format: "binary" },
+          picture: { type: "string", format: "binary" },
         },
       },
       CreateLodgeRequest: {
@@ -713,25 +930,16 @@ export const swaggerSpec = {
             description: "User created.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    user: { $ref: "#/components/schemas/PublicUser" },
-                    roles: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Role" },
-                    },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/UserWithRolesResponse" },
               },
             },
           },
-          ...badRequest,
+          ...pictureUploadBadRequest,
           ...unauthorized,
           ...forbidden,
           ...conflict,
           ...rateLimited,
-          ...internal,
+          ...pictureUploadInternal,
         },
       },
     },
@@ -853,48 +1061,23 @@ export const swaggerSpec = {
             description: "Current authentication context.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    user: { $ref: "#/components/schemas/PublicUser" },
-                    roles: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Role" },
-                    },
-                    achievements: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Achievement" },
-                    },
-                    allergies: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Allergy" },
-                    },
-                    officials: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Official" },
-                    },
-                    officialHistory: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/OfficialHistory" },
-                    },
-                    session: {
-                      $ref: "#/components/schemas/SessionMetadata",
-                    },
-                  },
-                  example: {
-                    user: {
-                      matrikelnummer: 7,
-                      email: "admin@example.com",
-                      firstname: "Admin",
-                      lastname: "Example",
-                    },
-                    roles: ["Admin"],
-                    achievements: [],
+                schema: { $ref: "#/components/schemas/AuthContextResponse" },
+                example: {
+                  user: {
+                    matrikelnummer: 7,
+                    email: "admin@example.com",
+                    firstname: "Admin",
+                    lastname: "Example",
                     allergies: [],
                     officials: [],
                     officialHistory: [],
-                    session: authSessionExample,
                   },
+                  roles: ["Admin"],
+                  achievements: [],
+                  allergies: [],
+                  officials: [],
+                  officialHistory: [],
+                  session: authSessionExample,
                 },
               },
             },
@@ -919,6 +1102,7 @@ export const swaggerSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/MessageResponse" },
+                example: { message: "Utloggad från den här enheten" },
               },
             },
           },
@@ -940,6 +1124,7 @@ export const swaggerSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/MessageResponse" },
+                example: { message: "Alla sessioner har återkallats" },
               },
             },
           },
@@ -960,10 +1145,7 @@ export const swaggerSpec = {
             description: "Current user profile.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: { user: { $ref: "#/components/schemas/PublicUser" } },
-                },
+                schema: { $ref: "#/components/schemas/PublicUserResponse" },
               },
             },
           },
@@ -991,10 +1173,7 @@ export const swaggerSpec = {
             description: "Updated profile.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: { user: { $ref: "#/components/schemas/PublicUser" } },
-                },
+                schema: { $ref: "#/components/schemas/PublicUserResponse" },
               },
             },
           },
@@ -1040,9 +1219,9 @@ export const swaggerSpec = {
             "multipart/form-data": {
               schema: {
                 type: "object",
-                required: ["file"],
+                required: ["picture"],
                 properties: {
-                  file: { type: "string", format: "binary" },
+                  picture: { type: "string", format: "binary" },
                 },
               },
             },
@@ -1053,19 +1232,13 @@ export const swaggerSpec = {
             description: "Profile picture updated.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    pictureKey: { type: "string", example: "profiles/abc.webp" },
-                    pictureUrl: { type: "string", example: "https://cdn.example/abc.webp" },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/PictureUploadResponse" },
               },
             },
           },
-          ...badRequest,
+          ...pictureUploadBadRequest,
           ...unauthorized,
-          ...internal,
+          ...pictureUploadInternal,
         },
       },
     },
@@ -1192,28 +1365,7 @@ export const swaggerSpec = {
             description: "Target user profile.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    user: { $ref: "#/components/schemas/PublicUser" },
-                    achievements: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Achievement" },
-                    },
-                    allergies: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Allergy" },
-                    },
-                    officials: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Official" },
-                    },
-                    officialHistory: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/OfficialHistory" },
-                    },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/PublicUserProfileResponse" },
               },
             },
           },
@@ -1251,10 +1403,7 @@ export const swaggerSpec = {
             description: "Target user updated.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: { user: { $ref: "#/components/schemas/PublicUser" } },
-                },
+                schema: { $ref: "#/components/schemas/PublicUserResponse" },
               },
             },
           },
@@ -1391,8 +1540,8 @@ export const swaggerSpec = {
             "multipart/form-data": {
               schema: {
                 type: "object",
-                required: ["file"],
-                properties: { file: { type: "string", format: "binary" } },
+                required: ["picture"],
+                properties: { picture: { type: "string", format: "binary" } },
               },
             },
           },
@@ -1402,20 +1551,14 @@ export const swaggerSpec = {
             description: "Profile picture updated.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    pictureKey: { type: "string" },
-                    pictureUrl: { type: "string" },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/PictureUploadResponse" },
               },
             },
           },
-          ...badRequest,
+          ...pictureUploadBadRequest,
           ...unauthorized,
           ...forbidden,
-          ...internal,
+          ...pictureUploadInternal,
         },
       },
     },
@@ -1462,10 +1605,10 @@ export const swaggerSpec = {
               },
             },
           },
-          ...badRequest,
+          ...pictureUploadBadRequest,
           ...unauthorized,
           ...forbidden,
-          ...internal,
+          ...pictureUploadInternal,
         },
       },
       get: {
@@ -1527,22 +1670,14 @@ export const swaggerSpec = {
             description: "Role list.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    roles: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/Role" },
-                    },
-                  },
-                },
+                schema: { $ref: "#/components/schemas/RoleValuesResponse" },
               },
             },
           },
-          ...badRequest,
+          ...pictureUploadBadRequest,
           ...unauthorized,
           ...forbidden,
-          ...internal,
+          ...pictureUploadInternal,
         },
       },
       post: {
@@ -1577,10 +1712,10 @@ export const swaggerSpec = {
               },
             },
           },
-          ...badRequest,
+          ...fileUploadBadRequest,
           ...unauthorized,
           ...forbidden,
-          ...internal,
+          ...fileUploadInternal,
         },
       },
     },
@@ -1656,10 +1791,10 @@ export const swaggerSpec = {
               },
             },
           },
-          ...badRequest,
+          ...fileUploadBadRequest,
           ...unauthorized,
           ...forbidden,
-          ...internal,
+          ...fileUploadInternal,
         },
       },
     },
@@ -1916,7 +2051,7 @@ export const swaggerSpec = {
                   properties: {
                     lodges: {
                       type: "array",
-                      items: { $ref: "#/components/schemas/Lodge" },
+                      items: { $ref: "#/components/schemas/LodgeReference" },
                     },
                   },
                 },
@@ -2336,7 +2471,7 @@ export const swaggerSpec = {
         tags: ["Posts"],
         summary: "Create post",
         description:
-          "Creates new post (Admin/Editor). Accepts multipart form with optional file.",
+          "Creates new post (Admin/Editor). Accepts multipart form with required picture.",
         operationId: "postPosts",
         security: authSecurity,
         requestBody: {

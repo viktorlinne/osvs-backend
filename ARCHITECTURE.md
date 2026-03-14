@@ -15,6 +15,7 @@ Primary request flow:
 - **MySQL** is the source of truth for persisted data.
 
 The application exposes OpenAPI JSON and Swagger UI under `/api/openapi.json` and `/api/docs`.
+The served specification is defined in `src/docs/openapi.ts`.
 
 ---
 
@@ -63,8 +64,11 @@ Location: `src/controllers`
 Responsibilities:
 
 - Parse input (params/body/query).
+- Validate input with `src/validators/*` and controller helpers in `src/controllers/helpers/request.ts`.
 - Call the corresponding service method.
 - Convert service results to HTTP responses (status code + body).
+- Return expected validation/not-found responses directly when needed.
+- Let unexpected/domain failures reach the global error handler as typed errors.
 - Do NOT contain SQL or direct DB access.
 
 Note: There is at least one known inconsistency where a controller calls a repository directly (e.g. payments controller). New changes should avoid reinforcing this and prefer the standard layering.
@@ -133,18 +137,36 @@ Key middleware:
 - Global error handling (`src/middleware/errorHandler.ts`)
 - Logging and request tracking configured in `src/app.ts`
 
-Error responses are currently inconsistent across the codebase. New endpoints should prefer a consistent `{ "message": "..." }` structure and avoid introducing new shapes.
+The shared error envelope is:
+
+```json
+{
+  "message": "Svenskt felmeddelande",
+  "details": {
+    "fields": {
+      "fieldName": "Felmeddelande"
+    }
+  }
+}
+```
+
+Rules:
+
+- `message` is always present.
+- `details.fields` is reserved for validation/form errors.
+- `src/middleware/errorHandler.ts` serializes typed errors from `src/utils/errors.ts`.
+- Multer/upload failures are normalized to field-level `400` errors.
 
 ---
 
 ## Validation
 
-Validation exists but is inconsistent across endpoints.
+Validation is standardized around `ValidationResult<T>` helpers in `src/validators/shared.ts`.
 
-- Validators are present under `src/validators`.
-- Some endpoints do manual checks inside controllers.
-
-Future direction (optional): move toward unified validation middleware (e.g., Zod/Joi/Ajv), but do not introduce framework-level changes unless requested.
+- Validators return either `ok(data)` or a failed result with `message` and optional `fields`.
+- Controllers usually convert validator failures with `unwrapValidation(...)`.
+- Param/auth guard helpers in `src/controllers/helpers/request.ts` handle common early exits.
+- Use `details.fields` when the frontend should render field-level messages inline.
 
 ---
 
@@ -171,22 +193,14 @@ This is per-process and not distributed; keep that in mind when changing cached 
 
 ## Documentation
 
-A complete comprehensive documentation of backend endpoints with examples is available under src/docs.
+A complete documentation of backend endpoints with examples is available under `src/docs`.
+`src/docs/openapi.ts` is the single source of truth for `/api/openapi.json` and `/api/docs`.
 
 ## Known Issues / Risks
 
-- **Build is currently failing** due to TS errors in:
-  - `src/controllers/documentsController.ts`
-  - `src/controllers/revisionsController.ts`
-  - `src/infra/storage/supabase.ts`
-
 - **Migration is destructive** and currently does not enforce strong `_dev/_test` safety.
 
-- **Error response shape is inconsistent** across controllers and middleware.
-
-- **Security footguns** exist:
-  - insecure fallback JWT secret if env missing
-  - refresh token rotation error swallowing risks invalid session state
+- **Some legacy controller paths still bend the standard layering** (for example payments).
 
 - **Data correctness bug** noted:
   - boolean coercion can persist `null` as `0` in at least one path.

@@ -6,6 +6,11 @@ import logger from "./logger";
 import { supabaseStorageAdapter } from "../infra/storage/supabase";
 import type { StorageAdapter } from "../infra/storage/adapter";
 import { PROFILE_PICTURE_MAX_SIZE } from "../config/constants";
+import {
+  StorageUploadError,
+  ValidationError,
+  singleFieldError,
+} from "./errors";
 
 // Only Supabase storage adapter is supported in production.
 // `supabaseStorageAdapter` will throw helpful errors if Supabase isn't configured.
@@ -19,6 +24,50 @@ const memory = multer.memoryStorage();
 // File filter: only allow images
 type UploadedFile = NonNullable<Request["file"]>;
 
+function resolveUploadFieldName(fieldName?: string | null): string {
+  const normalized = typeof fieldName === "string" ? fieldName.trim() : "";
+  return normalized.length > 0 ? normalized : "file";
+}
+
+function isPictureField(fieldName?: string | null): boolean {
+  return resolveUploadFieldName(fieldName) === "picture";
+}
+
+function buildUploadValidationError(
+  fieldName: string | undefined | null,
+  message: string,
+): ValidationError {
+  return new ValidationError(singleFieldError(resolveUploadFieldName(fieldName), message));
+}
+
+export function getMissingUploadMessage(fieldName?: string | null): string {
+  return isPictureField(fieldName) ? "Profilbild är obligatorisk" : "Fil är obligatorisk";
+}
+
+export function getUploadTypeMessage(fieldName?: string | null): string {
+  return isPictureField(fieldName)
+    ? "Endast bildfiler i JPG, PNG, GIF eller WebP-format är tillåtna"
+    : "Endast PDF-filer är tillåtna";
+}
+
+export function getUploadContentMessage(fieldName?: string | null): string {
+  return isPictureField(fieldName)
+    ? "Den uppladdade bilden är ogiltig"
+    : "Den uppladdade filen är ogiltig";
+}
+
+export function getUploadSizeLimitMessage(fieldName?: string | null): string {
+  return isPictureField(fieldName)
+    ? "Bilden får vara högst 5 MB"
+    : "Filen får vara högst 20 MB";
+}
+
+export function getUploadFailureMessage(fieldName?: string | null): string {
+  return isPictureField(fieldName)
+    ? "Kunde inte ladda upp bilden"
+    : "Kunde inte ladda upp filen";
+}
+
 const fileFilter = (
   _req: Request,
   file: UploadedFile,
@@ -28,7 +77,7 @@ const fileFilter = (
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only image files (JPEG, PNG, GIF, WebP) are allowed"));
+    cb(buildUploadValidationError(file.fieldname, getUploadTypeMessage(file.fieldname)));
   }
 };
 
@@ -41,7 +90,7 @@ const documentFileFilter = (
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF files are allowed"));
+    cb(buildUploadValidationError(file.fieldname, getUploadTypeMessage(file.fieldname)));
   }
 };
 
@@ -59,7 +108,7 @@ export const uploadDocumentFile = multer({
   storage: memory,
   fileFilter: documentFileFilter,
   limits: {
-    fileSize: 20 * 1024 * 1024,
+    fileSize: 5 * 1024 * 1024,
   },
 }).single("file");
 
@@ -75,6 +124,7 @@ export type UploadOptions = {
   folder?: string; // e.g. "posts" or "profiles"
   prefix?: string; // e.g. "post_" or "profile_"
   size?: { width: number; height: number };
+  fieldName?: string;
 };
 
 export type RawUploadOptions = {
@@ -82,13 +132,17 @@ export type RawUploadOptions = {
   prefix?: string; // e.g. "document_" or "revision_"
   fallbackExtension?: string; // e.g. ".pdf"
   allowedExtensions?: string[]; // e.g. [".pdf"]
+  fieldName?: string;
 };
 
 export async function uploadToStorage(
   file: Request["file"],
   opts?: UploadOptions
-): Promise<string | null> {
-  if (!file || !file.buffer) return null;
+): Promise<string> {
+  const fieldName = resolveUploadFieldName(file?.fieldname ?? opts?.fieldName);
+  if (!file || !file.buffer) {
+    throw buildUploadValidationError(fieldName, getMissingUploadMessage(fieldName));
+  }
 
   const {
     folder,
@@ -116,7 +170,7 @@ export async function uploadToStorage(
     outBuffer = await img.toBuffer();
   } catch (err) {
     logger.warn("Uploaded file failed image validation/processing:", err);
-    return null;
+    throw buildUploadValidationError(fieldName, getUploadContentMessage(fieldName));
   }
 
   // We always output WebP for optimized, cache-friendly images
@@ -129,7 +183,7 @@ export async function uploadToStorage(
     return res.key;
   } catch (err) {
     logger.error("Failed to upload file to storage:", err);
-    return null;
+    throw new StorageUploadError(getUploadFailureMessage(fieldName));
   }
 }
 
@@ -145,11 +199,16 @@ function sanitizeExtension(raw: string): string {
 export async function uploadRawToStorage(
   file: Request["file"],
   opts: RawUploadOptions
-): Promise<string | null> {
-  if (!file || !file.buffer) return null;
+): Promise<string> {
+  const fieldName = resolveUploadFieldName(file?.fieldname ?? opts.fieldName);
+  if (!file || !file.buffer) {
+    throw buildUploadValidationError(fieldName, getMissingUploadMessage(fieldName));
+  }
 
   const bucket = String(opts.bucket || "").trim();
-  if (!bucket) return null;
+  if (!bucket) {
+    throw new StorageUploadError("Filuppladdning är inte tillgänglig");
+  }
 
   const prefix = opts.prefix ?? "file_";
   const fallbackExtension = sanitizeExtension(opts.fallbackExtension ?? ".bin") || ".bin";
@@ -161,7 +220,7 @@ export async function uploadRawToStorage(
       .map((item) => sanitizeExtension(item))
       .filter((item) => item.length > 0);
     if (allowed.length > 0 && !allowed.includes(extension)) {
-      return null;
+      throw buildUploadValidationError(fieldName, getUploadTypeMessage(fieldName));
     }
   }
 
@@ -175,7 +234,7 @@ export async function uploadRawToStorage(
     return res.key;
   } catch (err) {
     logger.error("Failed to upload raw file to storage:", err);
-    return null;
+    throw new StorageUploadError(getUploadFailureMessage(fieldName));
   }
 }
 
