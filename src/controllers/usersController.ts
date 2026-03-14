@@ -426,9 +426,6 @@ export async function getPublicUserHandler(
       user: {
         ...user,
         pictureUrl,
-        allergies,
-        officials,
-        officialHistory,
       },
       achievements,
       allergies,

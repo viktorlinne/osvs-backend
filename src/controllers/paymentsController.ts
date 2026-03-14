@@ -1,6 +1,6 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import { membershipRepo } from "../repositories";
+import * as paymentsService from "../services";
 import { sendError } from "../utils/response";
 import { requireAuthMatrikelnummer } from "./helpers/request";
 
@@ -14,20 +14,21 @@ export async function getMyMembershipsHandler(
     if (!uid) return;
 
     const yearQuery = req.query.year;
-    let rows: Array<Record<string, unknown>> = [];
+    let payments = [];
+
     if (
       typeof yearQuery === "undefined" ||
       yearQuery === null ||
       String(yearQuery).trim() === ""
     ) {
-      rows = await membershipRepo.findPaymentsForUser(uid);
+      payments = await paymentsService.listMembershipPaymentsForUser(uid);
     } else {
       const year = Number(yearQuery ?? NaN);
       if (!Number.isFinite(year)) return sendError(res, 400, "Ogiltigt år");
-      rows = await membershipRepo.findPaymentsForUsers(year, [uid]);
+      payments = await paymentsService.listMembershipPaymentsForUser(uid, year);
     }
 
-    return res.json(rows ?? []);
+    return res.json({ payments });
   } catch (err) {
     return next(err);
   }

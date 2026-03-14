@@ -219,9 +219,6 @@ export async function me(
     user: {
       ...publicUser,
       pictureUrl,
-      allergies,
-      officials,
-      officialHistory,
     },
     roles,
     achievements,

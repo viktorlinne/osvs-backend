@@ -334,33 +334,11 @@ export const swaggerSpec = {
           user: { $ref: "#/components/schemas/PublicUser" },
         },
       },
-      PublicUserWithRelations: {
-        allOf: [
-          { $ref: "#/components/schemas/PublicUser" },
-          {
-            type: "object",
-            properties: {
-              allergies: {
-                type: "array",
-                items: { $ref: "#/components/schemas/Allergy" },
-              },
-              officials: {
-                type: "array",
-                items: { $ref: "#/components/schemas/Official" },
-              },
-              officialHistory: {
-                type: "array",
-                items: { $ref: "#/components/schemas/OfficialHistory" },
-              },
-            },
-          },
-        ],
-      },
       PublicUserProfileResponse: {
         type: "object",
         required: ["user", "achievements", "allergies", "officials", "officialHistory"],
         properties: {
-          user: { $ref: "#/components/schemas/PublicUserWithRelations" },
+          user: { $ref: "#/components/schemas/PublicUser" },
           achievements: {
             type: "array",
             items: { $ref: "#/components/schemas/Achievement" },
@@ -391,7 +369,7 @@ export const swaggerSpec = {
           "session",
         ],
         properties: {
-          user: { $ref: "#/components/schemas/PublicUserWithRelations" },
+          user: { $ref: "#/components/schemas/PublicUser" },
           roles: {
             type: "array",
             items: { $ref: "#/components/schemas/RoleValue" },
@@ -573,6 +551,16 @@ export const swaggerSpec = {
           status: { type: "string", enum: ["Pending", "Paid"], example: "Pending" },
           createdAt: { type: "string", format: "date-time", nullable: true },
           updatedAt: { type: "string", format: "date-time", nullable: true },
+        },
+      },
+      MembershipPaymentsResponse: {
+        type: "object",
+        required: ["payments"],
+        properties: {
+          payments: {
+            type: "array",
+            items: { $ref: "#/components/schemas/MembershipPayment" },
+          },
         },
       },
       AttendedEventsSummary: {
@@ -1068,9 +1056,6 @@ export const swaggerSpec = {
                     email: "admin@example.com",
                     firstname: "Admin",
                     lastname: "Example",
-                    allergies: [],
-                    officials: [],
-                    officialHistory: [],
                   },
                   roles: ["Admin"],
                   achievements: [],
@@ -1366,6 +1351,25 @@ export const swaggerSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/PublicUserProfileResponse" },
+                example: {
+                  user: {
+                    matrikelnummer: 7,
+                    email: "admin@example.com",
+                    firstname: "Admin",
+                    lastname: "Example",
+                    dateOfBirth: "1900-01-01",
+                    mobile: "0707070707",
+                    city: "Stockholm",
+                    address: "Storgatan 1",
+                    zipcode: "22233",
+                    picture: null,
+                    pictureUrl: null,
+                  },
+                  achievements: [],
+                  allergies: [],
+                  officials: [],
+                  officialHistory: [],
+                },
               },
             },
           },
@@ -2808,10 +2812,7 @@ export const swaggerSpec = {
             description: "Membership payment rows.",
             content: {
               "application/json": {
-                schema: {
-                  type: "array",
-                  items: { $ref: "#/components/schemas/MembershipPayment" },
-                },
+                schema: { $ref: "#/components/schemas/MembershipPaymentsResponse" },
               },
             },
           },

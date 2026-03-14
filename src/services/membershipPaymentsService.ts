@@ -94,7 +94,20 @@ export async function createMembershipPaymentsIfMissingBulk(
   return mapRowsToPayments(rows);
 }
 
+export async function listMembershipPaymentsForUser(
+  uid: number,
+  year?: number,
+): Promise<MembershipPayment[]> {
+  const rows =
+    typeof year === "number" && Number.isFinite(year)
+      ? await membershipRepo.findPaymentsForUsers(year, [uid])
+      : await membershipRepo.findPaymentsForUser(uid);
+
+  return mapRowsToPayments(rows);
+}
+
 export default {
   createMembershipPayment,
   createMembershipPaymentsIfMissingBulk,
+  listMembershipPaymentsForUser,
 };
