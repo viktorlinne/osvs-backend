@@ -15,6 +15,7 @@
   "exclude": [
     "node_modules",
     "dist",
+    "test",
     "scripts",
     "jest.config.ts",
     "prisma.config.ts",
