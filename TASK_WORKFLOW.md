@@ -6,13 +6,13 @@ This document defines how to execute feature work in this backend repo in a pred
 
 - Keep changes aligned with existing architecture.
 - Reduce regressions by enforcing a consistent workflow.
-- Make tasks easy to split between “specialists” (contract / backend / DB / verification).
+- Make tasks easy to split between "specialists" (contract / backend / DB / verification).
 
 ---
 
 ## Standard Workflow (Always Follow)
 
-### Step 0 — Read Context
+### Step 0 - Read Context
 
 Before coding:
 
@@ -31,11 +31,11 @@ Output:
 
 ---
 
-### Step 1 — Contract First (If API Changes)
+### Step 1 - Contract First (If API Changes)
 
 If any endpoint behavior, request, or response changes:
 
-1. Update the OpenAPI source (wherever it’s defined in this repo).
+1. Update the OpenAPI source (wherever it is defined in this repo).
 2. Confirm:
    - method + path
    - auth requirements
@@ -51,11 +51,11 @@ Output:
 
 ---
 
-### Step 2 — Database & Repository Work (If DB Changes)
+### Step 2 - Database and Repository Work (If DB Changes)
 
 If schema or persistence changes are needed:
 
-1. Update SQL-first schema (schema.sql / seed.sql) as appropriate.
+1. Update SQL-first schema (`schema.sql` / `seed.sql`) as appropriate.
 2. Update repository methods (parameterized SQL).
 3. Keep changes localized and consistent with existing patterns.
 4. Only run `npm run migrate` if schema changes.
@@ -73,7 +73,7 @@ Output:
 
 ---
 
-### Step 3 — Service Layer
+### Step 3 - Service Layer
 
 1. Implement business logic in `src/services`.
 2. Keep services focused:
@@ -89,7 +89,7 @@ Output:
 
 ---
 
-### Step 4 — Controller + Route Wiring
+### Step 4 - Controller and Route Wiring
 
 1. Controller:
    - parse inputs
@@ -109,37 +109,49 @@ Output:
 
 ---
 
-### Step 5 — Verification (No Tests Yet)
+### Step 5 - Verification (Tests + Manual Checklist)
 
-Since there is no test suite:
+When backend behavior changes:
 
-- Provide a manual verification checklist:
-  - prerequisite DB state
-  - steps using curl/Postman
-  - expected response payloads
-  - edge cases (unauthorized, invalid input, not found)
-  - field-level validation errors in `details.fields` where relevant
+- Add or update automated backend tests where practical.
+- Prioritize coverage for:
+  - auth / authorization
+  - validation and `details.fields`
+  - shared error-envelope behavior
+  - route/controller/service interactions on the changed path
 
-If asked to add verification:
+Always provide a manual verification checklist:
 
-- Prefer adding a minimal smoke script later rather than introducing a full framework immediately.
+- prerequisite DB state
+- steps using curl/Postman
+- expected response payloads
+- edge cases (unauthorized, invalid input, not found)
+- field-level validation errors in `details.fields` where relevant
+
+If a backend behavior change is not covered by automated tests:
+
+- say so explicitly
+- explain why it was impractical in this phase
 
 Output:
 
+- Automated test coverage summary
 - Manual test checklist + curl examples
 
 ---
 
-### Step 6 — Build Gate (Always)
+### Step 6 - Build Gate (Always)
 
-Before considering work “done”:
+Before considering work "done":
 
+- Run `npm run lint`
 - Run `npm run build`
+- Run `npm run test`
 - Run `npm run migrate` only if schema changes and only with explicit confirmation
 
-If build fails:
+If a verification command fails:
 
-- Fix build errors in impacted files first.
+- Fix the impacted files first.
 - Avoid stacking new features on top of a broken build.
 
 Output:
@@ -149,7 +161,7 @@ Output:
 
 ---
 
-## How to Split Work Into “Specialists”
+## How to Split Work Into "Specialists"
 
 When a request spans multiple areas, split into the following tracks:
 
@@ -159,7 +171,7 @@ When a request spans multiple areas, split into the following tracks:
 
 2. **DB track**
 
-- schema.sql / seed.sql updates
+- `schema.sql` / `seed.sql` updates
 - repository SQL
 
 3. **Backend track**
@@ -168,11 +180,12 @@ When a request spans multiple areas, split into the following tracks:
 
 4. **Verification track**
 
+- automated test updates
 - manual checklist
-- (optional later) smoke script additions
+- optional smoke script additions
 
 Then merge in this order:
-1 → 2 → 3 → 4 → 5 → 6
+1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 ---
 
@@ -196,7 +209,7 @@ BACKEND
 
 VERIFICATION
 
-- manual checklist + curl
+- automated test coverage + manual checklist + curl
 
 COMMANDS
 

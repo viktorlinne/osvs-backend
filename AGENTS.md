@@ -183,26 +183,32 @@ Some controllers bypass the service layer (example: paymentsController).
 
 Avoid repeating this pattern.
 
-# Missing Tooling
+# Tooling Status
 
-The project currently lacks:
+The backend now has:
 
-tests  
-CI pipeline  
+- a minimal Jest + Supertest integration test suite
+- a CI workflow that runs lint, build, and test
+
+The backend still lacks:
+
 unified validation framework  
 versioned migrations
 
 Do NOT introduce major infrastructure changes unless explicitly requested.
 
-Small improvements are acceptable (example: smoke tests).
-
 # Command Checks
 
 Before finishing a task always run:
 
+npm run lint
 npm run build
+npm run test
 
 Run migrations only if schema changes.
+
+When backend behavior changes, add or update backend tests where practical.
+Prioritize auth, authorization, validation, and shared error-envelope behavior.
 
 # Implementation Guidelines
 
