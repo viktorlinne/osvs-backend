@@ -8,12 +8,13 @@ import {
   ACCESS_EXPIRES_MS,
   REFRESH_TOKEN_DEFAULT_DAYS,
 } from "../config/constants";
+import { getJwtSecret } from "../config/env";
 
 export function createAccessToken(
   payload: Record<string, unknown>,
   expiresIn = "15m"
 ) {
-  const secret: Secret = (process.env.JWT_SECRET ?? "dev-secret") as Secret;
+  const secret: Secret = getJwtSecret() as Secret;
   const options: SignOptions = { expiresIn } as SignOptions;
   return jwt.sign(payload as string | JwtPayload, secret, options);
 }

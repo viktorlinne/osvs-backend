@@ -1,3 +1,4 @@
+import "../config/env";
 import pino from "pino";
 import type { Logger, LoggerOptions } from "pino";
 

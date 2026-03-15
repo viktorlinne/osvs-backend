@@ -1,3 +1,4 @@
+import "../../config/env";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { StorageAdapter, StorageUploadResult } from "./adapter";
 import { STORAGE_BUCKETS } from "../../config/storage";

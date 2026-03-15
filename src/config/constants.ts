@@ -1,3 +1,4 @@
+import "./env";
 import { STORAGE_KEYS } from "./storage";
 
 // ENV variables and defaults for authentication configuration

@@ -1,3 +1,4 @@
+import "../config/env";
 import argon2 from "argon2";
 
 const ARGON2_MEMORY_KB = Number(process.env.ARGON2_MEMORY_KB ?? 65536); // 64 MB

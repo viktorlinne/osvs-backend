@@ -1,3 +1,5 @@
+import "./env";
+
 export const STORAGE_BUCKETS = {
   POSTS: process.env.SUPABASE_BUCKET_POSTS || "posts",
   PROFILES: process.env.SUPABASE_BUCKET_PROFILES || "profiles",

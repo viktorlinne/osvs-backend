@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
+import "./config/env";
 import app from "./app";
 import logger from "./utils/logger";
-
-dotenv.config();
 
 async function testDb() {
   try {

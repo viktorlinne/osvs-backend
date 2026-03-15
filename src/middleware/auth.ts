@@ -8,6 +8,7 @@ import { sendError } from "../utils/response";
 import { isJtiRevoked } from "../services/tokenService";
 import { findById } from "../services/userService";
 import { getAccessTokenFromReq } from "../utils/authTokens";
+import { getJwtSecret } from "../config/env";
 
 export async function authMiddleware(
   req: AuthenticatedRequest,
@@ -27,7 +28,7 @@ export async function authMiddleware(
     return sendError(res, 401, "Vänligen logga in");
   }
   try {
-    const secret = process.env.JWT_SECRET ?? "dev-secret";
+    const secret = getJwtSecret();
     const decoded = jwt.verify(token, secret) as unknown;
     const decodedPayload = decoded as Partial<JWTPayload>;
     logger.info(

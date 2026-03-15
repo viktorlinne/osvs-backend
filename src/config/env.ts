@@ -1,0 +1,156 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
+type BrowserOriginConfig = {
+  frontendOrigin: string;
+  trustedOrigins: string[];
+};
+
+type DatabaseConfig = {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+  connectTimeoutMs: number;
+};
+
+let cachedJwtSecret: string | null = null;
+let cachedBrowserOriginConfig: BrowserOriginConfig | null = null;
+let cachedDatabaseConfig: DatabaseConfig | null = null;
+
+function hasExplicitEnv(name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(process.env, name);
+}
+
+function requireNonEmptyEnv(name: string): string {
+  const raw = process.env[name];
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    throw new Error(`Missing required environment variable ${name}`);
+  }
+  return raw.trim();
+}
+
+function requireExplicitEnv(name: string): string {
+  if (!hasExplicitEnv(name)) {
+    throw new Error(
+      `Missing required environment variable ${name}. Set it explicitly even if the value is intentionally blank.`,
+    );
+  }
+  return typeof process.env[name] === "string" ? process.env[name] ?? "" : "";
+}
+
+function parseIntegerEnv(
+  name: string,
+  rawValue: string,
+): number {
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid environment variable ${name}: expected a positive integer`);
+  }
+  return parsed;
+}
+
+function normalizeOrigin(value: string, sourceName: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`Invalid ${sourceName}: value cannot be empty`);
+  }
+
+  const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : /^(localhost|127(?:\.\d{1,3}){3})(:\d+)?$/i.test(trimmed)
+      ? `http://${trimmed}`
+      : `https://${trimmed}`;
+
+  let parsed: globalThis.URL;
+  try {
+    parsed = new globalThis.URL(withProtocol);
+  } catch {
+    throw new Error(
+      `Invalid ${sourceName}: expected an origin like https://example.com or http://localhost:5173`,
+    );
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`Invalid ${sourceName}: only http and https origins are allowed`);
+  }
+
+  return parsed.origin;
+}
+
+function parseTrustedOrigins(): string[] {
+  const frontendOrigin = normalizeOrigin(
+    requireNonEmptyEnv("FRONTEND_URL"),
+    "FRONTEND_URL",
+  );
+  const trustedOrigins = new Set<string>([frontendOrigin]);
+
+  const backendUrl = process.env.BACKEND_URL;
+  if (typeof backendUrl === "string" && backendUrl.trim().length > 0) {
+    trustedOrigins.add(normalizeOrigin(backendUrl, "BACKEND_URL"));
+  }
+
+  const extraOrigins = process.env.CSRF_ALLOWED_ORIGINS;
+  if (typeof extraOrigins === "string" && extraOrigins.trim().length > 0) {
+    extraOrigins
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0)
+      .forEach((origin, index) => {
+        trustedOrigins.add(
+          normalizeOrigin(origin, `CSRF_ALLOWED_ORIGINS[${index}]`),
+        );
+      });
+  }
+
+  return Array.from(trustedOrigins);
+}
+
+export function getJwtSecret(): string {
+  if (cachedJwtSecret !== null) {
+    return cachedJwtSecret;
+  }
+  cachedJwtSecret = requireNonEmptyEnv("JWT_SECRET");
+  return cachedJwtSecret;
+}
+
+export function getBrowserOriginConfig(): BrowserOriginConfig {
+  if (cachedBrowserOriginConfig !== null) {
+    return cachedBrowserOriginConfig;
+  }
+
+  const trustedOrigins = parseTrustedOrigins();
+  cachedBrowserOriginConfig = {
+    frontendOrigin: trustedOrigins[0],
+    trustedOrigins,
+  };
+  return cachedBrowserOriginConfig;
+}
+
+export function getDatabaseConfig(): DatabaseConfig {
+  if (cachedDatabaseConfig !== null) {
+    return cachedDatabaseConfig;
+  }
+
+  cachedDatabaseConfig = {
+    host: requireNonEmptyEnv("DB_HOST"),
+    port: parseIntegerEnv("DB_PORT", process.env.DB_PORT ?? "3306"),
+    user: requireNonEmptyEnv("DB_USER"),
+    password: requireExplicitEnv("DB_PASS"),
+    database: requireNonEmptyEnv("DB_NAME"),
+    connectTimeoutMs: parseIntegerEnv(
+      "DB_CONNECT_TIMEOUT_MS",
+      process.env.DB_CONNECT_TIMEOUT_MS ?? "5000",
+    ),
+  };
+
+  return cachedDatabaseConfig;
+}
+
+export default {
+  getJwtSecret,
+  getBrowserOriginConfig,
+  getDatabaseConfig,
+};
