@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
 import mysql from "mysql2/promise";
-import dotenv from "dotenv";
 import logger from "../utils/logger";
+import { getDatabaseConfig } from "../config/env";
 import {
   computeDeleteOrder,
   diffNamedDefinitions,
@@ -10,8 +10,6 @@ import {
   splitSqlStatements,
   type ForeignKeyEdge,
 } from "./migrateUtils";
-
-dotenv.config();
 
 /**
  * Locate SQL files in either source tree (dev) or compiled dist (prod).
@@ -39,23 +37,25 @@ function qualifyTable(dbName: string, tableName: string): string {
   return `${escapeIdentifier(dbName)}.${escapeIdentifier(tableName)}`;
 }
 
-function resolveDbPassword(): string {
-  const dbPasswordRaw = process.env.DB_PASS ?? "";
-  return dbPasswordRaw !== ""
-    ? dbPasswordRaw
-    : process.env.DB_HOST === "db"
-      ? "root"
-      : "";
-}
-
-function assertSafetyGate(): void {
+function assertSafetyGate(dbName: string): void {
   const nodeEnv = process.env.NODE_ENV ?? "development";
   const allowDataReset = process.env.MIGRATE_ALLOW_DATA_RESET ?? "false";
 
-  if (nodeEnv !== "development" && allowDataReset !== "true") {
+  if (nodeEnv === "production") {
     throw new Error(
-      `Refusing to run migration in NODE_ENV=${nodeEnv}. ` +
-        "Set MIGRATE_ALLOW_DATA_RESET=true to allow ordered full-table data reset.",
+      "Refusing to run migration in NODE_ENV=production. Use a dedicated _dev or _test database instead.",
+    );
+  }
+
+  if (!/_dev$|_test$/i.test(dbName)) {
+    throw new Error(
+      `Refusing to run migration against DB_NAME=${dbName}. Only databases ending in _dev or _test are allowed.`,
+    );
+  }
+
+  if (allowDataReset !== "true") {
+    throw new Error(
+      "Refusing to run migration without MIGRATE_ALLOW_DATA_RESET=true. This command performs a destructive ordered data reset.",
     );
   }
 }
@@ -420,9 +420,10 @@ async function migrate() {
   let conn: mysql.Connection | undefined;
 
   try {
-    assertSafetyGate();
+    const dbConfig = getDatabaseConfig();
+    assertSafetyGate(dbConfig.database);
 
-    const dbName = process.env.DB_NAME ?? "osvs";
+    const dbName = dbConfig.database;
     const schemaSql = loadSqlStatements("schema.sql");
     const seedSql = loadSqlStatements("seed.sql");
 
@@ -432,14 +433,14 @@ async function migrate() {
         schemaPath: schemaSql.path,
         seedPath: seedSql.path,
       },
-      "Running non-destructive migration",
+      "Running destructive ordered-reset migration",
     );
 
     conn = await mysql.createConnection({
-      host: process.env.DB_HOST ?? "localhost",
-      port: Number(process.env.DB_PORT ?? "3306"),
-      user: process.env.DB_USER ?? "root",
-      password: resolveDbPassword(),
+      host: dbConfig.host,
+      port: dbConfig.port,
+      user: dbConfig.user,
+      password: dbConfig.password,
     });
 
     await ensureDatabaseSelected(conn, dbName);

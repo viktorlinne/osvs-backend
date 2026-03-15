@@ -25,7 +25,7 @@ import {
 export async function listEventsHandler(
   _req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ) {
   const cacheKey = "events:all";
   const cached = await getCached(cacheKey);

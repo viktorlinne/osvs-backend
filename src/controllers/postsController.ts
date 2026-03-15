@@ -106,36 +106,32 @@ export async function createPostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  try {
-    const parsed = unwrapValidation(res, validateCreatePostBody(req.body));
-    if (!parsed) return;
+  const parsed = unwrapValidation(res, validateCreatePostBody(req.body));
+  if (!parsed) return;
 
-    const { title, description, lodgeIds = [], publicum } = parsed;
-    if (!req.file) {
-      return sendError(res, 400, "Formuläret innehåller fel", {
-        fields: { picture: "Bild är obligatorisk" },
-      });
-    }
-
-    const id = await uploadImageAndPersist(req.file, {
-      folder: STORAGE_BUCKETS.POSTS,
-      prefix: STORAGE_PREFIXES.POST,
-      size: { width: 800, height: 600 },
-    }, async (pictureKey) =>
-      postsService.createPost(
-        title,
-        description,
-        publicum,
-        pictureKey,
-        lodgeIds,
-      ),
-    );
-
-    void delPattern("posts:*");
-    return res.status(201).json({ success: true, id });
-  } catch (err) {
-    throw err;
+  const { title, description, lodgeIds = [], publicum } = parsed;
+  if (!req.file) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { picture: "Bild är obligatorisk" },
+    });
   }
+
+  const id = await uploadImageAndPersist(req.file, {
+    folder: STORAGE_BUCKETS.POSTS,
+    prefix: STORAGE_PREFIXES.POST,
+    size: { width: 800, height: 600 },
+  }, async (pictureKey) =>
+    postsService.createPost(
+      title,
+      description,
+      publicum,
+      pictureKey,
+      lodgeIds,
+    ),
+  );
+
+  void delPattern("posts:*");
+  return res.status(201).json({ success: true, id });
 }
 
 export async function updatePostHandler(
@@ -143,94 +139,90 @@ export async function updatePostHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  try {
-    const postId = parseNumericParam(res, req.params.id, "Ogiltigt inlaggs-ID");
-    if (postId === null) return;
+  const postId = parseNumericParam(res, req.params.id, "Ogiltigt inlaggs-ID");
+  if (postId === null) return;
 
-    const body = req.body as UpdatePostBody & Record<string, unknown>;
-    const titleRaw = body.title;
-    const descriptionRaw = body.description;
+  const body = req.body as UpdatePostBody & Record<string, unknown>;
+  const titleRaw = body.title;
+  const descriptionRaw = body.description;
 
-    if (
-      Object.prototype.hasOwnProperty.call(body, "title") &&
-      typeof titleRaw !== "string"
-    ) {
-      return sendError(res, 400, "Formuläret innehåller fel", {
-        fields: { title: "Ogiltig titel" },
-      });
-    }
+  if (
+    Object.prototype.hasOwnProperty.call(body, "title") &&
+    typeof titleRaw !== "string"
+  ) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { title: "Ogiltig titel" },
+    });
+  }
 
-    if (
-      Object.prototype.hasOwnProperty.call(body, "description") &&
-      typeof descriptionRaw !== "string"
-    ) {
-      return sendError(res, 400, "Formuläret innehåller fel", {
-        fields: { description: "Ogiltig beskrivning" },
-      });
-    }
+  if (
+    Object.prototype.hasOwnProperty.call(body, "description") &&
+    typeof descriptionRaw !== "string"
+  ) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { description: "Ogiltig beskrivning" },
+    });
+  }
 
-    const title = typeof titleRaw === "string" ? titleRaw : undefined;
-    const description = typeof descriptionRaw === "string" ? descriptionRaw : undefined;
+  const title = typeof titleRaw === "string" ? titleRaw : undefined;
+  const description = typeof descriptionRaw === "string" ? descriptionRaw : undefined;
 
-    const hasLodgeInput = Object.prototype.hasOwnProperty.call(body, "lodgeIds");
-    const lodgeIds = hasLodgeInput ? parseNumericIds(body.lodgeIds) : undefined;
-    const hasPublicumInput = Object.prototype.hasOwnProperty.call(body, "publicum");
+  const hasLodgeInput = Object.prototype.hasOwnProperty.call(body, "lodgeIds");
+  const lodgeIds = hasLodgeInput ? parseNumericIds(body.lodgeIds) : undefined;
+  const hasPublicumInput = Object.prototype.hasOwnProperty.call(body, "publicum");
 
-    let publicum: boolean | undefined = undefined;
-    if (hasPublicumInput) {
-      const parsedPublicum = parsePublicumBoolean(
-        (body as Record<string, unknown>).publicum,
+  let publicum: boolean | undefined = undefined;
+  if (hasPublicumInput) {
+    const parsedPublicum = parsePublicumBoolean(
+      (body as Record<string, unknown>).publicum,
+    );
+    if (!parsedPublicum.ok) {
+      return sendError(
+        res,
+        400,
+        parsedPublicum.message ?? parsedPublicum.errors,
+        parsedPublicum.fields ? { fields: parsedPublicum.fields } : undefined,
       );
-      if (!parsedPublicum.ok) {
-        return sendError(
-          res,
-          400,
-          parsedPublicum.message ?? parsedPublicum.errors,
-          parsedPublicum.fields ? { fields: parsedPublicum.fields } : undefined,
-        );
-      }
-      publicum = parsedPublicum.data;
     }
+    publicum = parsedPublicum.data;
+  }
 
-    if (!title && !description && !req.file && !hasLodgeInput && !hasPublicumInput) {
-      return sendError(res, 400, "Det finns inga ändringar att spara");
-    }
+  if (!title && !description && !req.file && !hasLodgeInput && !hasPublicumInput) {
+    return sendError(res, 400, "Det finns inga ändringar att spara");
+  }
 
-    if (req.file) {
-      await uploadImageAndPersist(req.file, {
-        folder: STORAGE_BUCKETS.POSTS,
-        prefix: STORAGE_PREFIXES.POST,
-        size: { width: 800, height: 600 },
-      }, async (pictureKey) => {
-        await postsService.updatePostAtomic(
-          postId,
-          title ?? null,
-          description ?? null,
-          pictureKey,
-          publicum,
-          lodgeIds,
-          hasLodgeInput,
-        );
-        return true;
-      });
-    } else {
+  if (req.file) {
+    await uploadImageAndPersist(req.file, {
+      folder: STORAGE_BUCKETS.POSTS,
+      prefix: STORAGE_PREFIXES.POST,
+      size: { width: 800, height: 600 },
+    }, async (pictureKey) => {
       await postsService.updatePostAtomic(
         postId,
         title ?? null,
         description ?? null,
-        null,
+        pictureKey,
         publicum,
         lodgeIds,
         hasLodgeInput,
       );
-    }
-
-    void delPattern("posts:*");
-
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    throw err;
+      return true;
+    });
+  } else {
+    await postsService.updatePostAtomic(
+      postId,
+      title ?? null,
+      description ?? null,
+      null,
+      publicum,
+      lodgeIds,
+      hasLodgeInput,
+    );
   }
+
+  void delPattern("posts:*");
+
+  return res.status(200).json({ success: true });
 }
 
 export async function deletePostHandler(
