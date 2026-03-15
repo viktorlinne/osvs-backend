@@ -16,7 +16,7 @@ export async function authMiddleware(
   next: NextFunction,
 ) {
   // Extract token using centralized helper (checks header, req.cookies, raw cookie)
-  let token: string | undefined = getAccessTokenFromReq(req);
+  const token = getAccessTokenFromReq(req);
 
   // lightweight trace log for incoming auth attempts (do not log token value)
   logger.info(
@@ -25,8 +25,9 @@ export async function authMiddleware(
   );
 
   if (!token) {
-    return sendError(res, 401, "Vänligen logga in");
+    return sendError(res, 401, "VÃ¤nligen logga in");
   }
+
   try {
     const secret = getJwtSecret();
     const decoded = jwt.verify(token, secret) as unknown;
@@ -42,41 +43,37 @@ export async function authMiddleware(
 
     // Check token revocation by JTI (logout)
     try {
-      const decodedForJti = decodedPayload;
       const jti =
-        typeof decodedForJti?.jti === "string" ? decodedForJti.jti : undefined;
-        if (jti) {
-          const revoked = await isJtiRevoked(jti);
-          if (revoked) {
-            logger.warn({ msg: "Revoked token used", jti: "[redacted]" });
-            return sendError(res, 401, "Sessionen har återkallats");
-          }
+        typeof decodedPayload?.jti === "string" ? decodedPayload.jti : undefined;
+      if (jti) {
+        const revoked = await isJtiRevoked(jti);
+        if (revoked) {
+          logger.warn({ msg: "Revoked token used", jti: "[redacted]" });
+          return sendError(res, 401, "Sessionen har Ã¥terkallats");
         }
+      }
     } catch (revErr) {
       logger.warn({ msg: "Failed to check token revocation", err: revErr });
-      // fall through — we don't want to fail auth just because revocation DB check failed
+      // fall through - do not fail auth if revocation storage is temporarily unavailable
     }
 
     // User-level revocation check (revoke all tokens issued before a time)
     try {
-      const decodedObjForUser = decodedPayload;
-      const matrikelnummerCandidate = decodedObjForUser?.matrikelnummer;
+      const matrikelnummerCandidate = decodedPayload?.matrikelnummer;
       const tokenIat =
-        typeof decodedObjForUser?.iat === "number"
-          ? decodedObjForUser.iat
-          : undefined;
+        typeof decodedPayload?.iat === "number" ? decodedPayload.iat : undefined;
       if (typeof matrikelnummerCandidate === "number") {
         const dbUser = await findById(matrikelnummerCandidate);
         if (dbUser && dbUser.revokedAt) {
           const revokedAt = new Date(dbUser.revokedAt as string);
-          if (tokenIat && typeof tokenIat === "number") {
+          if (tokenIat) {
             const tokenIatMs = tokenIat * 1000;
             if (tokenIatMs <= revokedAt.getTime()) {
               logger.warn({
                 msg: "Token issued before user-wide revoke",
                 matrikelnummer: matrikelnummerCandidate,
               });
-              return sendError(res, 401, "Inloggning utgången");
+              return sendError(res, 401, "Inloggning utgÃ¥ngen");
             }
           }
         }
@@ -88,48 +85,42 @@ export async function authMiddleware(
       });
     }
 
-    const decodedObj = decodedPayload;
-
-    // runtime guard for JWT payload shape
     if (
       typeof decoded !== "object" ||
       decoded === null ||
-      typeof decodedObj.matrikelnummer !== "number" ||
-      !Array.isArray(decodedObj.roles)
+      typeof decodedPayload.matrikelnummer !== "number"
     ) {
       logger.warn({ msg: "Invalid JWT payload shape", payload: decoded });
       return sendError(res, 401, "Ogiltig token");
     }
 
-    const matrikelnummer = decodedObj.matrikelnummer as number;
-    const roles = decodedObj.roles.filter(isValidRole);
+    const roles = Array.isArray(decodedPayload.roles)
+      ? decodedPayload.roles.filter(isValidRole)
+      : [];
 
-    // assign typed payload
+    // Roles in the token are treated as request context only. Authorization
+    // middleware resolves current roles from the database when needed.
     const payload: JWTPayload = {
-      matrikelnummer,
-      roles: roles.filter(isValidRole),
-      iat: decodedObj?.iat,
-      exp: decodedObj?.exp,
-      jti: typeof decodedObj?.jti === "string" ? decodedObj.jti : undefined,
+      matrikelnummer: decodedPayload.matrikelnummer,
+      roles,
+      iat: decodedPayload?.iat,
+      exp: decodedPayload?.exp,
+      jti: typeof decodedPayload?.jti === "string" ? decodedPayload.jti : undefined,
     };
 
     req.user = payload;
-    req.userRoles = payload.roles;
-    req.roleCache = { roles: payload.roles, loadedAt: Date.now() };
 
-    // attach user info to request logger (if available)
     if (req.log && typeof req.log.child === "function") {
       req.log = req.log.child({
         matrikelnummer: payload.matrikelnummer,
-        roles: payload.roles,
+        tokenRoles: payload.roles,
       });
     }
 
-    // attach to Sentry scope
     try {
       Sentry.configureScope((scope) => {
         scope.setUser({ id: String(payload.matrikelnummer) });
-        scope.setTag("roles", payload.roles.join(","));
+        scope.setTag("token_roles", payload.roles.join(","));
       });
     } catch {
       // ignore if Sentry not configured
@@ -143,4 +134,3 @@ export async function authMiddleware(
 }
 
 export default authMiddleware;
-

@@ -5,10 +5,47 @@ import { getUserRoles } from "../services/userService";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 
+function sameRoleSet(left: RoleValue[], right: RoleValue[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const rightSet = new Set(right);
+  return left.every((role) => rightSet.has(role));
+}
+
+async function loadAuthoritativeRoles(
+  req: AuthenticatedRequest,
+  matrikelnummer: number,
+): Promise<RoleValue[]> {
+  const cachedRoles = req.roleCache?.roles;
+  if (Array.isArray(cachedRoles)) {
+    return cachedRoles;
+  }
+
+  const roles = await getUserRoles(matrikelnummer);
+  req.userRoles = roles;
+  req.roleCache = { roles, loadedAt: Date.now() };
+
+  const tokenRoles = req.user?.roles ?? [];
+  if (tokenRoles.length > 0 && !sameRoleSet(tokenRoles, roles)) {
+    logger.info(
+      {
+        matrikelnummer,
+        tokenRoles,
+        authoritativeRoles: roles,
+      },
+      "authorize: JWT role claims differ from DB roles",
+    );
+  }
+
+  return roles;
+}
+
 /**
  * requireRole: ensures the authenticated user (req.user) has one of the required
  * roles. This middleware expects `authMiddleware` to have run earlier and will
- * consult the authoritative roles from the DB via `getUserRoles`.
+ * consult the authoritative roles from the DB via a per-request cache.
  */
 export function requireRole(...requiredRoles: RoleValue[]) {
   return async (
@@ -24,14 +61,7 @@ export function requireRole(...requiredRoles: RoleValue[]) {
         { matrikelnummer, requiredRoles },
         "authorize: checking roles for user",
       );
-      const roles =
-        req.userRoles && req.userRoles.length > 0
-          ? req.userRoles
-          : await getUserRoles(matrikelnummer);
-      if (!req.userRoles || req.userRoles.length === 0) {
-        req.userRoles = roles;
-        req.roleCache = { roles, loadedAt: Date.now() };
-      }
+      const roles = await loadAuthoritativeRoles(req, matrikelnummer);
       const has = requiredRoles.some((r) => roles.includes(r));
       logger.info(
         { matrikelnummer, roles, has },
@@ -72,14 +102,7 @@ export function allowSelfOrRoles(...allowedRoles: RoleValue[]) {
       }
 
       // Otherwise check DB-backed roles
-      const roles =
-        req.userRoles && req.userRoles.length > 0
-          ? req.userRoles
-          : await getUserRoles(payload.matrikelnummer);
-      if (!req.userRoles || req.userRoles.length === 0) {
-        req.userRoles = roles;
-        req.roleCache = { roles, loadedAt: Date.now() };
-      }
+      const roles = await loadAuthoritativeRoles(req, payload.matrikelnummer);
       const allowed = allowedRoles.some((r) => roles.includes(r));
       if (allowed) return next();
 
