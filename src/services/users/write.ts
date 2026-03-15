@@ -8,12 +8,17 @@ import {
 } from "../../utils/errors";
 import logger from "../../utils/logger";
 import { revokeAllRefreshTokensForUser } from "../tokenService";
-import * as paymentsService from "../membershipPaymentsService";
+import { allergiesRepo, membershipRepo } from "../../repositories";
 import * as userRepo from "../../repositories/user.repo";
 import { trimUserInput } from "./shared";
 import { findById } from "./read";
 import { toPublicUser } from "../../utils/serialize";
 import { geocodeSwedishAddress } from "./geocoding";
+
+type CreateUserOptions = {
+  lodgeId?: number | null;
+  allergyIds?: number[];
+};
 
 function normalizeAddressPart(value: unknown): string {
   return String(value ?? "")
@@ -240,8 +245,19 @@ export async function setUserRoles(
 
 export async function createUser(
   input: CreateUserInput,
-  lodgeId?: number | null,
+  options?: CreateUserOptions,
 ): Promise<PublicUser | undefined> {
+  const lodgeId = options?.lodgeId;
+  const submittedAllergyIds =
+    options && Array.isArray(options.allergyIds) ? options.allergyIds : [];
+  const allergyIds = Array.from(
+    new Set(
+      submittedAllergyIds
+        .map((id) => Number(id))
+        .filter((id): id is number => Number.isFinite(id) && id > 0)
+        .map((id) => Math.floor(id)),
+    ),
+  );
   const trimmed = trimUserInput(input);
   const {
     email,
@@ -356,6 +372,28 @@ export async function createUser(
       }
     }
 
+    if (allergyIds.length > 0) {
+      const validAllergyIds = new Set(
+        (await allergiesRepo.listAllergies(conn)).map((allergy) => allergy.id),
+      );
+      const invalidAllergyIds = allergyIds.filter((id) => !validAllergyIds.has(id));
+      if (invalidAllergyIds.length > 0) {
+        await conn.rollback();
+        throw new ValidationError({ allergyIds: "Ogiltiga allergier" });
+      }
+      await userRepo.setUserAllergies(insertId, allergyIds, conn);
+    }
+
+    await membershipRepo.insertMembershipPayment(
+      {
+        uid: insertId,
+        amount: 600,
+        year: new Date().getFullYear(),
+      },
+      conn,
+    );
+    await userRepo.setUserAchievement(insertId, 1, undefined, conn);
+
     await conn.commit();
   } catch (err) {
     const dbErr = err as {
@@ -408,27 +446,6 @@ export async function createUser(
   } catch (err) {
     logger.warn({ err, userId: insertId }, "Auto geocoding failed for new user");
   }
-
-  try {
-    await paymentsService.createMembershipPayment({
-      uid: insertId,
-      year: new Date().getFullYear(),
-    });
-  } catch (err) {
-    logger.warn(
-      { err, userId: insertId },
-      "Failed to create membership invoice for new user",
-    );
-  }
-
-  userRepo
-    .setUserAchievement(insertId, 1)
-    .catch((err) =>
-      logger.warn(
-        { err, userId: insertId },
-        "Failed to award default achievement",
-      ),
-    );
 
   const user = await findById(insertId);
   if (!user) return undefined;

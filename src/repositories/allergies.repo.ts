@@ -16,8 +16,12 @@ async function exec(
   return pool.execute(sql, params);
 }
 
-export async function listAllergies(): Promise<Allergy[]> {
-  const [rows] = await exec("SELECT id, title FROM allergies ORDER BY id ASC");
+export async function listAllergies(conn?: PoolConnection): Promise<Allergy[]> {
+  const [rows] = await exec(
+    "SELECT id, title FROM allergies ORDER BY id ASC",
+    [],
+    conn,
+  );
   const arr = Array.isArray(rows) ? (rows as AllergyRow[]) : [];
   return arr
     .map((row) => ({ id: Number(row.id), title: String(row.title ?? "") }))

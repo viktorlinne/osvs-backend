@@ -329,11 +329,12 @@ export async function setUserAchievement(
   userId: number,
   achievementId: number,
   awardedAt?: Date,
+  conn?: PoolConnection,
 ) {
   const when = awardedAt ? awardedAt : new Date();
   const sql =
     "INSERT INTO users_achievements (uid, aid, awardedAt) VALUES (?, ?, ?)";
-  const [result] = await exec(sql, [userId, achievementId, when]);
+  const [result] = await exec(sql, [userId, achievementId, when], conn);
   const header = result as ResultSetHeader;
   return header && typeof header.insertId === "number" ? header.insertId : 0;
 }

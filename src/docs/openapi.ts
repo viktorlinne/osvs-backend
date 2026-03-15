@@ -632,6 +632,11 @@ export const swaggerSpec = {
           zipcode: { type: "string", example: "37130" },
           notes: { type: "string", nullable: true },
           lodgeId: { type: "integer", nullable: true, example: 1 },
+          allergyIds: {
+            type: "array",
+            items: { type: "integer", example: 1 },
+            example: [1, 3],
+          },
           picture: { type: "string", format: "binary" },
         },
       },
@@ -902,7 +907,7 @@ export const swaggerSpec = {
         tags: ["Auth"],
         summary: "Register a new user",
         description:
-          "Creates a user account. Requires authenticated Admin or Editor and profile picture upload.",
+          "Creates a member onboarding record in one request. Requires authenticated Admin or Editor and profile picture upload. The backend persists roles, lodge, allergies, current-year membership payment, and the default achievement before commit.",
         operationId: "registerUser",
         security: authSecurity,
         requestBody: {

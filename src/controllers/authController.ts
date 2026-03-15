@@ -21,9 +21,22 @@ import { getPublicUrl } from "../utils/fileUpload";
 import { toPublicUser } from "../utils/serialize";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { LoginBody, RegisterBody } from "../types";
+import { parseNumericIds } from "../validators";
 import { requireAuthMatrikelnummer } from "./helpers/request";
 import { uploadImageAndPersist } from "./helpers/storage";
 import { HttpError } from "../utils/errors";
+
+function hasProvidedNonEmptyValue(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasProvidedNonEmptyValue(item));
+  }
+
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+
+  return value != null;
+}
 
 export async function login(
   req: RequestWithBody<LoginBody>,
@@ -96,6 +109,7 @@ export async function register(
     zipcode,
     notes,
     lodgeId,
+    allergyIds: rawAllergyIds,
   } = req.body ?? {};
 
   const requiredFields: Array<[string, unknown]> = [
@@ -111,9 +125,7 @@ export async function register(
   ];
 
   const missing = requiredFields
-    .filter(
-      ([, value]) => value === undefined || value === null || value === "",
-    )
+    .filter(([, value]) => value === undefined || value === null || value === "")
     .map(([key]) => key);
   if (missing.length > 0) {
     return sendError(res, 400, "Formuläret innehåller fel", {
@@ -133,6 +145,13 @@ export async function register(
     }
   } else {
     numericLodgeId = undefined;
+  }
+
+  const allergyIds = parseNumericIds(rawAllergyIds);
+  if (hasProvidedNonEmptyValue(rawAllergyIds) && allergyIds.length === 0) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { allergyIds: "Ogiltiga allergier" },
+    });
   }
 
   if (!req.file) {
@@ -168,20 +187,29 @@ export async function register(
           picture: pictureKey,
           notes: (notes as string) ?? null,
         },
-        numericLodgeId,
+        {
+          lodgeId: numericLodgeId,
+          allergyIds,
+        },
       );
+
       if (!createdUser) {
         throw new HttpError(500, "Kunde inte skapa användaren");
       }
+
       return createdUser;
     },
   );
+
   const roles = user.matrikelnummer
     ? await getUserRoles(user.matrikelnummer)
     : [];
-  const publicUser = user;
   const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
-  return res.status(201).json({ user: { ...publicUser, pictureUrl }, roles });
+
+  return res.status(201).json({
+    user: { ...user, pictureUrl },
+    roles,
+  });
 }
 
 export async function me(

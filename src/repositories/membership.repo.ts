@@ -1,4 +1,5 @@
 import pool from "../config/db";
+import type { PoolConnection } from "mysql2/promise";
 import type { ResultSetHeader } from "mysql2";
 
 export interface MembershipPayment {
@@ -22,11 +23,12 @@ export async function insertMembershipPayment(opts: {
   uid: number;
   amount: number;
   year: number;
-}): Promise<number> {
+}, conn?: PoolConnection): Promise<number> {
   const sql = `INSERT INTO membership_payments
   (uid, amount, year, status, createdAt, updatedAt)
   VALUES (?, ?, ?, 'Pending', NOW(), NOW())`;
-  const [res] = await pool.execute<ResultSetHeader>(sql, [
+  const executor = conn ?? pool;
+  const [res] = await executor.execute<ResultSetHeader>(sql, [
     opts.uid,
     opts.amount,
     opts.year,
