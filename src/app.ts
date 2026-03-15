@@ -3,8 +3,8 @@ import { randomUUID } from "crypto";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import compression from "compression";
-import dotenv from "dotenv";
 import pinoHttp from "pino-http";
+import { getBrowserOriginConfig, getJwtSecret } from "./config/env";
 import logger from "./utils/logger";
 import pool from "./config/db";
 import requestId from "./middleware/requestId";
@@ -13,6 +13,7 @@ import scrubRequestBody from "./middleware/scrubRequest";
 import * as Sentry from "@sentry/node";
 import { Integrations } from "@sentry/tracing";
 import errorHandler from "./middleware/errorHandler";
+import originProtection from "./middleware/originProtection";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./docs/openapi";
 
@@ -30,9 +31,9 @@ import allergiesRouter from "./routes/allergies";
 import revisionsRouter from "./routes/revisions";
 import documentsRouter from "./routes/documents";
 
-dotenv.config();
-
 const app = express();
+const browserOriginConfig = getBrowserOriginConfig();
+getJwtSecret();
 
 // When running behind a proxy (Vercel, Railway, etc.) Express should trust
 // the proxy so middleware like express-rate-limit can use the forwarded IP.
@@ -73,17 +74,25 @@ if (process.env.SENTRY_DSN) {
 }
 
 // Configure CORS to allow the frontend origin and support credentials (cookies).
-const rawFrontendUrl = (
-  process.env.FRONTEND_URL || "http://localhost:5173"
-).trim();
-const FRONTEND_ORIGIN =
-  rawFrontendUrl.startsWith("http://") || rawFrontendUrl.startsWith("https://")
-    ? rawFrontendUrl
-    : `https://${rawFrontendUrl}`;
-
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      let normalizedOrigin: string;
+      try {
+        normalizedOrigin = new globalThis.URL(origin).origin;
+      } catch {
+        return callback(null, false);
+      }
+
+      return callback(
+        null,
+        browserOriginConfig.trustedOrigins.includes(normalizedOrigin),
+      );
+    },
     credentials: true,
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
@@ -132,6 +141,9 @@ app.use(
 
 // attach request id middleware
 app.use(requestId);
+
+// Reject state-changing cookie-authenticated requests from untrusted browser origins.
+app.use(originProtection);
 
 // Auth routes
 app.use("/api/auth", authRouter);
