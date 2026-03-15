@@ -154,7 +154,8 @@ CREATE TABLE `posts` (
   `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
   `publicum` tinyint(1) NOT NULL DEFAULT 0,
   `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_posts_publicum_created_at` (`publicum`, `createdAt`, `id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Events
@@ -167,7 +168,8 @@ CREATE TABLE `events` (
   `price` decimal(10, 2) NOT NULL,
   `startDate` datetime NOT NULL,
   `endDate` datetime NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_events_start_date` (`startDate`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Event attendances (RSVP)
@@ -323,6 +325,7 @@ CREATE TABLE `membership_payments` (
   `updatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_membership_uid_year` (`uid`, `year`),
+  KEY `idx_membership_payments_year_uid` (`year`, `uid`),
   KEY `fk_membership_payments_user` (`uid`),
   CONSTRAINT `fk_membership_payments_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
