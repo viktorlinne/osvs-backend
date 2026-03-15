@@ -7,7 +7,7 @@
 -- Roles
 CREATE TABLE `roles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `role` enum('Admin', 'Editor', 'Member') NOT NULL,
+  `role` varchar(32) NOT NULL,
   UNIQUE KEY `uq_roles_role` (`role`),
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -27,59 +27,15 @@ CREATE TABLE `lodges` (
 -- Achievements
 CREATE TABLE `achievements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` enum(
-    'I:a Graden',
-    'II:a Graden',
-    'III:e Graden',
-    'IV:e Graden',
-    'V:e Graden',
-    'VI:e Graden',
-    'VII:e Graden',
-    'VIII:e Graden',
-    'IX:e Graden',
-    'X:e Graden',
-    'Förtjänstmedalj',
-    'Bärare av Stiftarband',
-    'Ordensring',
-    '25 år Veteran',
-    '40 år Veteran',
-    '50 år Veteran'
-  ) NOT NULL,
-  PRIMARY KEY (`id`)
+  `title` varchar(128) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_achievements_title` (`title`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
 -- Officials
 CREATE TABLE `officials` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` enum(
-    'Ordensmästare',
-    'Ordenssekreterare',
-    'Logemästare',
-    'Logekansler',
-    'Logesekreterare',
-    'Logeskattmästare',
-    'Överceremonimästare',
-    'Ceremonimästare',
-    'Orator',
-    'Visdomens Broder',
-    'Instruktionsbroder',
-    'Ledande Broder',
-    'Ljudtekniker',
-    'Intendent',
-    'Biträdande Intendent',
-    'Kanslisekreterare',
-    'Director Musices',
-    'Klubbmästare',
-    'Barmästare',
-    'Biträdande Barmästare',
-    'Chef för köksförvaltningen',
-    'Biträdande Chef för köksförvaltningen',
-    'Webmaster',
-    'Webbredaktör',
-    'Borgfogde',
-    'Förtroendeutskottet',
-    'Kurator'
-  ) NOT NULL,
+  `title` varchar(128) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_officials_title` (`title`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -87,16 +43,7 @@ CREATE TABLE `officials` (
 -- Allergies
 CREATE TABLE `allergies` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `title` enum(
-    'Gluten',
-    'Laktos',
-    'Ägg',
-    'Fisk',
-    'Skaldjur',
-    'Nötter',
-    'Soja',
-    'Sädeskorn'
-  ) NOT NULL,
+  `title` varchar(64) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_allergies_title` (`title`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -185,7 +132,7 @@ CREATE TABLE `events_attendances` (
   CONSTRAINT `fk_events_attendances_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Revisions 
+-- Revisions
 CREATE TABLE `revisions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `lid` int(11) NOT NULL,
@@ -232,7 +179,7 @@ CREATE TABLE `refresh_tokens` (
 -- =====================================================
 -- RELATION / JUNCTION TABLES
 -- =====================================================
--- Users ↔ Roles
+-- Users <-> Roles
 CREATE TABLE `users_roles` (
   `uid` int(11) NOT NULL,
   `rid` int(11) NOT NULL,
@@ -242,7 +189,7 @@ CREATE TABLE `users_roles` (
   CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Users ↔ Lodges
+-- Users <-> Lodges
 CREATE TABLE `users_lodges` (
   `uid` int(11) NOT NULL,
   `lid` int(11) NOT NULL,
@@ -252,7 +199,7 @@ CREATE TABLE `users_lodges` (
   CONSTRAINT `fk_user_lodges_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Users ↔ Achievements (which user has which achievement)
+-- Users <-> Achievements (which user has which achievement)
 CREATE TABLE `users_achievements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
@@ -265,7 +212,7 @@ CREATE TABLE `users_achievements` (
   CONSTRAINT `fk_users_achievements_user` FOREIGN KEY (`uid`) REFERENCES `users` (`matrikelnummer`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Users ↔ Officials (which user has which official position, with appointment and optional unappointment date for history)
+-- Users <-> Officials (which user has which official position, with appointment and optional unappointment date for history)
 CREATE TABLE `users_officials` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` int(11) NOT NULL,
@@ -291,7 +238,7 @@ CREATE TABLE `users_allergies` (
   CONSTRAINT `fk_users_allergies_allergy` FOREIGN KEY (`alid`) REFERENCES `allergies` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Lodges ↔ Events (link events to lodges)
+-- Lodges <-> Events (link events to lodges)
 CREATE TABLE `lodges_events` (
   `lid` int(11) NOT NULL,
   `eid` int(11) NOT NULL,
@@ -301,7 +248,7 @@ CREATE TABLE `lodges_events` (
   CONSTRAINT `fk_lodges_events_event` FOREIGN KEY (`eid`) REFERENCES `events` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 
--- Lodges ↔ Posts (link lodges to posts)
+-- Lodges <-> Posts (link lodges to posts)
 CREATE TABLE `lodges_posts` (
   `lid` int(11) NOT NULL,
   `pid` int(11) NOT NULL,
