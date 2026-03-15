@@ -334,6 +334,31 @@ export const swaggerSpec = {
           user: { $ref: "#/components/schemas/PublicUser" },
         },
       },
+      PaginationMeta: {
+        type: "object",
+        required: ["page", "pageSize", "total", "totalPages"],
+        properties: {
+          page: { type: "integer", minimum: 1, example: 1 },
+          pageSize: { type: "integer", minimum: 1, example: 24 },
+          total: { type: "integer", minimum: 0, example: 128 },
+          totalPages: { type: "integer", minimum: 0, example: 6 },
+        },
+      },
+      PublicUserListResponse: {
+        allOf: [
+          { $ref: "#/components/schemas/PaginationMeta" },
+          {
+            type: "object",
+            required: ["users"],
+            properties: {
+              users: {
+                type: "array",
+                items: { $ref: "#/components/schemas/PublicUser" },
+              },
+            },
+          },
+        ],
+      },
       PublicUserProfileResponse: {
         type: "object",
         required: ["user", "achievements", "allergies", "officials", "officialHistory"],
@@ -1281,20 +1306,46 @@ export const swaggerSpec = {
             },
             example: "true",
           },
+          {
+            in: "query",
+            name: "page",
+            required: false,
+            schema: { type: "integer", minimum: 1, default: 1 },
+            example: 1,
+          },
+          {
+            in: "query",
+            name: "pageSize",
+            required: false,
+            schema: {
+              type: "integer",
+              minimum: 1,
+              maximum: 100,
+              default: 24,
+            },
+            example: 24,
+          },
         ],
         responses: {
           "200": {
-            description: "User list.",
+            description: "Paginated user list.",
             content: {
               "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    users: {
-                      type: "array",
-                      items: { $ref: "#/components/schemas/PublicUser" },
+                schema: { $ref: "#/components/schemas/PublicUserListResponse" },
+                example: {
+                  users: [
+                    {
+                      matrikelnummer: 77,
+                      email: "ny.medlem@example.com",
+                      firstname: "Ny",
+                      lastname: "Medlem",
+                      city: "Karlskrona",
                     },
-                  },
+                  ],
+                  page: 1,
+                  pageSize: 24,
+                  total: 128,
+                  totalPages: 6,
                 },
               },
             },

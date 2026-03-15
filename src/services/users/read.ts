@@ -141,18 +141,52 @@ export async function listRoles(): Promise<Role[]> {
     .filter((r) => Number.isFinite(r.id)) as Role[];
 }
 
-export async function listPublicUsers(filters?: {
+export type PaginatedPublicUsers = {
+  users: PublicUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export async function listPublicUsers(options?: {
   name?: string;
   achievementId?: number;
   lodgeId?: number;
   officialId?: number;
   accommodationAvailable?: boolean;
-}) {
-  const rows = await userRepo.listUsers(filters);
-  return rows
+  page: number;
+  pageSize: number;
+}): Promise<PaginatedPublicUsers> {
+  const page = Number.isFinite(Number(options?.page))
+    ? Math.max(1, Math.floor(Number(options?.page)))
+    : 1;
+  const pageSize = Number.isFinite(Number(options?.pageSize))
+    ? Math.max(1, Math.floor(Number(options?.pageSize)))
+    : 24;
+
+  const { rows, total } = await userRepo.listUsers(
+    {
+      name: options?.name,
+      achievementId: options?.achievementId,
+      lodgeId: options?.lodgeId,
+      officialId: options?.officialId,
+      accommodationAvailable: options?.accommodationAvailable,
+    },
+    { page, pageSize },
+  );
+  const users = rows
     .filter(isValidUserRecord)
     .map((r) => toPublicUser(r))
     .filter(Boolean) as PublicUser[];
+
+  return {
+    users,
+    total,
+    page,
+    pageSize,
+    totalPages: total > 0 ? Math.ceil(total / pageSize) : 0,
+  };
 }
 
 export async function listUsersMapPins(): Promise<UserMapPin[]> {

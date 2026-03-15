@@ -46,6 +46,23 @@ import {
 } from "./helpers/request";
 import { uploadImageAndReplace } from "./helpers/storage";
 
+const DEFAULT_USERS_PAGE = 1;
+const DEFAULT_USERS_PAGE_SIZE = 24;
+const MAX_USERS_PAGE_SIZE = 100;
+
+function parsePositiveQueryNumber(
+  value: unknown,
+  fallback: number,
+  max?: number,
+) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+
+  const normalized = Math.floor(parsed);
+  if (normalized < 1) return fallback;
+  return typeof max === "number" ? Math.min(normalized, max) : normalized;
+}
+
 export async function updatePictureHandler(
   req: AuthenticatedRequest & { file?: Request["file"] },
   res: Response,
@@ -304,6 +321,12 @@ export async function listUsersHandler(
     const achievementId = q.achievementId ? Number(q.achievementId) : undefined;
     const lodgeId = q.lodgeId ? Number(q.lodgeId) : undefined;
     const officialId = q.officialId ? Number(q.officialId) : undefined;
+    const page = parsePositiveQueryNumber(q.page, DEFAULT_USERS_PAGE);
+    const pageSize = parsePositiveQueryNumber(
+      q.pageSize,
+      DEFAULT_USERS_PAGE_SIZE,
+      MAX_USERS_PAGE_SIZE,
+    );
     const accommodationAvailable =
       q.accommodationAvailable === true ||
       q.accommodationAvailable === "true" ||
@@ -312,7 +335,7 @@ export async function listUsersHandler(
         ? true
         : undefined;
 
-    const rows = await listPublicUsers({
+    const result = await listPublicUsers({
       name: name || undefined,
       achievementId: Number.isFinite(achievementId)
         ? achievementId
@@ -320,15 +343,23 @@ export async function listUsersHandler(
       lodgeId: Number.isFinite(lodgeId) ? lodgeId : undefined,
       officialId: Number.isFinite(officialId) ? officialId : undefined,
       accommodationAvailable,
+      page,
+      pageSize,
     });
     // Resolve public picture URLs
     const withUrls = await Promise.all(
-      rows.map(async (r) => ({
+      result.users.map(async (r) => ({
         ...r,
         pictureUrl: await getPublicUrl(r.picture ?? PROFILE_PLACEHOLDER),
       })),
     );
-    return res.status(200).json({ users: withUrls });
+    return res.status(200).json({
+      users: withUrls,
+      page: result.page,
+      pageSize: result.pageSize,
+      total: result.total,
+      totalPages: result.totalPages,
+    });
   } catch (err) {
     logger.error("Misslyckades att lista användare", err);
     return next(err);

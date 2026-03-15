@@ -62,6 +62,19 @@ type UserMapPinRow = {
   highestGrade?: unknown;
 };
 
+type ListUsersFilters = {
+  name?: string;
+  achievementId?: number;
+  lodgeId?: number;
+  officialId?: number;
+  accommodationAvailable?: boolean;
+};
+
+type UserListPage = {
+  rows: UserRow[];
+  total: number;
+};
+
 export type UserGeocodeSource = "AUTO" | "MANUAL";
 export type UserGeocodeStatus = "OK" | "FAILED" | "NEEDS_MANUAL";
 
@@ -491,13 +504,7 @@ export async function listRoles() {
     .filter((r) => Number.isFinite(r.id));
 }
 
-export async function listUsers(filters?: {
-  name?: string;
-  achievementId?: number;
-  lodgeId?: number;
-  officialId?: number;
-  accommodationAvailable?: boolean;
-}) {
+function buildListUsersWhere(filters?: ListUsersFilters) {
   const where: string[] = [];
   const params: Array<string | number | null> = [];
 
@@ -543,12 +550,34 @@ export async function listUsers(filters?: {
     where.push("u.accommodationAvailable = 1");
   }
 
-  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
-  const sql = `SELECT u.matrikelnummer, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
-    FROM users u ${whereSql} ORDER BY u.matrikelnummer DESC`;
+  return {
+    whereSql: where.length > 0 ? `WHERE ${where.join(" AND ")}` : "",
+    params,
+  };
+}
 
-  const [rows] = await exec(sql, params);
-  return asRows<UserRow>(rows);
+export async function listUsers(
+  filters: ListUsersFilters | undefined,
+  pagination: { page: number; pageSize: number },
+): Promise<UserListPage> {
+  const { whereSql, params } = buildListUsersWhere(filters);
+  const offset = Math.max(0, (pagination.page - 1) * pagination.pageSize);
+  const selectSql = `SELECT u.matrikelnummer, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
+    FROM users u ${whereSql} ORDER BY u.matrikelnummer DESC LIMIT ? OFFSET ?`;
+  const countSql = `SELECT COUNT(*) AS cnt FROM users u ${whereSql}`;
+
+  const [[rows], [countRows]] = await Promise.all([
+    exec(selectSql, [...params, pagination.pageSize, offset]),
+    exec(countSql, params),
+  ]);
+
+  const totalRows = asRows<CountRow>(countRows);
+  const total = Number((totalRows.length > 0 ? totalRows[0].cnt : 0) ?? 0) || 0;
+
+  return {
+    rows: asRows<UserRow>(rows),
+    total,
+  };
 }
 
 export async function listUsersMapPins() {

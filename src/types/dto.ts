@@ -51,6 +51,8 @@ export type ListUsersQuery = {
   lodgeId?: string | number;
   officialId?: string | number;
   accommodationAvailable?: string | number | boolean;
+  page?: string | number;
+  pageSize?: string | number;
 };
 
 export type ListEventsQuery = {
