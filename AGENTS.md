@@ -1,137 +1,82 @@
 # Backend Agent Rules
 
-This repository is the backend for a full-stack application.
+This repository is the backend for the OSVS application.
 
-Tech stack:
+## Tech Stack
 
 - Node.js
 - Express
 - TypeScript
-- MySQL (mysql2/promise)
-- Database hosted locally using XAMPP
+- MySQL via `mysql2/promise`
+- SQL-first schema
 
-Database migration command:
-npm run migrate
+## Current Architecture
 
-# Architecture Overview
+Primary flow:
 
-The backend follows a layered structure:
+`route -> controller -> service -> repository -> MySQL`
 
-route → controller → service → repository → MySQL
+Keep this layering intact.
 
-Key folders:
+Current key folders:
 
-src/app.ts  
-Central application bootstrap and route mounting.
+- `src/routes`
+- `src/controllers`
+- `src/services`
+- `src/repositories`
+- `src/validators`
+- `src/middleware`
+- `src/db`
+- `src/docs`
 
-src/controllers  
-HTTP controllers that handle request/response logic.
+## Runtime and Security Rules
 
-src/services  
-Business logic layer.
+- Environment variables are validated at startup in `src/config/env.ts`.
+- Never introduce fallback secrets or fallback DB credentials.
+- Authentication uses JWTs for identity.
+- Authorization uses DB-backed roles, not token role claims as the final source
+  of truth.
+- Cookie-authenticated mutating requests are protected by
+  `src/middleware/originProtection.ts`.
 
-src/repositories  
-Database queries using raw SQL with mysql2.
+If you touch auth, authorization, cookies, or origin handling, treat the change
+as security-sensitive and add or update backend tests.
 
-src/config/db.ts  
-MySQL connection pool configuration.
+## Database Rules
 
-src/db/schema.sql  
-Database schema definition.
+Schema lives in:
 
-src/db/migrate.ts  
-Migration + schema sync script (destructive reset).
-
-src/infra  
-Infrastructure utilities like caching and storage adapters.
-
-src/scripts  
-Background tasks and cron jobs.
-
-# Route Structure
-
-Base API prefix: `/api`
-
-Main route groups:
-
-/api/auth  
-register, login, refresh, me, logout, revoke-all
-
-/api/users  
-profile updates, achievements, roles, lodges, map, filtering
-
-/api/events  
-CRUD, RSVP, attendance, food booking
-
-Additional modules:
-
-/api/posts  
-/api/lodges  
-/api/admin  
-/api/payments  
-/api/officials  
-/api/allergies  
-/api/revisions  
-/api/documents  
-/api/achievements
-
-OpenAPI endpoints:
-
-/api/openapi.json  
-/api/docs
-
-# Database Rules
-
-Database uses MySQL via mysql2 connection pool.
-
-Repositories use:
-
-- raw SQL
-- parameterized queries
-- manual transactions
-
-Schema is SQL-first.
+- `src/db/schema.sql`
+- `src/db/seed.sql`
 
 Migration command:
 
+```bash
 npm run migrate
+```
 
 Important:
 
-The migration script performs **destructive reset** and reseeding of tables.
+- the migration script is destructive
+- it performs ordered delete/reset plus schema sync and reseeding
+- it must not be run without explicit confirmation
+- it only allows `_dev` or `_test` databases
+- it also requires `MIGRATE_ALLOW_DATA_RESET=true`
 
-Never run migrations unless:
+Prefer targeted SQL changes over broad schema churn unless the task explicitly
+calls for it.
 
-DB_NAME ends with `_dev` or `_test`.
+## API Contract Rules
 
-Prefer using a test database for verification.
+If endpoint behavior, request payloads, or response payloads change:
 
-# Coding Conventions
+1. update `src/docs/openapi.ts`
+2. keep the shared error envelope stable
+3. keep frontend field errors in `details.fields`
 
-Follow existing architecture.
+Shared error shape:
 
-Always use:
-
-route → controller → service → repository
-
-Controllers should NOT access repositories directly.
-
-Controllers must:
-
-- validate input
-- call services
-- return HTTP responses
-
-Services contain business logic.
-
-Repositories contain only SQL queries.
-
-# Error Handling
-
-Error responses are standardized across the API.
-
-Use this structure for client-facing failures:
-
+```json
 {
   "message": "Svenskt felmeddelande",
   "details": {
@@ -140,80 +85,37 @@ Use this structure for client-facing failures:
     }
   }
 }
+```
 
-Rules:
+Do not introduce new error payload shapes.
 
-- `message` is always present and user-facing.
-- `details.fields` is only for validation/form errors.
-- Use `src/utils/errors.ts` for typed errors and `src/middleware/errorHandler.ts` for final serialization.
-- Controllers may use `sendError` / request helpers for expected early exits, but unexpected/domain failures should flow to the global error handler.
-- Do not introduce new error payload shapes.
+## Testing and Verification
 
-# Security Rules
+Before finishing backend work always run:
 
-Authentication uses JWT tokens.
-
-Never introduce fallback secrets.
-
-Environment variables must be required for security-critical values.
-
-Routes requiring authentication must use the auth middleware.
-
-# Storage
-
-File storage is abstracted through a storage adapter.
-
-Currently implemented using Supabase.
-
-New storage functionality should go through the storage abstraction layer.
-
-# Background Jobs
-
-Background cron jobs run at server start via side-effect imports.
-
-Located in:
-
-src/scripts/cron_runner.ts
-
-Avoid creating additional background tasks unless necessary.
-
-# Known Issues (Do Not Ignore)
-
-Some controllers bypass the service layer (example: paymentsController).
-
-Avoid repeating this pattern.
-
-# Tooling Status
-
-The backend now has:
-
-- a minimal Jest + Supertest integration test suite
-- a CI workflow that runs lint, build, and test
-
-The backend still lacks:
-
-unified validation framework  
-versioned migrations
-
-Do NOT introduce major infrastructure changes unless explicitly requested.
-
-# Command Checks
-
-Before finishing a task always run:
-
+```bash
 npm run lint
 npm run build
 npm run test
+```
 
-Run migrations only if schema changes.
+CI exists in:
 
-When backend behavior changes, add or update backend tests where practical.
-Prioritize auth, authorization, validation, and shared error-envelope behavior.
+- `.github/workflows/ci.yml`
 
-# Implementation Guidelines
+When backend behavior changes, add or update tests where practical.
+Prioritize:
 
-Prefer minimal clean solutions.
+- auth
+- authorization
+- validation
+- shared error envelope behavior
+- schema or migration safety assumptions
 
-Avoid introducing unnecessary frameworks or abstractions.
+## Implementation Guidelines
 
-Follow the existing project structure and conventions.
+- Prefer minimal, local changes.
+- Keep SQL parameterized.
+- Keep controllers free of direct DB access.
+- Avoid adding new frameworks unless explicitly requested.
+- If you see an old layering violation, do not expand it.

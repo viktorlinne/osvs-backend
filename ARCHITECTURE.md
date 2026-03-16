@@ -1,208 +1,177 @@
-# Backend Architecture (osvs-backend)
+# Backend Architecture
 
 ## Overview
 
-This backend is a layered Express + TypeScript application using MySQL for persistence.
+`osvs-backend` is an Express + TypeScript application with MySQL persistence.
 
-Primary request flow:
+Primary flow:
 
-**route → controller → service → repository → MySQL**
+`route -> controller -> service -> repository -> MySQL`
 
-- **Routes** define HTTP endpoints and apply middleware.
-- **Controllers** handle request/response shaping and call services.
-- **Services** contain business logic and orchestration.
-- **Repositories** contain raw SQL access using mysql2/promise.
-- **MySQL** is the source of truth for persisted data.
+This layering is the default and should be preserved.
 
-The application exposes OpenAPI JSON and Swagger UI under `/api/openapi.json` and `/api/docs`.
-The served specification is defined in `src/docs/openapi.ts`.
-
----
-
-## Entry Points & Bootstrapping
+## Entry Points
 
 ### `src/index.ts`
 
-- Starts the server.
-- Side-effect imports start background cron tasks (e.g., token cleanup, anniversary payments) via `src/scripts/cron_runner.ts`.
-- Be cautious when adding new side-effect imports or background jobs—keep startup behavior predictable.
+- loads validated environment config
+- starts the Express server
+- conditionally starts background cron jobs
 
 ### `src/app.ts`
 
-Central Express bootstrap:
+Central application bootstrap:
 
-- CORS, compression, body parsing, cookie parsing.
-- Request-id / logging (pino).
-- Authentication/authorization middleware.
-- Route mounting under `/api`.
-- Global error handler.
+- CORS
+- cookies
+- compression
+- logging
+- trusted-origin protection
+- route mounting
+- OpenAPI docs in non-production
+- global error handling
 
-Route mounting is centralized here.
+## Configuration
 
----
+### `src/config/env.ts`
 
-## Routes
+Runtime config is validated here.
 
-Base prefix: **`/api`**
+Key responsibilities:
 
-Major route groups (each in `src/routes/*`):
+- require `JWT_SECRET`
+- normalize trusted browser origins
+- require explicit DB credentials
 
-- `/api/auth` (register, login, refresh, me, logout, revoke-all)
-- `/api/users` (profile updates/picture, listing/filtering, map, achievements, roles, lodges, location override)
-- `/api/events` (CRUD, upcoming, mine, lodge linking, RSVP, food booking, attendances)
+### `src/config/db.ts`
 
-Other route modules mounted in `app.ts` include:
+- creates the MySQL pool
+- uses validated config from `src/config/env.ts`
 
-- posts, lodges, admin, payments, officials, allergies, revisions, documents, achievements
+## Routing
 
----
+Base prefix: `/api`
+
+Main route groups:
+
+- `/api/auth`
+- `/api/users`
+- `/api/events`
+- `/api/posts`
+- `/api/lodges`
+- `/api/admin`
+- `/api/payments`
+- `/api/achievements`
+- `/api/officials`
+- `/api/allergies`
+- `/api/revisions`
+- `/api/documents`
+
+## Middleware
+
+Important middleware modules:
+
+- `src/middleware/auth.ts`
+- `src/middleware/authorize.ts`
+- `src/middleware/originProtection.ts`
+- `src/middleware/errorHandler.ts`
+
+Current auth model:
+
+- JWTs identify the caller
+- authorization checks load authoritative roles from the DB
+- cookie-authenticated mutating requests require a trusted `Origin` or
+  `Referer`
 
 ## Controllers
 
-Location: `src/controllers`
+Controllers:
 
-Responsibilities:
+- parse input
+- validate input
+- call services
+- map results to HTTP responses
 
-- Parse input (params/body/query).
-- Validate input with `src/validators/*` and controller helpers in `src/controllers/helpers/request.ts`.
-- Call the corresponding service method.
-- Convert service results to HTTP responses (status code + body).
-- Return expected validation/not-found responses directly when needed.
-- Let unexpected/domain failures reach the global error handler as typed errors.
-- Do NOT contain SQL or direct DB access.
-
-Note: There is at least one known inconsistency where a controller calls a repository directly (e.g. payments controller). New changes should avoid reinforcing this and prefer the standard layering.
-
----
+Controllers should not contain SQL or direct repository access.
 
 ## Services
 
-Location: `src/services`
+Services:
 
-Responsibilities:
+- contain business logic
+- coordinate transactions
+- enforce domain rules
+- stay independent from Express request or response objects
 
-- Business logic and orchestration.
-- Permission checks (when not already handled by middleware).
-- Composition of repository calls and transactions.
-- Data transformations (domain-level).
+## Repositories
 
-Services should not assume HTTP concepts (request/response). Keep them transport-agnostic where possible.
+Repositories:
 
----
+- use raw parameterized SQL
+- keep DB access localized
+- optionally accept a transaction connection when needed
 
-## Repositories (Database Layer)
-
-Location: `src/repositories`
-
-- Uses **mysql2/promise** connection pool configured in `src/config/db.ts`.
-- Data access is mostly **raw SQL** with parameterized queries.
-- Manual transaction management is used where needed.
-
-Schema is SQL-first:
+Schema source of truth:
 
 - `src/db/schema.sql`
 - `src/db/seed.sql`
 
-Many-to-many relationships are represented via junction tables (roles, lodges, achievements, officials, allergies, events, payments, etc.).
+## Migrations
 
----
+Migration command:
 
-## Migration / Schema Sync
-
-Command: **`npm run migrate`**
-
-Implementation: `src/db/migrate.ts`
-
-Important behavior:
-
-- Performs schema sync using a **shadow DB** approach.
-- Also performs **ordered data delete/reset** and reseeding steps.
-
-This is destructive by default. Treat it as a reset + schema sync tool, not incremental migrations.
-
-Operational guidance:
-
-- Prefer running against a `_dev` or `_test` schema.
-- Add safety checks before destructive actions where possible.
-
----
-
-## Middleware & Cross-Cutting Concerns
-
-Location: `src/middleware`
-
-Key middleware:
-
-- Authentication (`src/middleware/auth.ts`)
-- Global error handling (`src/middleware/errorHandler.ts`)
-- Logging and request tracking configured in `src/app.ts`
-
-The shared error envelope is:
-
-```json
-{
-  "message": "Svenskt felmeddelande",
-  "details": {
-    "fields": {
-      "fieldName": "Felmeddelande"
-    }
-  }
-}
+```bash
+npm run migrate
 ```
 
-Rules:
+Implementation:
 
-- `message` is always present.
-- `details.fields` is reserved for validation/form errors.
-- `src/middleware/errorHandler.ts` serializes typed errors from `src/utils/errors.ts`.
-- Multer/upload failures are normalized to field-level `400` errors.
+- `src/db/migrate.ts`
 
----
+Current behavior:
 
-## Validation
+- destructive ordered data reset
+- schema sync through a shadow DB
+- reseeding after reset
 
-Validation is standardized around `ValidationResult<T>` helpers in `src/validators/shared.ts`.
+Safety gates:
 
-- Validators return either `ok(data)` or a failed result with `message` and optional `fields`.
-- Controllers usually convert validator failures with `unwrapValidation(...)`.
-- Param/auth guard helpers in `src/controllers/helpers/request.ts` handle common early exits.
-- Use `details.fields` when the frontend should render field-level messages inline.
+- blocked in `NODE_ENV=production`
+- blocked unless `DB_NAME` ends with `_dev` or `_test`
+- blocked unless `MIGRATE_ALLOW_DATA_RESET=true`
 
----
-
-## Storage
-
-File/storage is abstracted through an adapter:
-
-- Upload logic: `src/utils/fileUpload.ts`
-- Adapter implementation: `src/infra/storage/supabase.ts`
-
-Although abstracted, it is currently tied to the Supabase adapter. New storage features should go through the abstraction rather than hardcoding Supabase usage in controllers/services.
-
----
-
-## Caching
-
-In-process caching exists for some list endpoints:
-
-- `src/infra/cache/index.ts` uses an in-memory `Map`.
-
-This is per-process and not distributed; keep that in mind when changing cached endpoints.
-
----
+This is a reset-style developer migration tool, not a versioned production
+migration system.
 
 ## Documentation
 
-A complete documentation of backend endpoints with examples is available under `src/docs`.
-`src/docs/openapi.ts` is the single source of truth for `/api/openapi.json` and `/api/docs`.
+OpenAPI source:
 
-## Known Issues / Risks
+- `src/docs/openapi.ts`
 
-- **Migration is destructive** and currently does not enforce strong `_dev/_test` safety.
+Served in non-production at:
 
-- **Some legacy controller paths still bend the standard layering** (for example payments).
+- `/api/openapi.json`
+- `/api/docs`
 
-- **Data correctness bug** noted:
-  - boolean coercion can persist `null` as `0` in at least one path.
+## Testing and CI
 
-When implementing new features, avoid expanding these risks and prefer small localized fixes when relevant.
+Local gates:
+
+- `npm run lint`
+- `npm run build`
+- `npm run test`
+
+CI workflow:
+
+- `.github/workflows/ci.yml`
+
+Current automated coverage is still small, but it exists and should be extended
+when behavior-sensitive backend changes are made.
+
+## Notable Constraints
+
+- some older paths still bend the ideal layering
+- migrations are destructive and should be treated cautiously
+- cache entries in `src/infra/cache` are in-process only
+- there is still no versioned incremental migration system

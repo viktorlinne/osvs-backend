@@ -1,220 +1,130 @@
-# Backend Task Workflow (Codex / Agent Operating Procedure)
+# Backend Task Workflow
 
-This document defines how to execute feature work in this backend repo in a predictable, low-drift way.
+This document defines the default workflow for feature and maintenance work in
+`osvs-backend`.
 
-## Goals
-
-- Keep changes aligned with existing architecture.
-- Reduce regressions by enforcing a consistent workflow.
-- Make tasks easy to split between "specialists" (contract / backend / DB / verification).
-
----
-
-## Standard Workflow (Always Follow)
-
-### Step 0 - Read Context
+## Step 0 - Read Context
 
 Before coding:
 
-- Identify affected route module(s) in `src/routes/*`.
-- Identify controller/service/repository involved.
-- Identify affected validators / shared error helpers (`src/validators/*`, `src/utils/errors.ts`, `src/middleware/errorHandler.ts`, `src/utils/response.ts`).
-- Confirm whether DB schema needs changes.
-- Check whether OpenAPI needs updates (most endpoint changes do).
+- identify affected routes in `src/routes/*`
+- identify controller, service, and repository layers involved
+- inspect validators and shared error helpers
+- confirm whether the change affects OpenAPI
+- confirm whether the change affects schema, seed data, or migration behavior
 
 Output:
 
-- A short plan with:
-  - files to change
-  - commands to run
-  - risks/unknowns
+- short plan
+- files to change
+- commands to run
+- risks or unknowns
 
----
+## Step 1 - Contract First
 
-### Step 1 - Contract First (If API Changes)
+If request or response behavior changes:
 
-If any endpoint behavior, request, or response changes:
+1. update `src/docs/openapi.ts`
+2. confirm auth requirements
+3. confirm request schema
+4. confirm response schema
+5. preserve the shared error envelope
 
-1. Update the OpenAPI source (wherever it is defined in this repo).
-2. Confirm:
-   - method + path
-   - auth requirements
-   - request schema
-   - response schema + error schema
-   - status codes
-   - Swedish examples for the shared error envelope:
-     `{ message, details?: { fields?: Record<string, string> } }`
+Use this error shape for client-facing failures:
 
-Output:
+```json
+{
+  "message": "Svenskt felmeddelande",
+  "details": {
+    "fields": {
+      "fieldName": "Felmeddelande"
+    }
+  }
+}
+```
 
-- OpenAPI diff summary + example request/response.
+`details.fields` is for validation and form errors only.
 
----
+## Step 2 - DB Track
 
-### Step 2 - Database and Repository Work (If DB Changes)
+If persistence changes are needed:
 
-If schema or persistence changes are needed:
+1. update `src/db/schema.sql`
+2. update `src/db/seed.sql` when lookup data or seeded shape changes
+3. update repositories with parameterized SQL
+4. add schema-focused tests when the change is otherwise easy to regress
 
-1. Update SQL-first schema (`schema.sql` / `seed.sql`) as appropriate.
-2. Update repository methods (parameterized SQL).
-3. Keep changes localized and consistent with existing patterns.
-4. Only run `npm run migrate` if schema changes.
+Migration safety:
 
-Safety:
+- `npm run migrate` is destructive
+- never run it without explicit confirmation
+- only use `_dev` or `_test` databases
+- it also requires `MIGRATE_ALLOW_DATA_RESET=true`
 
-- Treat migrations as destructive resets.
-- Prefer `_dev` or `_test` schemas.
-- Never run destructive operations without explicit confirmation.
+## Step 3 - Service Track
 
-Output:
+- put business logic in `src/services`
+- keep services transport-agnostic
+- orchestrate transactions there when needed
+- throw typed errors rather than raw string errors when behavior matters
 
-- Schema changes summary
-- Repository changes summary
+## Step 4 - Controller and Route Wiring
 
----
+Controllers should:
 
-### Step 3 - Service Layer
+- parse params, body, and query
+- validate with the existing validator style
+- call services
+- return stable success shapes
+- preserve `details.fields` for form validation errors
 
-1. Implement business logic in `src/services`.
-2. Keep services focused:
-   - orchestrate repo calls
-   - perform domain logic checks
-   - avoid Express-specific concerns
-3. Throw typed errors from `src/utils/errors.ts` for user-facing failures.
-4. Do not rely on raw `Error("...")` strings for API behavior unless they are converted centrally.
+Routes should:
 
-Output:
+- mount in the correct module under `src/routes`
+- apply auth and authorization middleware consistently
 
-- Service method signatures and responsibilities.
+## Step 5 - Verification
 
----
+When backend behavior changes, add or update tests where practical.
 
-### Step 4 - Controller and Route Wiring
+Prioritize:
 
-1. Controller:
-   - parse inputs
-   - validate with the existing validator style (`ValidationResult<T>`, `unwrapValidation`, param helpers)
-   - call service
-   - return consistent success response shapes
-   - use `sendError` only for expected early exits
-   - otherwise let `wrapAsync` + `src/middleware/errorHandler.ts` serialize typed errors
-2. Route module:
-   - mount endpoint in the correct `src/routes/*.ts`
-   - apply correct middleware (auth/roles) consistent with the rest of the module
+- auth
+- authorization
+- validation
+- error-envelope behavior
+- changed controller/service boundaries
 
-Output:
+Always provide a manual checklist with:
 
-- Controller behavior summary
-- Route wiring summary (path, middleware, status codes)
+- required DB or auth preconditions
+- success case
+- unauthorized or forbidden case
+- invalid input case
+- not-found case when relevant
 
----
+## Step 6 - Build Gate
 
-### Step 5 - Verification (Tests + Manual Checklist)
+Before considering backend work done:
 
-When backend behavior changes:
+```bash
+npm run lint
+npm run build
+npm run test
+```
 
-- Add or update automated backend tests where practical.
-- Prioritize coverage for:
-  - auth / authorization
-  - validation and `details.fields`
-  - shared error-envelope behavior
-  - route/controller/service interactions on the changed path
+Run `npm run migrate` only when schema changed and only with explicit approval.
 
-Always provide a manual verification checklist:
-
-- prerequisite DB state
-- steps using curl/Postman
-- expected response payloads
-- edge cases (unauthorized, invalid input, not found)
-- field-level validation errors in `details.fields` where relevant
-
-If a backend behavior change is not covered by automated tests:
-
-- say so explicitly
-- explain why it was impractical in this phase
-
-Output:
-
-- Automated test coverage summary
-- Manual test checklist + curl examples
-
----
-
-### Step 6 - Build Gate (Always)
-
-Before considering work "done":
-
-- Run `npm run lint`
-- Run `npm run build`
-- Run `npm run test`
-- Run `npm run migrate` only if schema changes and only with explicit confirmation
-
-If a verification command fails:
-
-- Fix the impacted files first.
-- Avoid stacking new features on top of a broken build.
-
-Output:
-
-- Commands run + results
-- Any follow-ups needed
-
----
-
-## How to Split Work Into "Specialists"
-
-When a request spans multiple areas, split into the following tracks:
-
-1. **Contract track**
-
-- OpenAPI update + examples + status codes
-
-2. **DB track**
-
-- `schema.sql` / `seed.sql` updates
-- repository SQL
-
-3. **Backend track**
-
-- service + controller + route wiring
-
-4. **Verification track**
-
-- automated test updates
-- manual checklist
-- optional smoke script additions
-
-Then merge in this order:
-1 -> 2 -> 3 -> 4 -> 5 -> 6
-
----
-
-## Output Format (Use This Every Time)
-
-PLAN
-
-- bullets
-
-CONTRACT (if relevant)
-
-- endpoints + examples
-
-DB (if relevant)
-
-- schema/repo changes
-
-BACKEND
-
-- services/controllers/routes changes
-
-VERIFICATION
-
-- automated test coverage + manual checklist + curl
-
-COMMANDS
-
-- list of commands to run
-
-RISKS / NOTES
-
-- short bullets
+If any gate fails, fix that first before continuing.
+
+## Output Format
+
+Use this structure:
+
+- `PLAN`
+- `CONTRACT` when relevant
+- `DB` when relevant
+- `BACKEND`
+- `VERIFICATION`
+- `COMMANDS`
+- `RISKS / NOTES`
