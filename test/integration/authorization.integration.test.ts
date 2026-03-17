@@ -34,6 +34,7 @@ import {
   getUserRoles,
 } from "../../src/services/userService";
 import { isJtiRevoked } from "../../src/services/tokenService";
+import { beforeEach, describe, it } from "node:test";
 
 const mockedFindById = findById as jest.MockedFunction<typeof findById>;
 const mockedGetUserRoles = getUserRoles as jest.MockedFunction<typeof getUserRoles>;
@@ -41,13 +42,11 @@ const mockedIsJtiRevoked = isJtiRevoked as jest.MockedFunction<typeof isJtiRevok
 
 function signAccessToken(payload: {
   matrikelnummer: number;
-  roles?: string[];
   jti?: string;
 }) {
   return jwt.sign(
     {
       matrikelnummer: payload.matrikelnummer,
-      roles: payload.roles ?? [],
       jti: payload.jti ?? "test-jti",
     },
     process.env.JWT_SECRET as string,
@@ -82,7 +81,7 @@ beforeEach(() => {
 });
 
 describe("authorization middleware", () => {
-  it("denies a privileged request when the JWT claims Admin but the DB no longer does", async () => {
+  it("denies a privileged request when the DB does not grant Admin", async () => {
     const app = buildAuthorizationApp();
     mockedGetUserRoles.mockResolvedValue(["Member"]);
 
@@ -90,14 +89,14 @@ describe("authorization middleware", () => {
       .get("/admin-only")
       .set(
         "Authorization",
-        `Bearer ${signAccessToken({ matrikelnummer: 12, roles: ["Admin"] })}`,
+        `Bearer ${signAccessToken({ matrikelnummer: 12 })}`,
       );
 
     expect(response.status).toBe(403);
     expect(mockedGetUserRoles).toHaveBeenCalledWith(12);
   });
 
-  it("allows a privileged request when the DB grants Admin even if the token roles are stale", async () => {
+  it("allows a privileged request when the DB grants Admin", async () => {
     const app = buildAuthorizationApp();
     mockedGetUserRoles.mockResolvedValue(["Admin"]);
 
@@ -105,7 +104,7 @@ describe("authorization middleware", () => {
       .get("/admin-only")
       .set(
         "Authorization",
-        `Bearer ${signAccessToken({ matrikelnummer: 27, roles: ["Member"] })}`,
+        `Bearer ${signAccessToken({ matrikelnummer: 27 })}`,
       );
 
     expect(response.status).toBe(200);
@@ -120,7 +119,7 @@ describe("authorization middleware", () => {
       .put("/users/44/location")
       .set(
         "Authorization",
-        `Bearer ${signAccessToken({ matrikelnummer: 44, roles: ["Member"] })}`,
+        `Bearer ${signAccessToken({ matrikelnummer: 44 })}`,
       );
 
     expect(response.status).toBe(200);
@@ -135,7 +134,7 @@ describe("authorization middleware", () => {
       .get("/admin-only")
       .set(
         "Authorization",
-        `Bearer ${signAccessToken({ matrikelnummer: 88, roles: ["Admin"], jti: "revoked-jti" })}`,
+        `Bearer ${signAccessToken({ matrikelnummer: 88, jti: "revoked-jti" })}`,
       );
 
     expect(response.status).toBe(401);

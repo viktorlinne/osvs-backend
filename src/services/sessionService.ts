@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { findByEmail, getUserRoles, findById } from "./userService";
+import { findByEmail, findById } from "./userService";
 import { verifyPassword } from "./authService";
 import {
   createRefreshToken,
@@ -43,11 +43,8 @@ export async function loginWithEmail(
   if (!user || !user.matrikelnummer || !user.passwordHash) return null;
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) return null;
-  const roles = user.matrikelnummer
-    ? await getUserRoles(user.matrikelnummer)
-    : [];
   const jti = cryptoSafeId();
-  const payload = { matrikelnummer: user.matrikelnummer, roles, jti };
+  const payload = { matrikelnummer: user.matrikelnummer, jti };
   const accessToken = createAccessToken(payload);
 
   const refreshToken = generateRefreshToken();
@@ -165,11 +162,8 @@ async function renewSessionFromCookie(
   const user = await findById(stored.uid);
   if (!user) return null;
 
-  const roles = user.matrikelnummer
-    ? await getUserRoles(user.matrikelnummer)
-    : [];
   const jti = cryptoSafeId();
-  const payload = { matrikelnummer: user.matrikelnummer, roles, jti };
+  const payload = { matrikelnummer: user.matrikelnummer, jti };
   const accessToken = createAccessToken(payload);
 
   const newRefresh = generateRefreshToken();

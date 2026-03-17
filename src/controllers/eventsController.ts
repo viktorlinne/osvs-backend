@@ -9,7 +9,7 @@ import {
   normalizeEventDateTimeInput,
 } from "../utils/eventDateTime";
 import * as eventsService from "../services/eventsService";
-import { getCached, setCached, delPattern } from "../infra/cache";
+
 import {
   validateFoodBookingBody,
   validateLinkLodgeBody,
@@ -27,12 +27,6 @@ export async function listEventsHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const cacheKey = "events:all";
-  const cached = await getCached(cacheKey);
-  if (cached && Array.isArray(cached as unknown[])) {
-    return res.status(200).json({ events: cached });
-  }
-
   const rows = await eventsService.listEvents();
   const dto = rows.map((r) => ({
     id: r.id,
@@ -42,7 +36,6 @@ export async function listEventsHandler(
     food: r.food ?? false,
     price: r.price,
   }));
-  void setCached(cacheKey, dto);
   return res.status(200).json({ events: dto });
 }
 
@@ -56,12 +49,6 @@ export async function listUpcomingEventsPublicHandler(
     ? Math.max(1, Math.min(50, Math.floor(rawLimit)))
     : 10;
 
-  const cacheKey = `events:upcoming:${limit}`;
-  const cached = await getCached(cacheKey);
-  if (cached && Array.isArray(cached as unknown[])) {
-    return res.status(200).json({ events: cached });
-  }
-
   const rows = await eventsService.listUpcomingEvents(limit);
   const dto = rows.map((r) => ({
     id: r.id,
@@ -71,7 +58,6 @@ export async function listUpcomingEventsPublicHandler(
     food: r.food ?? false,
     price: r.price,
   }));
-  void setCached(cacheKey, dto);
   return res.status(200).json({ events: dto });
 }
 
@@ -167,7 +153,7 @@ export async function createEventHandler(
     });
   }
 
-  void delPattern("events:*");
+
   return res.status(201).json({ success: true, id });
 }
 
@@ -234,7 +220,7 @@ export async function updateEventHandler(
   }
 
   await eventsService.updateEvent(id, payload);
-  void delPattern("events:*");
+
   return res.status(200).json({ success: true });
 }
 
@@ -246,7 +232,7 @@ export async function deleteEventHandler(
   const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
   await eventsService.deleteEvent(id);
-  void delPattern("events:*");
+
   return res.status(200).json({ success: true });
 }
 
@@ -266,7 +252,7 @@ export async function linkLodgeHandler(
   }
 
   await eventsService.linkLodgeToEvent(id, Number(lodgeId));
-  void delPattern("events:*");
+
   return res.status(200).json({ success: true });
 }
 
@@ -292,7 +278,7 @@ export async function unlinkLodgeHandler(
   }
 
   await eventsService.unlinkLodgeFromEvent(id, lodgeId);
-  void delPattern("events:*");
+
   return res.status(200).json({ success: true });
 }
 

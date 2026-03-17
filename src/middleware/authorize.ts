@@ -5,15 +5,6 @@ import { getUserRoles } from "../services/userService";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 
-function sameRoleSet(left: RoleValue[], right: RoleValue[]): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  const rightSet = new Set(right);
-  return left.every((role) => rightSet.has(role));
-}
-
 async function loadAuthoritativeRoles(
   req: AuthenticatedRequest,
   matrikelnummer: number,
@@ -26,18 +17,6 @@ async function loadAuthoritativeRoles(
   const roles = await getUserRoles(matrikelnummer);
   req.userRoles = roles;
   req.roleCache = { roles, loadedAt: Date.now() };
-
-  const tokenRoles = req.user?.roles ?? [];
-  if (tokenRoles.length > 0 && !sameRoleSet(tokenRoles, roles)) {
-    logger.info(
-      {
-        matrikelnummer,
-        tokenRoles,
-        authoritativeRoles: roles,
-      },
-      "authorize: JWT role claims differ from DB roles",
-    );
-  }
 
   return roles;
 }

@@ -4,7 +4,6 @@ import { isValidRole } from "./domain";
 
 export interface JWTPayload {
   matrikelnummer: number;
-  roles: RoleValue[];
   iat?: number;
   exp?: number;
   jti?: string;

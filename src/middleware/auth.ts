@@ -2,7 +2,6 @@ import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import * as Sentry from "@sentry/node";
 import type { AuthenticatedRequest, JWTPayload } from "../types/auth";
-import { isValidRole } from "../types/auth";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import { isJtiRevoked } from "../services/tokenService";
@@ -94,15 +93,8 @@ export async function authMiddleware(
       return sendError(res, 401, "Ogiltig token");
     }
 
-    const roles = Array.isArray(decodedPayload.roles)
-      ? decodedPayload.roles.filter(isValidRole)
-      : [];
-
-    // Roles in the token are treated as request context only. Authorization
-    // middleware resolves current roles from the database when needed.
     const payload: JWTPayload = {
       matrikelnummer: decodedPayload.matrikelnummer,
-      roles,
       iat: decodedPayload?.iat,
       exp: decodedPayload?.exp,
       jti: typeof decodedPayload?.jti === "string" ? decodedPayload.jti : undefined,
@@ -113,14 +105,12 @@ export async function authMiddleware(
     if (req.log && typeof req.log.child === "function") {
       req.log = req.log.child({
         matrikelnummer: payload.matrikelnummer,
-        tokenRoles: payload.roles,
       });
     }
 
     try {
       Sentry.configureScope((scope) => {
         scope.setUser({ id: String(payload.matrikelnummer) });
-        scope.setTag("token_roles", payload.roles.join(","));
       });
     } catch {
       // ignore if Sentry not configured

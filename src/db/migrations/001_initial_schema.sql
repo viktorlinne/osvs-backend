@@ -1,3 +1,6 @@
+-- Migration 001: Initial schema (baseline)
+-- This is the complete schema as of the migration system introduction.
+
 -- =====================================================
 -- OSVS Fraternity Platform - Database Schema
 -- =====================================================

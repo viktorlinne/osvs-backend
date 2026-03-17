@@ -11,7 +11,7 @@ import {
   getPublicUrl,
 } from "../utils/fileUpload";
 import { STORAGE_BUCKETS, STORAGE_KEYS, STORAGE_PREFIXES } from "../config/storage";
-import { getCached, setCached, delPattern } from "../infra/cache";
+
 import { sendError } from "../utils/response";
 import { parseNumericParam, unwrapValidation } from "./helpers/request";
 import { uploadImageAndPersist } from "./helpers/storage";
@@ -38,15 +38,6 @@ export async function listPostsHandler(
       ? query.title.trim()
       : undefined;
 
-  const cacheKey = `posts:lodges:${normalizedLodgeIds?.join("_") ?? "all"}:title:${
-    title ? encodeURIComponent(title.toLowerCase()) : "all"
-  }`;
-
-  const cached = await getCached(cacheKey);
-  if (cached && Array.isArray(cached as unknown[])) {
-    return res.status(200).json({ posts: cached });
-  }
-
   const rows = await postsService.listPosts(normalizedLodgeIds, title);
   const withUrls = await Promise.all(
     rows.map(async (r) => ({
@@ -57,7 +48,6 @@ export async function listPostsHandler(
     })),
   );
 
-  void setCached(cacheKey, withUrls);
   return res.status(200).json({ posts: withUrls });
 }
 
@@ -66,12 +56,6 @@ export async function listPublicumPostsPublicHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const cacheKey = "posts:publicum";
-  const cached = await getCached(cacheKey);
-  if (cached && Array.isArray(cached as unknown[])) {
-    return res.status(200).json({ posts: cached });
-  }
-
   const rows = await postsService.listPublicumPosts();
   const dto = await Promise.all(
     rows.map(async (r) => ({
@@ -82,7 +66,6 @@ export async function listPublicumPostsPublicHandler(
       pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
     })),
   );
-  void setCached(cacheKey, dto);
   return res.status(200).json({ posts: dto });
 }
 
@@ -130,7 +113,7 @@ export async function createPostHandler(
     ),
   );
 
-  void delPattern("posts:*");
+
   return res.status(201).json({ success: true, id });
 }
 
@@ -220,7 +203,7 @@ export async function updatePostHandler(
     );
   }
 
-  void delPattern("posts:*");
+
 
   return res.status(200).json({ success: true });
 }
@@ -234,6 +217,6 @@ export async function deletePostHandler(
   if (postId === null) return;
 
   await postsService.deletePostAtomic(postId);
-  void delPattern("posts:*");
+
   return res.status(200).json({ success: true });
 }
