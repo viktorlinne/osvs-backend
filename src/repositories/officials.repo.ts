@@ -12,8 +12,8 @@ async function exec(
   params: unknown[] = [],
   conn?: PoolConnection,
 ): Promise<[unknown, unknown]> {
-  if (conn) return conn.execute(sql, params);
-  return pool.execute(sql, params);
+  if (conn) return conn.query(sql, params);
+  return pool.query(sql, params);
 }
 
 export async function listOfficials(): Promise<Official[]> {

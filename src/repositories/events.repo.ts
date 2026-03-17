@@ -40,7 +40,7 @@ function asRows<T>(rows: unknown): T[] {
 }
 
 function getExecutor(conn?: PoolConnection) {
-  return conn ? conn.execute.bind(conn) : pool.execute.bind(pool);
+  return conn ? conn.query.bind(conn) : pool.query.bind(pool);
 }
 
 function deriveFoodFromPrice(price: unknown): number {
@@ -51,7 +51,7 @@ function deriveFoodFromPrice(price: unknown): number {
 export async function listEvents(): Promise<EventRow[]> {
   const sql =
     "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events ORDER BY startDate DESC";
-  const [rows] = await pool.execute(sql);
+  const [rows] = await pool.query(sql);
   return asRows<EventRow>(rows);
 }
 
@@ -70,7 +70,7 @@ export async function listUpcomingEvents(
 }
 
 export async function findEventById(id: number): Promise<EventRow | null> {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE id = ? LIMIT 1",
     [id],
   );
@@ -150,11 +150,11 @@ export async function updateEventRecord(
     { id, fields: sets.length },
     "events.repo: updateEventRecord executing SQL",
   );
-  await pool.execute(sql, params);
+  await pool.query(sql, params);
 }
 
 export async function deleteEvent(id: number) {
-  await pool.execute("DELETE FROM events WHERE id = ?", [id]);
+  await pool.query("DELETE FROM events WHERE id = ?", [id]);
 }
 
 export async function insertLodgeEvent(
@@ -299,12 +299,12 @@ export async function listEventsForUser(userId: number): Promise<EventRow[]> {
     WHERE ul.uid = ?
     ORDER BY e.startDate ASC
   `;
-  const [rows] = await pool.execute(sql, [userId]);
+  const [rows] = await pool.query(sql, [userId]);
   return asRows<EventRow>(rows);
 }
 
 export async function selectLodgesForEvent(eventId: number): Promise<LodgeRow[]> {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT l.id, l.name FROM lodges l JOIN lodges_events le ON le.lid = l.id WHERE le.eid = ? ORDER BY l.name",
     [eventId],
   );
@@ -317,12 +317,12 @@ export async function isUserInvitedToEvent(eventId: number, userId: number) {
     JOIN users_lodges ul ON ul.lid = le.lid
     WHERE le.eid = ? AND ul.uid = ? LIMIT 1
   `;
-  const [rows] = await pool.execute(sql, [eventId, userId]);
+  const [rows] = await pool.query(sql, [eventId, userId]);
   return asRows<EventRow>(rows).length > 0;
 }
 
 export async function getUserRsvpFromDb(userId: number, eventId: number) {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT rsvp FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
     [userId, eventId],
   );
@@ -332,7 +332,7 @@ export async function getUserRsvpFromDb(userId: number, eventId: number) {
 }
 
 export async function getUserBookFoodFromDb(userId: number, eventId: number) {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT bookFood FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
     [userId, eventId],
   );
@@ -342,7 +342,7 @@ export async function getUserBookFoodFromDb(userId: number, eventId: number) {
 }
 
 export async function getEventAttendanceFromDb(userId: number, eventId: number) {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT rsvp, bookFood, attended FROM events_attendances WHERE uid = ? AND eid = ? LIMIT 1",
     [userId, eventId],
   );
@@ -421,7 +421,7 @@ export async function selectEventAttendances(
       ep.status
     ORDER BY u.firstname ASC, u.lastname ASC, invited.uid ASC
   `;
-  const [rows] = await pool.execute(sql, [eventId, eventId, eventId]);
+  const [rows] = await pool.query(sql, [eventId, eventId, eventId]);
   return asRows<EventAttendanceListRow>(rows);
 }
 
@@ -446,7 +446,7 @@ export async function upsertEventPaymentStatus(
 
 // Event payments helpers
 export async function findEventPaymentByUidEid(uid: number, eid: number) {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT * FROM event_payments WHERE uid = ? AND eid = ? LIMIT 1",
     [uid, eid],
   );
@@ -468,9 +468,9 @@ export async function insertEventPayment(opts: {
     opts.amount,
     opts.status ?? "Pending",
   ];
-  const [res] = await pool.execute<ResultSetHeader>(sql, params);
+  const [res] = await pool.query<ResultSetHeader>(sql, params);
   const insertId = res.insertId ?? 0;
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
     [insertId],
   );
@@ -479,7 +479,7 @@ export async function insertEventPayment(opts: {
 }
 
 export async function findEventPaymentById(id: number) {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT * FROM event_payments WHERE id = ? LIMIT 1",
     [id],
   );

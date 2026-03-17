@@ -1,9 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
-import type {
-  UpdateUserProfileBody,
-  ListUsersQuery,
-} from "../types";
+import type { UpdateUserProfileBody, ListUsersQuery } from "../types";
 import {
   validateAddAchievementBody,
   validateSetLodgeBody,
@@ -11,9 +8,7 @@ import {
   validateSetRolesBody,
   validateUpdateUserProfileBody,
 } from "../validators";
-import {
-  getPublicUrl,
-} from "../utils/fileUpload";
+import { getPublicUrl } from "../utils/fileUpload";
 import {
   updatePicture,
   setUserAchievement,
@@ -79,14 +74,18 @@ export async function updatePictureHandler(
       });
     }
 
-    const { storageKey: newKey } = await uploadImageAndReplace(file, {
-      folder: STORAGE_BUCKETS.PROFILES,
-      prefix: STORAGE_PREFIXES.PROFILE,
-      size: { width: 200, height: 200 },
-    }, async (uploadedKey) => {
-      const oldStorageKey = await updatePicture(uid, uploadedKey);
-      return { value: oldStorageKey, oldStorageKey };
-    });
+    const { storageKey: newKey } = await uploadImageAndReplace(
+      file,
+      {
+        folder: STORAGE_BUCKETS.PROFILES,
+        prefix: STORAGE_PREFIXES.PROFILE,
+        size: { width: 200, height: 200 },
+      },
+      async (uploadedKey) => {
+        const oldStorageKey = await updatePicture(uid, uploadedKey);
+        return { value: oldStorageKey, oldStorageKey };
+      },
+    );
 
     const url = await getPublicUrl(newKey);
     return res.json({ pictureKey: newKey, pictureUrl: url });
@@ -118,14 +117,18 @@ export async function updateOtherPictureHandler(
       });
     }
 
-    const { storageKey: newKey } = await uploadImageAndReplace(file, {
-      folder: STORAGE_BUCKETS.PROFILES,
-      prefix: STORAGE_PREFIXES.PROFILE,
-      size: { width: 200, height: 200 },
-    }, async (uploadedKey) => {
-      const oldStorageKey = await updatePicture(targetId, uploadedKey);
-      return { value: oldStorageKey, oldStorageKey };
-    });
+    const { storageKey: newKey } = await uploadImageAndReplace(
+      file,
+      {
+        folder: STORAGE_BUCKETS.PROFILES,
+        prefix: STORAGE_PREFIXES.PROFILE,
+        size: { width: 200, height: 200 },
+      },
+      async (uploadedKey) => {
+        const oldStorageKey = await updatePicture(targetId, uploadedKey);
+        return { value: oldStorageKey, oldStorageKey };
+      },
+    );
 
     const url = await getPublicUrl(newKey);
     return res.json({ pictureKey: newKey, pictureUrl: url });
@@ -159,7 +162,10 @@ export async function updateMeHandler(
     const uid = requireAuthMatrikelnummer(req, res, "Ogiltig session");
     if (!uid) return;
 
-    const payload = unwrapValidation(res, validateUpdateUserProfileBody(req.body));
+    const payload = unwrapValidation(
+      res,
+      validateUpdateUserProfileBody(req.body),
+    );
     if (!payload) return;
 
     await updateUserProfile(uid, payload as UpdateUserProfileBody);
@@ -193,7 +199,10 @@ export async function updateUserHandler(
     );
     if (targetId === null) return;
 
-    const payload = unwrapValidation(res, validateUpdateUserProfileBody(req.body));
+    const payload = unwrapValidation(
+      res,
+      validateUpdateUserProfileBody(req.body),
+    );
     if (!payload) return;
 
     await updateUserProfile(targetId, payload as UpdateUserProfileBody);
@@ -337,9 +346,7 @@ export async function listUsersHandler(
 
     const result = await listPublicUsers({
       name: name || undefined,
-      achievementId: Number.isFinite(achievementId)
-        ? achievementId
-        : undefined,
+      achievementId: Number.isFinite(achievementId) ? achievementId : undefined,
       lodgeId: Number.isFinite(lodgeId) ? lodgeId : undefined,
       officialId: Number.isFinite(officialId) ? officialId : undefined,
       accommodationAvailable,
@@ -602,4 +609,3 @@ export default {
   clearUserLocationOverrideHandler,
   getPublicUserHandler,
 };
-

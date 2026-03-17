@@ -32,6 +32,7 @@ const mockedGetPublicUrl = getPublicUrl as jest.MockedFunction<typeof getPublicU
 
 function createResponseMock(): Response {
   const response = {
+    set: jest.fn().mockReturnThis(),
     status: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
   };
@@ -91,6 +92,10 @@ describe("usersController.listUsersHandler", () => {
       page: 2,
       pageSize: 10,
     });
+    expect((res.set as jest.Mock)).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
     expect(mockedGetPublicUrl).toHaveBeenCalledWith("profiles/member.webp");
     expect((res.status as jest.Mock)).toHaveBeenCalledWith(200);
     expect((res.json as jest.Mock)).toHaveBeenCalledWith({
@@ -135,6 +140,10 @@ describe("usersController.listUsersHandler", () => {
       page: 1,
       pageSize: 100,
     });
+    expect((res.set as jest.Mock)).toHaveBeenCalledWith(
+      "Cache-Control",
+      "private, no-store",
+    );
     expect((res.status as jest.Mock)).toHaveBeenCalledWith(200);
     expect((res.json as jest.Mock)).toHaveBeenCalledWith({
       users: [],

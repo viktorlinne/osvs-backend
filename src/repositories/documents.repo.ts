@@ -13,7 +13,7 @@ function asRows<T>(rows: unknown): T[] {
 }
 
 export async function listDocuments(): Promise<DocumentRecord[]> {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT id, title, picture FROM documents ORDER BY id DESC",
   );
 
@@ -28,7 +28,7 @@ export async function listDocuments(): Promise<DocumentRecord[]> {
 
 export async function insertDocument(title: string, pictureKey: string): Promise<number> {
   const sql = "INSERT INTO documents (title, picture) VALUES (?, ?)";
-  const [result] = await pool.execute<ResultSetHeader>(sql, [title, pictureKey]);
+  const [result] = await pool.query<ResultSetHeader>(sql, [title, pictureKey]);
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 

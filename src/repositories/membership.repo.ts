@@ -37,7 +37,7 @@ export async function insertMembershipPayment(opts: {
 }
 
 export async function findById(id: number): Promise<MembershipPaymentRow | null> {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT * FROM membership_payments WHERE id = ?",
     [id],
   );
@@ -51,7 +51,7 @@ export async function findExistingForUsers(
 ): Promise<Array<{ uid: number }>> {
   if (!Array.isArray(uids) || uids.length === 0) return [];
   const placeholders = uids.map(() => "?").join(",");
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     `SELECT uid FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
     [year, ...uids],
   );
@@ -78,7 +78,7 @@ export async function findPaymentsForUsers(
 ): Promise<MembershipPaymentRow[]> {
   if (!Array.isArray(uids) || uids.length === 0) return [];
   const placeholders = uids.map(() => "?").join(",");
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     `SELECT * FROM membership_payments WHERE year = ? AND uid IN (${placeholders})`,
     [year, ...uids],
   );
@@ -88,7 +88,7 @@ export async function findPaymentsForUsers(
 export async function findPaymentsForUser(
   uid: number,
 ): Promise<MembershipPaymentRow[]> {
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     "SELECT * FROM membership_payments WHERE uid = ? ORDER BY year DESC",
     [uid],
   );

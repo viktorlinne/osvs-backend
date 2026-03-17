@@ -54,7 +54,7 @@ export async function listRevisions(filters?: {
 
   sql += " ORDER BY r.year DESC, r.id DESC";
 
-  const [rows] = await pool.execute(sql, params);
+  const [rows] = await pool.query(sql, params);
   return asRows<RevisionRow>(rows)
     .map((row) => ({
       id: Number(row.id),
@@ -84,7 +84,7 @@ export async function insertRevision(
   pictureKey: string,
 ): Promise<number> {
   const sql = "INSERT INTO revisions (lid, title, year, picture) VALUES (?, ?, ?, ?)";
-  const [result] = await pool.execute<ResultSetHeader>(sql, [
+  const [result] = await pool.query<ResultSetHeader>(sql, [
     lodgeId,
     title,
     `${year}-01-01`,

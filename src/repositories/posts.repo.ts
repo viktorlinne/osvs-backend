@@ -3,7 +3,7 @@ import type { ResultSetHeader } from "mysql2";
 import type { PoolConnection } from "mysql2/promise";
 import type { Post as PostRecord } from "../types";
 
-type SqlExecutor = Pick<PoolConnection, "execute">;
+type SqlExecutor = Pick<PoolConnection, "query">;
 
 type PostRow = {
   id?: unknown;
@@ -77,7 +77,7 @@ export async function listPosts(
 
   sql += " ORDER BY p.id DESC";
 
-  const [rows] = await pool.execute(sql, params);
+  const [rows] = await pool.query(sql, params);
   return asRows<PostRow>(rows)
     .map((r) => ({
       id: Number(r.id),
@@ -104,7 +104,7 @@ export async function listPublicumPosts(): Promise<
     WHERE publicum = 1
     ORDER BY createdAt DESC, id DESC
   `;
-  const [rows] = await pool.execute(sql);
+  const [rows] = await pool.query(sql);
   return asRows<PublicumPostRow>(rows)
     .map((r) => ({
       id: Number(r.id),
@@ -127,14 +127,14 @@ export async function insertPost(
   const sql =
     "INSERT INTO posts (title, description, picture, publicum) VALUES (?, ?, ?, ?)";
   const params = [title, description, pictureKey ?? null, publicum ? 1 : 0];
-  const [result] = await executor.execute<ResultSetHeader>(sql, params);
+  const [result] = await executor.query<ResultSetHeader>(sql, params);
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 
 export async function findPostById(postId: number): Promise<PostRecord | null> {
   const sql =
     "SELECT id, title, description, picture, publicum FROM posts WHERE id = ? LIMIT 1";
-  const [rows] = await pool.execute(sql, [postId]);
+  const [rows] = await pool.query(sql, [postId]);
   const arr = asRows<PostRow>(rows);
   if (arr.length === 0) return null;
   const r = arr[0];
@@ -152,7 +152,7 @@ export async function selectPostPicture(
   conn?: PoolConnection,
 ): Promise<string | null> {
   const executor = getExecutor(conn);
-  const [rows] = await executor.execute(
+  const [rows] = await executor.query(
     "SELECT picture FROM posts WHERE id = ? LIMIT 1",
     [postId],
   );
@@ -195,7 +195,7 @@ export async function updatePost(
 
   const sql = `UPDATE posts SET ${sets.join(", ")} WHERE id = ?`;
   params.push(postId);
-  await executor.execute(sql, params);
+  await executor.query(sql, params);
 }
 
 export async function deletePost(
@@ -203,7 +203,7 @@ export async function deletePost(
   conn?: PoolConnection,
 ): Promise<void> {
   const executor = getExecutor(conn);
-  await executor.execute("DELETE FROM posts WHERE id = ?", [postId]);
+  await executor.query("DELETE FROM posts WHERE id = ?", [postId]);
 }
 
 export async function selectPostLodges(
@@ -211,7 +211,7 @@ export async function selectPostLodges(
   conn?: PoolConnection,
 ): Promise<Array<{ id: number; name: string }>> {
   const executor = getExecutor(conn);
-  const [rows] = await executor.execute(
+  const [rows] = await executor.query(
     `SELECT l.id, l.name
      FROM lodges l
      INNER JOIN lodges_posts lp ON lp.lid = l.id
@@ -242,7 +242,7 @@ export async function replacePostLodges(
     ),
   );
 
-  await executor.execute("DELETE FROM lodges_posts WHERE pid = ?", [postId]);
+  await executor.query("DELETE FROM lodges_posts WHERE pid = ?", [postId]);
   if (normalized.length === 0) return;
 
   const placeholders = normalized.map(() => "(?, ?)").join(", ");
@@ -251,7 +251,7 @@ export async function replacePostLodges(
     params.push(lid, postId);
   });
 
-  await executor.execute(
+  await executor.query(
     `INSERT INTO lodges_posts (lid, pid) VALUES ${placeholders}`,
     params,
   );

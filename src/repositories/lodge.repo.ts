@@ -21,7 +21,7 @@ export async function listLodges(): Promise<Lodge[]> {
   const sql =
     "SELECT id, name, city, description, email, picture FROM lodges ORDER BY id ASC";
 
-  const [rows] = await pool.execute<RowDataPacket[]>(sql);
+  const [rows] = await pool.query<RowDataPacket[]>(sql);
   const arr = rows as RowDataPacket[];
   if (!Array.isArray(arr)) return [];
 
@@ -34,7 +34,7 @@ export async function listLodges(): Promise<Lodge[]> {
 }
 
 export async function findLodgeById(id: number): Promise<Lodge | null> {
-  const [rows] = await pool.execute<RowDataPacket[]>(
+  const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT id, name, city, description, email, picture FROM lodges WHERE id = ? LIMIT 1",
     [id],
   );
@@ -53,7 +53,7 @@ export async function createLodge(
   const sql =
     "INSERT INTO lodges (name, city, description, email, picture) VALUES (?, ?, ?, ?, ?)";
   const params = [name, city, description, email, picture];
-  const [result] = await pool.execute<ResultSetHeader>(sql, params);
+  const [result] = await pool.query<ResultSetHeader>(sql, params);
   return result && typeof result.insertId === "number" ? result.insertId : 0;
 }
 
@@ -67,7 +67,7 @@ export async function updateLodge(
 ) {
   const sql =
     "UPDATE lodges SET name = COALESCE(?, name), city = COALESCE(?, city), description = COALESCE(?, description), email = COALESCE(?, email), picture = COALESCE(?, picture) WHERE id = ?";
-  await pool.execute(sql, [
+  await pool.query(sql, [
     name ?? null,
     city ?? null,
     description ?? null,
@@ -85,7 +85,7 @@ export async function getUserLodge(userId: number): Promise<Lodge | null> {
     WHERE ul.uid = ?
     LIMIT 1
   `;
-  const [rows] = await pool.execute<RowDataPacket[]>(sql, [userId]);
+  const [rows] = await pool.query<RowDataPacket[]>(sql, [userId]);
   const arr = rows as RowDataPacket[];
   if (!Array.isArray(arr) || arr.length === 0) return null;
   return toLodge(arr[0]);

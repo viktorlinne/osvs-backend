@@ -7,7 +7,7 @@ export async function query<T = unknown>(
   params?: unknown[]
 ): Promise<T[]> {
   const start = Date.now();
-  const [rows] = await pool.execute(sql, params ?? []);
+  const [rows] = await pool.query(sql, params ?? []);
   const dur = Date.now() - start;
   const threshold = Number(process.env.SLOW_QUERY_THRESHOLD_MS ?? 200);
   if (dur > threshold) {
