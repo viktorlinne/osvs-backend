@@ -95,6 +95,8 @@ export type PatchEventAttendanceBody = Partial<{
 export type ListPostsQuery = {
   lodgeId?: string | number | Array<string | number>;
   title?: string;
+  page?: string | number;
+  pageSize?: string | number;
 };
 
 export type ListRevisionsQuery = {

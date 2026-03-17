@@ -36,6 +36,7 @@ import { PROFILE_PLACEHOLDER } from "../config/constants";
 import { STORAGE_BUCKETS, STORAGE_PREFIXES } from "../config/storage";
 import {
   parseNumericParam,
+  parsePositiveQueryNumber,
   requireAuthMatrikelnummer,
   unwrapValidation,
 } from "./helpers/request";
@@ -44,19 +45,6 @@ import { uploadImageAndReplace } from "./helpers/storage";
 const DEFAULT_USERS_PAGE = 1;
 const DEFAULT_USERS_PAGE_SIZE = 24;
 const MAX_USERS_PAGE_SIZE = 100;
-
-function parsePositiveQueryNumber(
-  value: unknown,
-  fallback: number,
-  max?: number,
-) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-
-  const normalized = Math.floor(parsed);
-  if (normalized < 1) return fallback;
-  return typeof max === "number" ? Math.min(normalized, max) : normalized;
-}
 
 export async function updatePictureHandler(
   req: AuthenticatedRequest & { file?: Request["file"] },

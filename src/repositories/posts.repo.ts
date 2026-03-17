@@ -37,7 +37,8 @@ function asRows<T>(rows: unknown): T[] {
 export async function listPosts(
   lodgeIds?: number[],
   title?: string,
-): Promise<PostRecord[]> {
+  pagination?: { page: number; pageSize: number },
+): Promise<{ rows: PostRecord[]; total: number }> {
   const normalizedLodgeIds = Array.isArray(lodgeIds)
     ? Array.from(
         new Set(
@@ -53,32 +54,37 @@ export async function listPosts(
       ? title.trim()
       : undefined;
 
-  const params: Array<number | string> = [];
-  let sql =
-    "SELECT DISTINCT p.id, p.title, p.description, p.picture, p.publicum FROM posts p";
+  const filterParams: Array<number | string> = [];
+  let fromSql = "FROM posts p";
   const where: string[] = [];
 
   if (normalizedLodgeIds && normalizedLodgeIds.length > 0) {
-    // Only join lodges_posts when lodge filter is active.
     const placeholders = normalizedLodgeIds.map(() => "?").join(", ");
-    sql += " INNER JOIN lodges_posts lp ON lp.pid = p.id";
+    fromSql += " INNER JOIN lodges_posts lp ON lp.pid = p.id";
     where.push(`lp.lid IN (${placeholders})`);
-    params.push(...normalizedLodgeIds);
+    filterParams.push(...normalizedLodgeIds);
   }
 
   if (normalizedTitle) {
     where.push("p.title LIKE ?");
-    params.push(`%${normalizedTitle}%`);
+    filterParams.push(`%${normalizedTitle}%`);
   }
 
-  if (where.length > 0) {
-    sql += ` WHERE ${where.join(" AND ")}`;
-  }
+  const whereSql = where.length > 0 ? ` WHERE ${where.join(" AND ")}` : "";
 
-  sql += " ORDER BY p.id DESC";
+  const page = pagination?.page ?? 1;
+  const pageSize = pagination?.pageSize ?? 24;
+  const offset = (page - 1) * pageSize;
 
-  const [rows] = await pool.query(sql, params);
-  return asRows<PostRow>(rows)
+  const dataSql = `SELECT DISTINCT p.id, p.title, p.description, p.picture, p.publicum ${fromSql}${whereSql} ORDER BY p.id DESC LIMIT ? OFFSET ?`;
+  const countSql = `SELECT COUNT(DISTINCT p.id) AS cnt ${fromSql}${whereSql}`;
+
+  const [[dataRows], [countRows]] = await Promise.all([
+    pool.query(dataSql, [...filterParams, pageSize, offset]),
+    pool.query(countSql, filterParams),
+  ]);
+
+  const rows = asRows<PostRow>(dataRows)
     .map((r) => ({
       id: Number(r.id),
       title: String(r.title ?? ""),
@@ -87,6 +93,11 @@ export async function listPosts(
       publicum: r.publicum === 1 || r.publicum === "1" || r.publicum === true,
     }))
     .filter((p) => Number.isFinite(p.id)) as PostRecord[];
+
+  const countArr = asRows<{ cnt?: unknown }>(countRows);
+  const total = countArr.length > 0 ? Number(countArr[0].cnt ?? 0) : 0;
+
+  return { rows, total };
 }
 
 export async function listPublicumPosts(): Promise<

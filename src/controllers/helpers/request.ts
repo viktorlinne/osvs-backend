@@ -29,6 +29,19 @@ export function parseNumericParam(
   return parsed;
 }
 
+export function parsePositiveQueryNumber(
+  value: unknown,
+  fallback: number,
+  max?: number,
+) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+
+  const normalized = Math.floor(parsed);
+  if (normalized < 1) return fallback;
+  return typeof max === "number" ? Math.min(normalized, max) : normalized;
+}
+
 export function unwrapValidation<T>(
   res: Response,
   parsed: ValidationResult<T>,

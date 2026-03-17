@@ -3,11 +3,24 @@ import { deleteProfilePicture } from "../utils/fileUpload";
 import * as postsRepo from "../repositories/posts.repo";
 import type { Post as PostRecord } from "../types";
 
+export type PaginatedPosts = {
+  posts: PostRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export async function listPosts(
   lodgeIds?: number[],
   title?: string,
-): Promise<PostRecord[]> {
-  return await postsRepo.listPosts(lodgeIds, title);
+  pagination?: { page: number; pageSize: number },
+): Promise<PaginatedPosts> {
+  const page = Math.max(1, Math.floor(pagination?.page ?? 1));
+  const pageSize = Math.max(1, Math.floor(pagination?.pageSize ?? 24));
+  const { rows, total } = await postsRepo.listPosts(lodgeIds, title, { page, pageSize });
+  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0;
+  return { posts: rows, total, page, pageSize, totalPages };
 }
 
 export async function listPublicumPosts(): Promise<

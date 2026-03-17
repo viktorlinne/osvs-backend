@@ -13,8 +13,12 @@ import {
 import { STORAGE_BUCKETS, STORAGE_KEYS, STORAGE_PREFIXES } from "../config/storage";
 
 import { sendError } from "../utils/response";
-import { parseNumericParam, unwrapValidation } from "./helpers/request";
+import { parseNumericParam, parsePositiveQueryNumber, unwrapValidation } from "./helpers/request";
 import { uploadImageAndPersist } from "./helpers/storage";
+
+const DEFAULT_POSTS_PAGE = 1;
+const DEFAULT_POSTS_PAGE_SIZE = 24;
+const MAX_POSTS_PAGE_SIZE = 100;
 
 export async function listPostsHandler(
   _req: AuthenticatedRequest,
@@ -38,9 +42,16 @@ export async function listPostsHandler(
       ? query.title.trim()
       : undefined;
 
-  const rows = await postsService.listPosts(normalizedLodgeIds, title);
+  const page = parsePositiveQueryNumber(query.page, DEFAULT_POSTS_PAGE);
+  const pageSize = parsePositiveQueryNumber(
+    query.pageSize,
+    DEFAULT_POSTS_PAGE_SIZE,
+    MAX_POSTS_PAGE_SIZE,
+  );
+
+  const result = await postsService.listPosts(normalizedLodgeIds, title, { page, pageSize });
   const withUrls = await Promise.all(
-    rows.map(async (r) => ({
+    result.posts.map(async (r) => ({
       id: r.id,
       title: r.title,
       pictureUrl: await getPublicUrl(r.picture ?? STORAGE_KEYS.POST_PLACEHOLDER),
@@ -48,7 +59,13 @@ export async function listPostsHandler(
     })),
   );
 
-  return res.status(200).json({ posts: withUrls });
+  return res.status(200).json({
+    posts: withUrls,
+    page: result.page,
+    pageSize: result.pageSize,
+    total: result.total,
+    totalPages: result.totalPages,
+  });
 }
 
 export async function listPublicumPostsPublicHandler(
