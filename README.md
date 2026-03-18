@@ -58,25 +58,7 @@ The OpenAPI source of truth is:
 
 ## Architecture
 
-Primary flow:
-
-`route -> controller -> service -> repository -> MySQL`
-
-Important folders:
-
-- `src/routes`
-- `src/controllers`
-- `src/services`
-- `src/repositories`
-- `src/validators`
-- `src/middleware`
-- `src/db`
-
-Auth model summary:
-
-- JWTs identify the caller
-- authorization decisions use DB-backed roles
-- cookie-authenticated write requests are protected by trusted-origin checks
+See ARCHITECTURE.md for detailed architecture.
 
 ## Database and Migrations
 
@@ -91,27 +73,9 @@ Migration command:
 npm run migrate
 ```
 
-Important:
-
-- this command is destructive
-- it performs ordered data reset, schema sync, and reseeding
-- it is blocked in production
-- it only allows databases ending in `_dev` or `_test`
-- it also requires `MIGRATE_ALLOW_DATA_RESET=true`
-
-Do not run migrations casually against a database with data you care about.
-If you need a non-destructive rollout, prefer forward-only manual `ALTER TABLE`
-statements instead of this reset-style migrate command.
+See AGENTS.md for migration safety rules.
 
 ## Testing and CI
-
-Local verification:
-
-```bash
-npm run lint
-npm run build
-npm run test
-```
 
 CI workflow:
 
@@ -125,17 +89,4 @@ and recent schema safety checks.
 - Background cron jobs start from [`src/index.ts`](./src/index.ts) unless
   `CRON_RUNNER=false`.
 - Request/response logging uses pino.
-- Shared client-facing error shape is:
-
-```json
-{
-  "message": "Svenskt felmeddelande",
-  "details": {
-    "fields": {
-      "fieldName": "Felmeddelande"
-    }
-  }
-}
-```
-
-- `details.fields` is reserved for validation and form errors.
+- See AGENTS.md for the shared error envelope contract.

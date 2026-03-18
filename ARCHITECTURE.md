@@ -169,9 +169,3 @@ CI workflow:
 Current automated coverage is still small, but it exists and should be extended
 when behavior-sensitive backend changes are made.
 
-## Notable Constraints
-
-- some older paths still bend the ideal layering
-- migrations are destructive and should be treated cautiously
-- cache entries in `src/infra/cache` are in-process only
-- there is still no versioned incremental migration system

@@ -2,32 +2,10 @@
 
 This repository is the backend for the OSVS application.
 
-## Tech Stack
+## Tech Stack and Architecture
 
-- Node.js
-- Express
-- TypeScript
-- MySQL via `mysql2/promise`
-- SQL-first schema
-
-## Current Architecture
-
-Primary flow:
-
-`route -> controller -> service -> repository -> MySQL`
-
-Keep this layering intact.
-
-Current key folders:
-
-- `src/routes`
-- `src/controllers`
-- `src/services`
-- `src/repositories`
-- `src/validators`
-- `src/middleware`
-- `src/db`
-- `src/docs`
+See README.md for stack and commands. See ARCHITECTURE.md for structure and layers.
+Preserve the existing layering: `route -> controller -> service -> repository -> MySQL`.
 
 ## Runtime and Security Rules
 
@@ -91,17 +69,7 @@ Do not introduce new error payload shapes.
 
 ## Testing and Verification
 
-Before finishing backend work always run:
-
-```bash
-npm run lint
-npm run build
-npm run test
-```
-
-CI exists in:
-
-- `.github/workflows/ci.yml`
+Before finishing backend work, run lint, build, and test (see README.md for commands).
 
 When backend behavior changes, add or update tests where practical.
 Prioritize:

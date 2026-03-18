@@ -3,7 +3,7 @@
 This document defines the default workflow for feature and maintenance work in
 `osvs-backend`.
 
-## Step 0 - Read Context
+## Step 0 - Read Context [sequential, required]
 
 Before coding:
 
@@ -20,7 +20,7 @@ Output:
 - commands to run
 - risks or unknowns
 
-## Step 1 - Contract First
+## Step 1 - Contract First [sequential, required if API changes]
 
 If request or response behavior changes:
 
@@ -30,45 +30,32 @@ If request or response behavior changes:
 4. confirm response schema
 5. preserve the shared error envelope
 
-Use this error shape for client-facing failures:
+Use the shared error envelope defined in AGENTS.md.
 
-```json
-{
-  "message": "Svenskt felmeddelande",
-  "details": {
-    "fields": {
-      "fieldName": "Felmeddelande"
-    }
-  }
-}
-```
+## Steps 2-4 - Implementation [parallelizable tracks]
 
-`details.fields` is for validation and form errors only.
+The following can be treated as independent tracks for large features:
 
-## Step 2 - DB Track
+### Track A — DB changes (Step 2)
 
 If persistence changes are needed:
 
 1. update `src/db/schema.sql`
 2. update `src/db/seed.sql` when lookup data or seeded shape changes
 3. update repositories with parameterized SQL
-4. add schema-focused tests when the change is otherwise easy to regress
+4. add schema-focused tests when the change is easy to regress
 
-Migration safety:
+See migration safety rules in AGENTS.md.
 
-- `npm run migrate` is destructive
-- never run it without explicit confirmation
-- only use `_dev` or `_test` databases
-- it also requires `MIGRATE_ALLOW_DATA_RESET=true`
-
-## Step 3 - Service Track
+### Track B — Service logic (Step 3)
 
 - put business logic in `src/services`
 - keep services transport-agnostic
 - orchestrate transactions there when needed
 - throw typed errors rather than raw string errors when behavior matters
+- Depends on: Track A repository interfaces (if new)
 
-## Step 4 - Controller and Route Wiring
+### Track C — Controller and route wiring (Step 4)
 
 Controllers should:
 
@@ -82,6 +69,10 @@ Routes should:
 
 - mount in the correct module under `src/routes`
 - apply auth and authorization middleware consistently
+- Depends on: Track B service interfaces
+
+For small tasks: run A -> B -> C sequentially.
+For large features: A and B can start in parallel if repository interfaces are agreed first.
 
 ## Step 5 - Verification
 
@@ -103,13 +94,13 @@ Always provide a manual checklist with:
 - invalid input case
 - not-found case when relevant
 
-## Step 6 - Build Gate
+## Step 6 - Build Gate [parallel commands]
 
-Before considering backend work done:
+Run simultaneously:
 
 ```bash
-npm run lint
-npm run build
+npm run lint &
+npm run build &
 npm run test
 ```
 
