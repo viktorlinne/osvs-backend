@@ -9,6 +9,10 @@ import {
   normalizeEventDateTimeInput,
 } from "../utils/eventDateTime";
 import * as eventsService from "../services/eventsService";
+import {
+  assertValidEventAudience,
+  normalizeEventAudienceSelection,
+} from "../services/events/audience";
 
 import {
   validateFoodBookingBody,
@@ -86,6 +90,8 @@ export async function createEventHandler(
     startDate,
     endDate,
     lodgeIds,
+    groupIds,
+    userIds,
   } = req.body as CreateEventBody;
 
   const requiredFieldErrors: Record<string, string> = {
@@ -122,37 +128,21 @@ export async function createEventHandler(
   const normalizedTitle = String(title).trim();
   const normalizedDescription = String(description).trim();
 
-  const normalizedLodgeIds = Array.isArray(lodgeIds)
-    ? lodgeIds
-        .map((value) => Number(value))
-        .filter((value) => Number.isFinite(value) && value > 0)
-        .map((value) => Math.floor(value))
-    : [];
+  const audience = normalizeEventAudienceSelection({
+    lodgeIds: Array.isArray(lodgeIds) ? lodgeIds.map((value) => Number(value)) : [],
+    groupIds: Array.isArray(groupIds) ? groupIds.map((value) => Number(value)) : [],
+    userIds: Array.isArray(userIds) ? userIds.map((value) => Number(value)) : [],
+  });
+  assertValidEventAudience(audience, { requireAudience: true });
 
-  let id: number;
-  if (normalizedLodgeIds.length > 0) {
-    id = await eventsService.createEventWithLodges(
-      {
-        title: normalizedTitle,
-        description: normalizedDescription,
-        lodgeMeeting,
-        price,
-        startDate: normalizedStartDate,
-        endDate: normalizedEndDate,
-      },
-      normalizedLodgeIds,
-    );
-  } else {
-    id = await eventsService.createEvent({
-      title: normalizedTitle,
-      description: normalizedDescription,
-      lodgeMeeting,
-      price,
-      startDate: normalizedStartDate,
-      endDate: normalizedEndDate,
-    });
-  }
-
+  const id = await eventsService.createEventWithAudience({
+    title: normalizedTitle,
+    description: normalizedDescription,
+    lodgeMeeting,
+    price,
+    startDate: normalizedStartDate,
+    endDate: normalizedEndDate,
+  }, audience);
 
   return res.status(201).json({ success: true, id });
 }
@@ -166,6 +156,10 @@ export async function updateEventHandler(
   if (id === null) return;
   logger.info({ id }, "eventsController: updateEventHandler called");
   const raw = req.body as UpdateEventBody;
+  const hasAudienceInput =
+    Object.prototype.hasOwnProperty.call(raw, "lodgeIds") ||
+    Object.prototype.hasOwnProperty.call(raw, "groupIds") ||
+    Object.prototype.hasOwnProperty.call(raw, "userIds");
   const payload: Partial<{
     title: string;
     description: string;
@@ -219,7 +213,25 @@ export async function updateEventHandler(
     });
   }
 
-  await eventsService.updateEvent(id, payload);
+  const audience = hasAudienceInput
+    ? normalizeEventAudienceSelection({
+        lodgeIds: Array.isArray(raw.lodgeIds)
+          ? raw.lodgeIds.map((value) => Number(value))
+          : [],
+        groupIds: Array.isArray(raw.groupIds)
+          ? raw.groupIds.map((value) => Number(value))
+          : [],
+        userIds: Array.isArray(raw.userIds)
+          ? raw.userIds.map((value) => Number(value))
+          : [],
+      })
+    : undefined;
+
+  if (audience) {
+    assertValidEventAudience(audience, { requireAudience: true });
+  }
+
+  await eventsService.updateEvent(id, payload, audience);
 
   return res.status(200).json({ success: true });
 }

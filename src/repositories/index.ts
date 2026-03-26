@@ -9,3 +9,4 @@ export { default as allergiesRepo } from "./allergies.repo";
 export { default as revisionsRepo } from "./revisions.repo";
 export { default as documentsRepo } from "./documents.repo";
 export { default as geocodeRepo } from "./geocode.repo";
+export { default as groupsRepo } from "./groups.repo";

@@ -1,6 +1,12 @@
 -- =====================================================
 -- Seed data for local development
 -- =====================================================
+-- This file must remain runnable on its own after `npm run migrate`.
+-- The split seed files in this folder are optional add-ons that insert
+-- additional rows into tables created and initially populated here.
+-- After this file has run successfully, the add-on seed files can be
+-- applied independently without requiring each other.
+
 -- Roles
 INSERT INTO
   `roles` (`id`, `role`)
@@ -547,8 +553,23 @@ VALUES
 VALUES
   (`picture`);
 
--- Users ↔ Roles (predictable state)
+-- Groups
 INSERT INTO
+  `groups` (`id`, `name`, `description`)
+VALUES
+  (1, 'Admins', 'Administrators with full access to the system.'),
+  (2, 'Planeringsgruppen', 'Grupp for planering av gemensamma moten.'),
+  (3, 'Orion arbetsgrupp', 'Arbetsgrupp med medlemmar fran Orion.') ON DUPLICATE KEY
+UPDATE
+  `name` =
+VALUES
+  (`name`),
+  `description` =
+VALUES
+  (`description`);
+
+-- Users ↔ Roles (predictable state)
+INSERT IGNORE INTO
   `users_roles` (`uid`, `rid`)
 VALUES
   (1, 1),
@@ -574,29 +595,70 @@ VALUES
 -- Users ↔ Achievements
 INSERT INTO
   `users_achievements` (`uid`, `aid`, `awardedAt`)
-VALUES
-  (1, 1, '2025-12-01 10:00:00'),
-  (2, 1, '2025-12-01 10:00:00'),
-  (3, 1, '2025-12-01 10:00:00'),
-  (4, 1, '2025-12-01 10:00:00'),
-  (5, 1, '2025-12-01 10:00:00'),
-  (6, 1, '2025-12-01 10:00:00'),
-  (7, 1, '2025-12-01 10:00:00');
+SELECT
+  seed.uid,
+  seed.aid,
+  seed.awardedAt
+FROM (
+  SELECT 1 AS uid, 1 AS aid, '2025-12-01 10:00:00' AS awardedAt
+  UNION ALL
+  SELECT 2, 1, '2025-12-01 10:00:00'
+  UNION ALL
+  SELECT 3, 1, '2025-12-01 10:00:00'
+  UNION ALL
+  SELECT 4, 1, '2025-12-01 10:00:00'
+  UNION ALL
+  SELECT 5, 1, '2025-12-01 10:00:00'
+  UNION ALL
+  SELECT 6, 1, '2025-12-01 10:00:00'
+  UNION ALL
+  SELECT 7, 1, '2025-12-01 10:00:00'
+) seed
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM users_achievements existing
+  WHERE existing.uid = seed.uid
+    AND existing.aid = seed.aid
+    AND existing.awardedAt = seed.awardedAt
+);
 
 -- Users ↔ Officials
 INSERT INTO
   `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
-VALUES
-  (1, 1, '2025-01-01 10:00:00', NULL),
-  (2, 2, '2025-12-01 10:00:00', NULL),
-  (3, 3, '2025-12-01 10:00:00', NULL),
-  (4, 4, '2025-12-01 10:00:00', NULL),
-  (5, 5, '2025-12-01 10:00:00', NULL),
-  (6, 6, '2025-12-01 10:00:00', NULL),
-  (7, 7, '2025-12-01 10:00:00', NULL);
+SELECT
+  seed.uid,
+  seed.oid,
+  seed.appointedAt,
+  seed.unAppointedAt
+FROM (
+  SELECT 1 AS uid, 1 AS oid, '2025-01-01 10:00:00' AS appointedAt, NULL AS unAppointedAt
+  UNION ALL
+  SELECT 2, 2, '2025-12-01 10:00:00', NULL
+  UNION ALL
+  SELECT 3, 3, '2025-12-01 10:00:00', NULL
+  UNION ALL
+  SELECT 4, 4, '2025-12-01 10:00:00', NULL
+  UNION ALL
+  SELECT 5, 5, '2025-12-01 10:00:00', NULL
+  UNION ALL
+  SELECT 6, 6, '2025-12-01 10:00:00', NULL
+  UNION ALL
+  SELECT 7, 7, '2025-12-01 10:00:00', NULL
+) seed
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM users_officials existing
+  WHERE existing.uid = seed.uid
+    AND existing.oid = seed.oid
+    AND existing.appointedAt = seed.appointedAt
+    AND (
+      (existing.unAppointedAt IS NULL AND seed.unAppointedAt IS NULL)
+      OR existing.unAppointedAt = seed.unAppointedAt
+    )
+);
 
 -- Users ↔ Lodges
-INSERT INTO
+INSERT IGNORE INTO
   `users_lodges` (`uid`, `lid`)
 VALUES
   (1, 1),
@@ -608,7 +670,7 @@ VALUES
   (7, 5);
 
 -- Users ↔ Allergies
-INSERT INTO
+INSERT IGNORE INTO
   `users_allergies` (`uid`, `alid`)
 VALUES
   (1, 1),
@@ -619,15 +681,83 @@ VALUES
   (6, 6),
   (7, 7);
 
+INSERT IGNORE INTO
+  `users_groups` (`uid`, `gid`)
+VALUES
+  (1, 1),
+  (4, 1),
+  (5, 1),
+  (6, 1),
+  (1, 2),
+  (2, 2),
+  (5, 2),
+  (6, 2),
+  (3, 3),
+  (4, 3);
+
 -- Lodges ↔ Events (predictable state)
-INSERT INTO
+INSERT IGNORE INTO
   `lodges_events` (`lid`, `eid`)
 VALUES
   (1, 1),
   (2, 2);
 
+INSERT IGNORE INTO
+  `groups_events` (`gid`, `eid`)
+VALUES
+  (2, 2);
+
+INSERT IGNORE INTO
+  `users_events` (`uid`, `eid`)
+VALUES
+  (2, 2);
+
+INSERT IGNORE INTO
+  `events_attendances` (`uid`, `eid`, `rsvp`, `bookFood`, `attended`)
+SELECT DISTINCT
+  invited.uid,
+  invited.eid,
+  2,
+  0,
+  0
+FROM (
+  SELECT ul.uid, le.eid
+  FROM lodges_events le
+  JOIN users_lodges ul ON ul.lid = le.lid
+  UNION
+  SELECT ug.uid, ge.eid
+  FROM groups_events ge
+  JOIN users_groups ug ON ug.gid = ge.gid
+  UNION
+  SELECT ue.uid, ue.eid
+  FROM users_events ue
+) invited
+WHERE invited.eid IN (1, 2);
+
+INSERT IGNORE INTO
+  `event_payments` (`uid`, `eid`, `amount`, `status`)
+SELECT DISTINCT
+  invited.uid,
+  invited.eid,
+  e.price,
+  'Pending'
+FROM (
+  SELECT ul.uid, le.eid
+  FROM lodges_events le
+  JOIN users_lodges ul ON ul.lid = le.lid
+  UNION
+  SELECT ug.uid, ge.eid
+  FROM groups_events ge
+  JOIN users_groups ug ON ug.gid = ge.gid
+  UNION
+  SELECT ue.uid, ue.eid
+  FROM users_events ue
+) invited
+JOIN events e ON e.id = invited.eid
+WHERE invited.eid IN (1, 2);
+
 -- Lodges ↔ Posts (predictable state)
-INSERT INTO
+INSERT IGNORE INTO
   `lodges_posts` (`lid`, `pid`)
 VALUES
   (1, 1),

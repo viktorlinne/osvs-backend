@@ -34,7 +34,6 @@ import {
   getUserRoles,
 } from "../../src/services/userService";
 import { isJtiRevoked } from "../../src/services/tokenService";
-import { beforeEach, describe, it } from "node:test";
 
 const mockedFindById = findById as jest.MockedFunction<typeof findById>;
 const mockedGetUserRoles = getUserRoles as jest.MockedFunction<typeof getUserRoles>;

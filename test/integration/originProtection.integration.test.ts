@@ -3,7 +3,6 @@ import express from "express";
 import request from "supertest";
 
 import originProtection from "../../src/middleware/originProtection";
-import { describe, it } from "node:test";
 
 function buildOriginProtectionApp() {
   const app = express();

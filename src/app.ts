@@ -22,6 +22,7 @@ import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
 import adminRouter from "./routes/admin";
 import lodgesRouter from "./routes/lodges";
+import groupsRouter from "./routes/groups";
 import postsRouter from "./routes/posts";
 import eventsRouter from "./routes/events";
 import paymentsRouter from "./routes/payments";
@@ -153,6 +154,8 @@ app.use("/api/users", usersRouter);
 app.use("/api/admin", adminRouter);
 // Lodge routes
 app.use("/api/lodges", lodgesRouter);
+// Group routes
+app.use("/api/groups", groupsRouter);
 // Post routes
 app.use("/api/posts", postsRouter);
 // Events routes

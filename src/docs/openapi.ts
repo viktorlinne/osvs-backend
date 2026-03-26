@@ -103,6 +103,7 @@ export const swaggerSpec = {
     { name: "Events", description: "Events, RSVP, food, and attendance operations." },
     { name: "Posts", description: "Post listing and content management." },
     { name: "Lodges", description: "Lodge listing and management." },
+    { name: "Groups", description: "Group listing and event audience helpers." },
     { name: "Admin", description: "Admin utilities." },
     { name: "Payments", description: "Membership payment endpoints." },
     { name: "Officials", description: "Officials catalogue and assignments." },
@@ -304,6 +305,19 @@ export const swaggerSpec = {
           name: { type: "string", example: "Stamlogen" },
         },
       },
+      Group: {
+        type: "object",
+        required: ["id", "name", "userIds"],
+        properties: {
+          id: { type: "integer", example: 5 },
+          name: { type: "string", example: "Planeringsgruppen" },
+          description: { type: "string", nullable: true },
+          userIds: {
+            type: "array",
+            items: { type: "integer", example: 1 },
+          },
+        },
+      },
       PublicUser: {
         type: "object",
         properties: {
@@ -461,6 +475,18 @@ export const swaggerSpec = {
           lodgeMeeting: { type: "boolean", nullable: true },
           food: { type: "boolean", nullable: true },
           price: { type: "number", format: "float", example: 275 },
+          lodgeIds: {
+            type: "array",
+            items: { type: "integer", example: 1 },
+          },
+          groupIds: {
+            type: "array",
+            items: { type: "integer", example: 5 },
+          },
+          userIds: {
+            type: "array",
+            items: { type: "integer", example: 24 },
+          },
         },
       },
       EventAttendance: {
@@ -739,6 +765,8 @@ export const swaggerSpec = {
           startDate: { type: "string", example: "2026-03-14 18:00:00" },
           endDate: { type: "string", example: "2026-03-14 21:00:00" },
           lodgeIds: { type: "array", items: { type: "integer", example: 1 } },
+          groupIds: { type: "array", items: { type: "integer", example: 5 } },
+          userIds: { type: "array", items: { type: "integer", example: 24 } },
         },
       },
       UpdateEventRequest: {
@@ -750,6 +778,9 @@ export const swaggerSpec = {
           price: { type: "number", format: "float" },
           startDate: { type: "string" },
           endDate: { type: "string" },
+          lodgeIds: { type: "array", items: { type: "integer" } },
+          groupIds: { type: "array", items: { type: "integer" } },
+          userIds: { type: "array", items: { type: "integer" } },
         },
       },
       EventLodgeLinkRequest: {
@@ -2741,6 +2772,35 @@ export const swaggerSpec = {
           ...badRequest,
           ...unauthorized,
           ...forbidden,
+          ...internal,
+        },
+      },
+    },
+    "/groups": {
+      get: {
+        tags: ["Groups"],
+        summary: "List groups",
+        description: "Returns all groups with their member user ids.",
+        operationId: "getGroups",
+        security: authSecurity,
+        responses: {
+          "200": {
+            description: "Group list.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    groups: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/Group" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          ...unauthorized,
           ...internal,
         },
       },

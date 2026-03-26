@@ -348,6 +348,7 @@ export async function listUsersHandler(
         pictureUrl: await getPublicUrl(r.picture ?? PROFILE_PLACEHOLDER),
       })),
     );
+    res.set("Cache-Control", "private, no-store");
     return res.status(200).json({
       users: withUrls,
       page: result.page,

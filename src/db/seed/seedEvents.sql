@@ -1,4 +1,8 @@
--- Events
+-- =====================================================
+-- Optional add-on seed: additional events
+-- Depends only on the baseline rows from seed.sql.
+-- =====================================================
+
 INSERT INTO
   `events` (
     `id`,
@@ -110,27 +114,103 @@ VALUES
     210.00,
     '2026-12-18 18:00:00',
     '2026-12-18 22:00:00'
-  );
+  ) ON DUPLICATE KEY
+UPDATE
+  `title` =
+VALUES
+  (`title`),
+  `description` =
+VALUES
+  (`description`),
+  `lodgeMeeting` =
+VALUES
+  (`lodgeMeeting`),
+  `food` =
+VALUES
+  (`food`),
+  `price` =
+VALUES
+  (`price`),
+  `startDate` =
+VALUES
+  (`startDate`),
+  `endDate` =
+VALUES
+  (`endDate`);
 
--- Lodges <-> Events
-INSERT INTO
-  `lodges_events` (
-    `lid`,
-    `eid`
-  )
+INSERT IGNORE INTO
+  `lodges_events` (`lid`, `eid`)
 VALUES
   (1, 5),
-  (2, 5),
-  (3, 6),
-  (4, 6),
-  (5, 7),
   (1, 8),
   (2, 9),
-  (3, 9),
   (4, 10),
-  (5, 10),
-  (1, 11),
+  (5, 11),
   (2, 12),
-  (3, 13),
-  (4, 14),
+  (4, 13),
   (5, 14);
+
+INSERT IGNORE INTO
+  `groups_events` (`gid`, `eid`)
+VALUES
+  (2, 5),
+  (3, 6),
+  (1, 8),
+  (2, 9),
+  (1, 12),
+  (2, 14);
+
+INSERT IGNORE INTO
+  `users_events` (`uid`, `eid`)
+VALUES
+  (6, 5),
+  (5, 7),
+  (6, 7),
+  (7, 7),
+  (3, 10),
+  (2, 12),
+  (1, 14);
+
+INSERT IGNORE INTO
+  `events_attendances` (`uid`, `eid`, `rsvp`, `bookFood`, `attended`)
+SELECT DISTINCT
+  invited.uid,
+  invited.eid,
+  2,
+  0,
+  0
+FROM (
+  SELECT ul.uid, le.eid
+  FROM lodges_events le
+  JOIN users_lodges ul ON ul.lid = le.lid
+  UNION
+  SELECT ug.uid, ge.eid
+  FROM groups_events ge
+  JOIN users_groups ug ON ug.gid = ge.gid
+  UNION
+  SELECT ue.uid, ue.eid
+  FROM users_events ue
+) invited
+WHERE invited.eid BETWEEN 5 AND 14;
+
+INSERT IGNORE INTO
+  `event_payments` (`uid`, `eid`, `amount`, `status`)
+SELECT DISTINCT
+  invited.uid,
+  invited.eid,
+  e.price,
+  'Pending'
+FROM (
+  SELECT ul.uid, le.eid
+  FROM lodges_events le
+  JOIN users_lodges ul ON ul.lid = le.lid
+  UNION
+  SELECT ug.uid, ge.eid
+  FROM groups_events ge
+  JOIN users_groups ug ON ug.gid = ge.gid
+  UNION
+  SELECT ue.uid, ue.eid
+  FROM users_events ue
+) invited
+JOIN events e ON e.id = invited.eid
+WHERE invited.eid BETWEEN 5 AND 14;

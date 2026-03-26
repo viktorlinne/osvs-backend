@@ -1,8 +1,13 @@
 import fs from "fs";
 import path from "path";
 
-const schemaPath = path.resolve(__dirname, "../../src/db/schema.sql");
-const schemaSql = fs.readFileSync(schemaPath, "utf8");
+const migrationsDir = path.resolve(__dirname, "../../src/db/migrations");
+const schemaSql = fs
+  .readdirSync(migrationsDir)
+  .filter((filename) => filename.endsWith(".sql"))
+  .sort()
+  .map((filename) => fs.readFileSync(path.join(migrationsDir, filename), "utf8"))
+  .join("\n");
 
 function getTableDefinition(tableName: string): string {
   const startToken = `CREATE TABLE \`${tableName}\` (`;

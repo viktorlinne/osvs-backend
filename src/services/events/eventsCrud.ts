@@ -1,10 +1,15 @@
 import pool from "../../config/db";
 import * as eventsRepo from "../../repositories/events.repo";
 import type { EventRecord } from "../../types";
+import { badRequest } from "../../utils/errors";
 import { getNowStockholmSqlDateTime } from "../../utils/eventDateTime";
+import {
+  EVENT_AUDIENCE_ERRORS,
+  type EventAudienceSelection,
+  getEventAudienceSelection,
+  syncEventAudience,
+} from "./audience";
 import { mapEventRow } from "./common";
-
-const RSVP_UNANSWERED = 2;
 
 export async function listEvents(): Promise<EventRecord[]> {
   return (await eventsRepo.listEvents())
@@ -22,7 +27,14 @@ export async function listUpcomingEvents(limit = 10): Promise<EventRecord[]> {
 export async function getEventById(id: number): Promise<EventRecord | null> {
   const row = await eventsRepo.findEventById(id);
   if (!row) return null;
-  return mapEventRow(row);
+  const event = mapEventRow(row);
+  const audience = await getEventAudienceSelection(id);
+  return {
+    ...event,
+    lodgeIds: audience.lodgeIds,
+    groupIds: audience.groupIds,
+    userIds: audience.userIds,
+  };
 }
 
 export async function createEvent(payload: {
@@ -36,7 +48,7 @@ export async function createEvent(payload: {
   return await eventsRepo.insertEvent(payload);
 }
 
-export async function createEventWithLodges(
+export async function createEventWithAudience(
   payload: {
     title: string;
     description: string;
@@ -45,51 +57,17 @@ export async function createEventWithLodges(
     startDate: string;
     endDate: string;
   },
-  lodgeIds: number[] | undefined,
+  audience: EventAudienceSelection,
 ): Promise<number> {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const eventId = await eventsRepo.insertEvent(payload, conn);
-
-    if (Array.isArray(lodgeIds) && lodgeIds.length > 0) {
-      for (const lid of lodgeIds) {
-        if (!Number.isFinite(Number(lid))) continue;
-        await eventsRepo.insertLodgeEvent(eventId, Number(lid), conn);
-      }
-
-      const uidSet = new Set<number>();
-      for (const lid of lodgeIds) {
-        const users = await eventsRepo.findUsersInLodge(Number(lid), conn);
-        for (const u of users) {
-          const uid = typeof u.uid === "number" ? u.uid : Number(u.uid);
-          if (Number.isFinite(uid)) uidSet.add(uid);
-        }
-      }
-
-      const uids = Array.from(uidSet);
-      if (uids.length > 0) {
-        const attendanceValues: Array<Array<unknown>> = uids.map((uid) => [
-          uid,
-          eventId,
-          RSVP_UNANSWERED,
-          0,
-          0,
-        ]);
-        await eventsRepo.bulkInsertEventAttendances(attendanceValues, conn);
-
-        const price = await eventsRepo.selectEventPrice(eventId, conn);
-        const amount = Number.isFinite(price) ? price : 0;
-        const paymentValues: Array<Array<unknown>> = uids.map((uid) => [
-          uid,
-          eventId,
-          amount,
-          "Pending",
-        ]);
-        await eventsRepo.bulkInsertEventPayments(paymentValues, conn);
-      }
-    }
-
+    await syncEventAudience(eventId, audience, {
+      conn,
+      requireAudience: true,
+      price: payload.price,
+    });
     await conn.commit();
     return eventId;
   } catch (err) {
@@ -104,6 +82,24 @@ export async function createEventWithLodges(
   }
 }
 
+export async function createEventWithLodges(
+  payload: {
+    title: string;
+    description: string;
+    lodgeMeeting?: boolean | null;
+    price?: number;
+    startDate: string;
+    endDate: string;
+  },
+  lodgeIds: number[] | undefined,
+): Promise<number> {
+  return await createEventWithAudience(payload, {
+    lodgeIds: lodgeIds ?? [],
+    groupIds: [],
+    userIds: [],
+  });
+}
+
 export async function updateEvent(
   id: number,
   payload: Partial<{
@@ -114,8 +110,35 @@ export async function updateEvent(
     startDate: string;
     endDate: string;
   }>,
+  audience?: EventAudienceSelection,
 ): Promise<void> {
-  await eventsRepo.updateEventRecord(id, payload as Record<string, unknown>);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await eventsRepo.updateEventRecord(id, payload as Record<string, unknown>, conn);
+
+    if (audience) {
+      await syncEventAudience(id, audience, {
+        conn,
+        requireAudience: true,
+        repricePending: typeof payload.price === "number",
+        price: payload.price,
+      });
+    } else if (typeof payload.price === "number") {
+      await eventsRepo.updatePendingEventPaymentsAmount(id, payload.price, conn);
+    }
+
+    await conn.commit();
+  } catch (err) {
+    try {
+      await conn.rollback();
+    } catch {
+      // ignore
+    }
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 export async function deleteEvent(id: number): Promise<void> {
@@ -129,28 +152,20 @@ export async function linkLodgeToEvent(
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    await eventsRepo.insertLodgeEvent(eventId, lodgeId, conn);
-    const users = await eventsRepo.findUsersInLodge(lodgeId, conn);
-    if (users.length > 0) {
-      const attendanceValues: Array<Array<unknown>> = [];
-      const paymentValues: Array<Array<unknown>> = [];
-      const price = await eventsRepo.selectEventPrice(eventId, conn);
-      const amount = Number.isFinite(price) ? price : 0;
+    const currentAudience = await getEventAudienceSelection(eventId, conn);
+    const currentLodgeId = currentAudience.lodgeIds[0];
 
-      for (const u of users) {
-        const uid = typeof u.uid === "number" ? u.uid : Number(u.uid);
-        if (!Number.isFinite(uid)) continue;
-        attendanceValues.push([uid, eventId, RSVP_UNANSWERED, 0, 0]);
-        paymentValues.push([uid, eventId, amount, "Pending"]);
-      }
-
-      if (attendanceValues.length > 0) {
-        await eventsRepo.bulkInsertEventAttendances(attendanceValues, conn);
-      }
-      if (paymentValues.length > 0) {
-        await eventsRepo.bulkInsertEventPayments(paymentValues, conn);
-      }
+    if (Number.isFinite(currentLodgeId) && currentLodgeId !== lodgeId) {
+      throw badRequest(EVENT_AUDIENCE_ERRORS.singleLodge, {
+        fields: { lodgeIds: EVENT_AUDIENCE_ERRORS.singleLodge },
+      });
     }
+
+    await syncEventAudience(
+      eventId,
+      { ...currentAudience, lodgeIds: [lodgeId] },
+      { conn, requireAudience: true },
+    );
     await conn.commit();
   } catch (err) {
     try {
@@ -171,21 +186,15 @@ export async function unlinkLodgeFromEvent(
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const rows = await eventsRepo.selectUsersToRemoveOnUnlink(
-      lodgeId,
+    const currentAudience = await getEventAudienceSelection(eventId, conn);
+    await syncEventAudience(
       eventId,
-      conn,
+      {
+        ...currentAudience,
+        lodgeIds: currentAudience.lodgeIds.filter((id) => id !== lodgeId),
+      },
+      { conn, requireAudience: true },
     );
-    const uids = rows
-      .map((r) => (typeof r.uid === "number" ? r.uid : Number(r.uid)))
-      .filter((x) => Number.isFinite(x));
-
-    if (uids.length > 0) {
-      await eventsRepo.deleteEventAttendancesForUids(eventId, uids, conn);
-      await eventsRepo.deleteEventPaymentsForUids(eventId, uids, conn);
-    }
-
-    await eventsRepo.deleteLodgeEvent(lodgeId, eventId, conn);
     await conn.commit();
   } catch (err) {
     try {

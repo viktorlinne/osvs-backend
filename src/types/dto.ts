@@ -67,6 +67,8 @@ export type CreateEventBody = {
   startDate?: string | null;
   endDate?: string | null;
   lodgeIds?: Array<number | string>;
+  groupIds?: Array<number | string>;
+  userIds?: Array<number | string>;
 };
 
 export type UpdateEventBody = Partial<CreateEventBody>;

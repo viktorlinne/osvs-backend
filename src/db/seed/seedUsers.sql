@@ -1,5 +1,6 @@
 -- =====================================================
--- Additional Users (20 more)
+-- Optional add-on seed: additional users
+-- Depends only on the baseline rows from seed.sql.
 -- =====================================================
 INSERT INTO
     `users` (
@@ -431,7 +432,7 @@ VALUES
 -- =====================================================
 -- Additional Users ↔ Roles
 -- =====================================================
-INSERT INTO
+INSERT IGNORE INTO
     `users_roles` (`uid`, `rid`)
 VALUES
     (8, 3),
@@ -471,59 +472,126 @@ VALUES
 -- =====================================================
 INSERT INTO
     `users_achievements` (`uid`, `aid`, `awardedAt`)
-VALUES
-    (8, 1, '2025-12-01 10:00:00'),
-    (9, 1, '2025-12-01 10:00:00'),
-    (10, 1, '2025-12-01 10:00:00'),
-    (11, 2, '2025-12-01 10:00:00'),
-    (12, 1, '2025-12-01 10:00:00'),
-    (13, 3, '2025-12-01 10:00:00'),
-    (14, 2, '2025-12-01 10:00:00'),
-    (15, 1, '2025-12-01 10:00:00'),
-    (16, 4, '2025-12-01 10:00:00'),
-    (17, 1, '2025-12-01 10:00:00'),
-    (18, 2, '2025-12-01 10:00:00'),
-    (19, 1, '2025-12-01 10:00:00'),
-    (20, 5, '2025-12-01 10:00:00'),
-    (21, 2, '2025-12-01 10:00:00'),
-    (22, 1, '2025-12-01 10:00:00'),
-    (23, 3, '2025-12-01 10:00:00'),
-    (24, 1, '2025-12-01 10:00:00'),
-    (25, 2, '2025-12-01 10:00:00'),
-    (26, 1, '2025-12-01 10:00:00'),
-    (27, 1, '2025-12-01 10:00:00');
+SELECT
+    seed.uid,
+    seed.aid,
+    seed.awardedAt
+FROM (
+    SELECT 8 AS uid, 1 AS aid, '2025-12-01 10:00:00' AS awardedAt
+    UNION ALL
+    SELECT 9, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 10, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 11, 2, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 12, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 13, 3, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 14, 2, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 15, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 16, 4, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 17, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 18, 2, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 19, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 20, 5, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 21, 2, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 22, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 23, 3, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 24, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 25, 2, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 26, 1, '2025-12-01 10:00:00'
+    UNION ALL
+    SELECT 27, 1, '2025-12-01 10:00:00'
+) seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM users_achievements existing
+    WHERE existing.uid = seed.uid
+      AND existing.aid = seed.aid
+      AND existing.awardedAt = seed.awardedAt
+);
 
 -- =====================================================
 -- Additional Users ↔ Officials
 -- =====================================================
 INSERT INTO
     `users_officials` (`uid`, `oid`, `appointedAt`, `unAppointedAt`)
-VALUES
-    (8, 8, '2025-12-01 10:00:00', NULL),
-    (9, 9, '2025-12-01 10:00:00', NULL),
-    (10, 10, '2025-12-01 10:00:00', NULL),
-    (11, 11, '2025-12-01 10:00:00', NULL),
-    (12, 12, '2025-12-01 10:00:00', NULL),
-    (13, 13, '2025-12-01 10:00:00', NULL),
-    (14, 14, '2025-12-01 10:00:00', NULL),
-    (15, 15, '2025-12-01 10:00:00', NULL),
-    (16, 16, '2025-12-01 10:00:00', NULL),
-    (17, 17, '2025-12-01 10:00:00', NULL),
-    (18, 18, '2025-12-01 10:00:00', NULL),
-    (19, 19, '2025-12-01 10:00:00', NULL),
-    (20, 20, '2025-12-01 10:00:00', NULL),
-    (21, 21, '2025-12-01 10:00:00', NULL),
-    (22, 22, '2025-12-01 10:00:00', NULL),
-    (23, 23, '2025-12-01 10:00:00', NULL),
-    (24, 24, '2025-12-01 10:00:00', NULL),
-    (25, 25, '2025-12-01 10:00:00', NULL),
-    (26, 26, '2025-12-01 10:00:00', NULL),
-    (27, 27, '2025-12-01 10:00:00', NULL);
+SELECT
+    seed.uid,
+    seed.oid,
+    seed.appointedAt,
+    seed.unAppointedAt
+FROM (
+    SELECT 8 AS uid, 8 AS oid, '2025-12-01 10:00:00' AS appointedAt, NULL AS unAppointedAt
+    UNION ALL
+    SELECT 9, 9, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 10, 10, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 11, 11, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 12, 12, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 13, 13, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 14, 14, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 15, 15, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 16, 16, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 17, 17, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 18, 18, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 19, 19, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 20, 20, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 21, 21, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 22, 22, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 23, 23, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 24, 24, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 25, 25, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 26, 26, '2025-12-01 10:00:00', NULL
+    UNION ALL
+    SELECT 27, 27, '2025-12-01 10:00:00', NULL
+) seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM users_officials existing
+    WHERE existing.uid = seed.uid
+      AND existing.oid = seed.oid
+      AND existing.appointedAt = seed.appointedAt
+      AND (
+          (existing.unAppointedAt IS NULL AND seed.unAppointedAt IS NULL)
+          OR existing.unAppointedAt = seed.unAppointedAt
+      )
+);
 
 -- =====================================================
 -- Additional Users ↔ Lodges
 -- =====================================================
-INSERT INTO
+INSERT IGNORE INTO
     `users_lodges` (`uid`, `lid`)
 VALUES
     (8, 1),
@@ -550,7 +618,7 @@ VALUES
 -- =====================================================
 -- Additional Users ↔ Allergies
 -- =====================================================
-INSERT INTO
+INSERT IGNORE INTO
     `users_allergies` (`uid`, `alid`)
 VALUES
     (8, 8),

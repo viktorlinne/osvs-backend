@@ -16,6 +16,7 @@ export type EventRecord = {
 
 type EventRow = Record<string, unknown>;
 type UserIdRow = { uid?: unknown };
+type IdRow = { id?: unknown };
 type LodgeRow = { id?: unknown; name?: unknown };
 type RsvpRow = { rsvp?: unknown };
 type BookFoodRow = { bookFood?: unknown };
@@ -46,6 +47,35 @@ function getExecutor(conn?: PoolConnection) {
 function deriveFoodFromPrice(price: unknown): number {
   const amount = Number(price);
   return Number.isFinite(amount) && amount > 0 ? 1 : 0;
+}
+
+function normalizeIds(ids: number[]): number[] {
+  return Array.from(
+    new Set(
+      (Array.isArray(ids) ? ids : [])
+        .map((id) => Number(id))
+        .filter((id): id is number => Number.isFinite(id) && id > 0)
+        .map((id) => Math.floor(id)),
+    ),
+  );
+}
+
+async function insertEventRelationPairs(
+  tableName: "lodges_events" | "groups_events" | "users_events",
+  idColumn: "lid" | "gid" | "uid",
+  eventId: number,
+  ids: number[],
+  conn?: PoolConnection,
+) {
+  const normalizedIds = normalizeIds(ids);
+  if (normalizedIds.length === 0) return;
+
+  const executor = getExecutor(conn);
+  const values = normalizedIds.map((id) => [id, eventId]);
+  await executor(
+    `INSERT IGNORE INTO ${tableName} (${idColumn}, eid) VALUES ?`,
+    [values],
+  );
 }
 
 export async function listEvents(): Promise<EventRow[]> {
@@ -113,6 +143,7 @@ export async function insertEvent(
 export async function updateEventRecord(
   id: number,
   payload: Record<string, unknown>,
+  conn?: PoolConnection,
 ) {
   const sets: string[] = [];
   const params: Array<unknown> = [];
@@ -150,7 +181,8 @@ export async function updateEventRecord(
     { id, fields: sets.length },
     "events.repo: updateEventRecord executing SQL",
   );
-  await pool.query(sql, params);
+  const executor = getExecutor(conn);
+  await executor(sql, params);
 }
 
 export async function deleteEvent(id: number) {
@@ -162,11 +194,53 @@ export async function insertLodgeEvent(
   lodgeId: number,
   conn?: PoolConnection,
 ) {
+  await insertEventRelationPairs("lodges_events", "lid", eventId, [lodgeId], conn);
+}
+
+export async function insertGroupEvent(
+  eventId: number,
+  groupId: number,
+  conn?: PoolConnection,
+) {
+  await insertEventRelationPairs("groups_events", "gid", eventId, [groupId], conn);
+}
+
+export async function insertUserEvent(
+  eventId: number,
+  userId: number,
+  conn?: PoolConnection,
+) {
+  await insertEventRelationPairs("users_events", "uid", eventId, [userId], conn);
+}
+
+export async function replaceEventLodges(
+  eventId: number,
+  lodgeIds: number[],
+  conn?: PoolConnection,
+) {
   const executor = getExecutor(conn);
-  await executor("INSERT IGNORE INTO lodges_events (lid, eid) VALUES (?, ?)", [
-    lodgeId,
-    eventId,
-  ]);
+  await executor("DELETE FROM lodges_events WHERE eid = ?", [eventId]);
+  await insertEventRelationPairs("lodges_events", "lid", eventId, lodgeIds, conn);
+}
+
+export async function replaceEventGroups(
+  eventId: number,
+  groupIds: number[],
+  conn?: PoolConnection,
+) {
+  const executor = getExecutor(conn);
+  await executor("DELETE FROM groups_events WHERE eid = ?", [eventId]);
+  await insertEventRelationPairs("groups_events", "gid", eventId, groupIds, conn);
+}
+
+export async function replaceEventUsers(
+  eventId: number,
+  userIds: number[],
+  conn?: PoolConnection,
+) {
+  const executor = getExecutor(conn);
+  await executor("DELETE FROM users_events WHERE eid = ?", [eventId]);
+  await insertEventRelationPairs("users_events", "uid", eventId, userIds, conn);
 }
 
 export async function selectEventPrice(
@@ -187,9 +261,10 @@ export async function findUsersInLodge(
   conn?: PoolConnection,
 ): Promise<UserIdRow[]> {
   const executor = getExecutor(conn);
-  const [rows] = await executor("SELECT uid FROM users_lodges WHERE lid = ?", [
-    lodgeId,
-  ]);
+  const [rows] = await executor(
+    "SELECT DISTINCT uid FROM users_lodges WHERE lid = ? ORDER BY uid ASC",
+    [lodgeId],
+  );
   return asRows<UserIdRow>(rows);
 }
 
@@ -198,7 +273,7 @@ export async function bulkInsertEventPayments(
   conn?: PoolConnection,
 ) {
   if (!Array.isArray(values) || values.length === 0) return;
-  const executor = conn ? conn.query.bind(conn) : pool.query.bind(pool);
+  const executor = getExecutor(conn);
   await executor(
     "INSERT IGNORE INTO event_payments (uid, eid, amount, status) VALUES ?",
     [values],
@@ -210,7 +285,7 @@ export async function bulkInsertEventAttendances(
   conn?: PoolConnection,
 ) {
   if (!Array.isArray(values) || values.length === 0) return;
-  const executor = conn ? conn.query.bind(conn) : pool.query.bind(pool);
+  const executor = getExecutor(conn);
   await executor(
     "INSERT IGNORE INTO events_attendances (uid, eid, rsvp, bookFood, attended) VALUES ?",
     [values],
@@ -225,17 +300,12 @@ export async function selectUsersToRemoveOnUnlink(
   const executor = getExecutor(conn);
   const [rows] = await executor(
     `
-      SELECT ul.uid
-      FROM users_lodges ul
-      WHERE ul.lid = ?
-        AND NOT EXISTS (
-          SELECT 1
-          FROM lodges_events le
-          JOIN users_lodges ul2 ON ul2.lid = le.lid
-          WHERE le.eid = ? AND ul2.uid = ul.uid AND le.lid != ?
-        )
+      SELECT ea.uid
+      FROM events_attendances ea
+      JOIN users_lodges ul ON ul.uid = ea.uid
+      WHERE ea.eid = ? AND ul.lid = ?
     `,
-    [lodgeId, eventId, lodgeId],
+    [eventId, lodgeId],
   );
   return asRows<UserIdRow>(rows);
 }
@@ -245,9 +315,10 @@ export async function deleteEventAttendancesForUids(
   uids: number[],
   conn?: PoolConnection,
 ) {
-  if (!Array.isArray(uids) || uids.length === 0) return;
-  const placeholders = uids.map(() => "?").join(",");
-  const params: Array<unknown> = [eventId, ...uids];
+  const normalizedUids = normalizeIds(uids);
+  if (normalizedUids.length === 0) return;
+  const placeholders = normalizedUids.map(() => "?").join(",");
+  const params: Array<unknown> = [eventId, ...normalizedUids];
   const executor = getExecutor(conn);
   await executor(
     `DELETE FROM events_attendances WHERE eid = ? AND uid IN (${placeholders})`,
@@ -260,9 +331,10 @@ export async function deleteEventPaymentsForUids(
   uids: number[],
   conn?: PoolConnection,
 ) {
-  if (!Array.isArray(uids) || uids.length === 0) return;
-  const placeholders = uids.map(() => "?").join(",");
-  const params: Array<unknown> = [eventId, ...uids];
+  const normalizedUids = normalizeIds(uids);
+  if (normalizedUids.length === 0) return;
+  const placeholders = normalizedUids.map(() => "?").join(",");
+  const params: Array<unknown> = [eventId, ...normalizedUids];
   const executor = getExecutor(conn);
   await executor(
     `DELETE FROM event_payments WHERE eid = ? AND uid IN (${placeholders})`,
@@ -282,9 +354,81 @@ export async function deleteLodgeEvent(
   ]);
 }
 
+export async function selectEventLodgeIds(
+  eventId: number,
+  conn?: PoolConnection,
+): Promise<number[]> {
+  const executor = getExecutor(conn);
+  const [rows] = await executor(
+    "SELECT lid AS id FROM lodges_events WHERE eid = ? ORDER BY lid ASC",
+    [eventId],
+  );
+  return asRows<IdRow>(rows)
+    .map((row) => Number(row.id))
+    .filter((id): id is number => Number.isFinite(id));
+}
+
+export async function selectGroupIdsForEvent(
+  eventId: number,
+  conn?: PoolConnection,
+): Promise<number[]> {
+  const executor = getExecutor(conn);
+  const [rows] = await executor(
+    "SELECT gid AS id FROM groups_events WHERE eid = ? ORDER BY gid ASC",
+    [eventId],
+  );
+  return asRows<IdRow>(rows)
+    .map((row) => Number(row.id))
+    .filter((id): id is number => Number.isFinite(id));
+}
+
+export async function selectUserIdsForEvent(
+  eventId: number,
+  conn?: PoolConnection,
+): Promise<number[]> {
+  const executor = getExecutor(conn);
+  const [rows] = await executor(
+    "SELECT uid AS id FROM users_events WHERE eid = ? ORDER BY uid ASC",
+    [eventId],
+  );
+  return asRows<IdRow>(rows)
+    .map((row) => Number(row.id))
+    .filter((id): id is number => Number.isFinite(id));
+}
+
+export async function selectInvitedUserIds(
+  eventId: number,
+  conn?: PoolConnection,
+): Promise<number[]> {
+  const executor = getExecutor(conn);
+  const [rows] = await executor(
+    "SELECT uid AS id FROM events_attendances WHERE eid = ? ORDER BY uid ASC",
+    [eventId],
+  );
+  return asRows<IdRow>(rows)
+    .map((row) => Number(row.id))
+    .filter((id): id is number => Number.isFinite(id));
+}
+
+export async function updatePendingEventPaymentsAmount(
+  eventId: number,
+  amount: number,
+  conn?: PoolConnection,
+) {
+  const executor = getExecutor(conn);
+  await executor(
+    `
+      UPDATE event_payments
+      SET amount = ?, updatedAt = NOW()
+      WHERE eid = ? AND status = 'Pending'
+    `,
+    [amount, eventId],
+  );
+}
+
 export async function listEventsForUser(userId: number): Promise<EventRow[]> {
   const sql = `
-    SELECT DISTINCT
+    SELECT
       e.id,
       e.title,
       e.description,
@@ -293,11 +437,10 @@ export async function listEventsForUser(userId: number): Promise<EventRow[]> {
       e.price,
       DATE_FORMAT(e.startDate, '%Y-%m-%d %H:%i:%s') AS startDate,
       DATE_FORMAT(e.endDate, '%Y-%m-%d %H:%i:%s') AS endDate
-    FROM events e
-    JOIN lodges_events le ON le.eid = e.id
-    JOIN users_lodges ul ON ul.lid = le.lid
-    WHERE ul.uid = ?
-    ORDER BY e.startDate ASC
+    FROM events_attendances ea
+    JOIN events e ON e.id = ea.eid
+    WHERE ea.uid = ?
+    ORDER BY e.startDate ASC, e.id ASC
   `;
   const [rows] = await pool.query(sql, [userId]);
   return asRows<EventRow>(rows);
@@ -312,12 +455,10 @@ export async function selectLodgesForEvent(eventId: number): Promise<LodgeRow[]>
 }
 
 export async function isUserInvitedToEvent(eventId: number, userId: number) {
-  const sql = `
-    SELECT 1 FROM lodges_events le
-    JOIN users_lodges ul ON ul.lid = le.lid
-    WHERE le.eid = ? AND ul.uid = ? LIMIT 1
-  `;
-  const [rows] = await pool.query(sql, [eventId, userId]);
+  const [rows] = await pool.query(
+    "SELECT 1 FROM events_attendances WHERE eid = ? AND uid = ? LIMIT 1",
+    [eventId, userId],
+  );
   return asRows<EventRow>(rows).length > 0;
 }
 
@@ -385,7 +526,7 @@ export async function selectEventAttendances(
 ): Promise<EventAttendanceListRow[]> {
   const sql = `
     SELECT
-      invited.uid AS uid,
+      ea.uid AS uid,
       u.firstname AS firstname,
       u.lastname AS lastname,
       COALESCE(
@@ -396,32 +537,26 @@ export async function selectEventAttendances(
       COALESCE(ea.bookFood, 0) AS bookFood,
       COALESCE(ea.attended, 0) AS attended,
       ep.status AS paymentStatus
-    FROM (
-      SELECT DISTINCT ul.uid
-      FROM lodges_events le
-      JOIN users_lodges ul ON ul.lid = le.lid
-      WHERE le.eid = ?
-    ) invited
-    JOIN users u ON u.matrikelnummer = invited.uid
-    LEFT JOIN events_attendances ea
-      ON ea.uid = invited.uid AND ea.eid = ?
+    FROM events_attendances ea
+    JOIN users u ON u.matrikelnummer = ea.uid
     LEFT JOIN event_payments ep
-      ON ep.uid = invited.uid AND ep.eid = ?
+      ON ep.uid = ea.uid AND ep.eid = ea.eid
     LEFT JOIN users_allergies ua
-      ON ua.uid = invited.uid
+      ON ua.uid = ea.uid
     LEFT JOIN allergies a
       ON a.id = ua.alid
+    WHERE ea.eid = ?
     GROUP BY
-      invited.uid,
+      ea.uid,
       u.firstname,
       u.lastname,
       ea.rsvp,
       ea.bookFood,
       ea.attended,
       ep.status
-    ORDER BY u.firstname ASC, u.lastname ASC, invited.uid ASC
+    ORDER BY u.firstname ASC, u.lastname ASC, ea.uid ASC
   `;
-  const [rows] = await pool.query(sql, [eventId, eventId, eventId]);
+  const [rows] = await pool.query(sql, [eventId]);
   return asRows<EventAttendanceListRow>(rows);
 }
 
@@ -444,7 +579,6 @@ export async function upsertEventPaymentStatus(
   await executor(sql, [userId, eventId, amount, status]);
 }
 
-// Event payments helpers
 export async function findEventPaymentByUidEid(uid: number, eid: number) {
   const [rows] = await pool.query(
     "SELECT * FROM event_payments WHERE uid = ? AND eid = ? LIMIT 1",
@@ -495,6 +629,11 @@ export default {
   updateEventRecord,
   deleteEvent,
   insertLodgeEvent,
+  insertGroupEvent,
+  insertUserEvent,
+  replaceEventLodges,
+  replaceEventGroups,
+  replaceEventUsers,
   selectEventPrice,
   findUsersInLodge,
   bulkInsertEventPayments,
@@ -503,6 +642,11 @@ export default {
   deleteEventAttendancesForUids,
   deleteEventPaymentsForUids,
   deleteLodgeEvent,
+  selectEventLodgeIds,
+  selectGroupIdsForEvent,
+  selectUserIdsForEvent,
+  selectInvitedUserIds,
+  updatePendingEventPaymentsAmount,
   listEventsForUser,
   isUserInvitedToEvent,
   getUserRsvpFromDb,
