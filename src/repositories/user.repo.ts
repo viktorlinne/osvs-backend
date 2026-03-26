@@ -204,6 +204,7 @@ export async function updateUserProfile(
     zipcode?: string;
     notes?: string | null;
     accommodationAvailable?: boolean | null;
+    archive?: "Avliden" | "Urgången" | null;
   }>,
 ) {
   const fields: string[] = [];
@@ -249,12 +250,25 @@ export async function updateUserProfile(
     fields.push("accommodationAvailable = ?");
     params.push(data.accommodationAvailable ? 1 : 0);
   }
+  if (typeof data.archive !== "undefined") {
+    fields.push("archive = ?");
+    params.push(data.archive ?? null);
+  }
 
   if (fields.length === 0) return;
 
   const sql = `UPDATE users SET ${fields.join(", ")} WHERE matrikelnummer = ?`;
   params.push(String(userId));
   await exec(sql, params);
+}
+
+export async function removeUserFromFutureEvents(userId: number) {
+  const delUserEvents = "DELETE FROM users_events WHERE uid = ? AND eid IN (SELECT id FROM events WHERE startDate > NOW())";
+  const delAttendances = "DELETE FROM events_attendances WHERE uid = ? AND eid IN (SELECT id FROM events WHERE startDate > NOW())";
+  await Promise.all([
+    exec(delUserEvents, [userId]),
+    exec(delAttendances, [userId]),
+  ]);
 }
 
 export async function updateUserGeocode(
@@ -505,7 +519,7 @@ export async function listRoles() {
 }
 
 function buildListUsersWhere(filters?: ListUsersFilters) {
-  const where: string[] = [];
+  const where: string[] = ["u.archive IS NULL"];
   const params: Array<string | number | null> = [];
 
   if (filters?.name) {
@@ -562,7 +576,7 @@ export async function listUsers(
 ): Promise<UserListPage> {
   const { whereSql, params } = buildListUsersWhere(filters);
   const offset = Math.max(0, (pagination.page - 1) * pagination.pageSize);
-  const selectSql = `SELECT u.matrikelnummer, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work,u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable
+  const selectSql = `SELECT u.matrikelnummer, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work, u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable, u.archive
     FROM users u ${whereSql} ORDER BY u.matrikelnummer DESC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS cnt FROM users u ${whereSql}`;
 
@@ -605,7 +619,7 @@ export async function listUsersMapPins() {
       GROUP BY ua.uid
     ) g ON g.uid = u.matrikelnummer
     LEFT JOIN achievements a ON a.id = g.highest_grade_rank
-    WHERE u.lat IS NOT NULL AND u.lng IS NOT NULL
+    WHERE u.lat IS NOT NULL AND u.lng IS NOT NULL AND u.archive IS NULL
     ORDER BY u.firstname ASC, u.lastname ASC, u.matrikelnummer ASC
   `;
   const [rows] = await exec(sql);
@@ -614,7 +628,7 @@ export async function listUsersMapPins() {
 
 export async function getUserPublicById(id: number) {
   const [rows] = await exec(
-    `SELECT matrikelnummer, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable
+    `SELECT matrikelnummer, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable, archive
      FROM users WHERE matrikelnummer = ? LIMIT 1`,
     [id],
   );

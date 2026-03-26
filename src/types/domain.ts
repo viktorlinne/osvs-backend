@@ -61,7 +61,7 @@ export type UserRecord = {
   passwordHash?: string;
   createdAt: string | Date;
   picture?: string | null;
-  archive?: "Deceased" | "Retired" | "Removed" | null;
+  archive?: "Avliden" | "Urgången" | null;
   firstname: string;
   lastname: string;
   dateOfBirth: string | Date;
@@ -81,7 +81,7 @@ export type PublicUser = {
   email: string;
   createdAt: string;
   picture?: string | null;
-  archive?: "Deceased" | "Retired" | "Removed" | null;
+  archive?: "Avliden" | "Urgången" | null;
   firstname: string;
   lastname: string;
   dateOfBirth: string;

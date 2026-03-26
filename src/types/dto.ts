@@ -25,6 +25,7 @@ export type UpdateUserProfileBody = Partial<{
   zipcode?: string;
   notes?: string | null;
   accommodationAvailable?: boolean | null;
+  archive?: "Avliden" | "Urgången" | null;
 }>;
 
 export type AddAchievementBody = {

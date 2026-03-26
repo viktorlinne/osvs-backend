@@ -20,9 +20,8 @@ export function isValidUserRecord(value: unknown): value is UserRecord {
       record.picture === null) &&
     (typeof record.archive === "undefined" ||
       record.archive === null ||
-      record.archive === "Deceased" ||
-      record.archive === "Retired" ||
-      record.archive === "Removed") &&
+      record.archive === "Avliden" ||
+      record.archive === "Urgången") &&
     typeof record.firstname === "string" &&
     typeof record.lastname === "string" &&
     (typeof record.dateOfBirth === "string" ||

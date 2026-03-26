@@ -114,6 +114,7 @@ export async function updateUserProfile(
     zipcode?: string;
     notes?: string | null;
     accommodationAvailable?: boolean | null;
+    archive?: "Avliden" | "Urgången" | null;
   }>,
 ): Promise<void> {
   const before = await userRepo.findById(userId);
@@ -126,6 +127,13 @@ export async function updateUserProfile(
     data.dateOfBirth = normalizeToSqlDate(data.dateOfBirth);
   }
   await userRepo.updateUserProfile(userId, data);
+
+  if (
+    typeof data.archive !== "undefined" &&
+    data.archive !== null
+  ) {
+    await userRepo.removeUserFromFutureEvents(userId);
+  }
 
   if (shouldRegeocode) {
     try {

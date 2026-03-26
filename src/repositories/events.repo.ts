@@ -388,7 +388,7 @@ export async function selectUserIdsForEvent(
 ): Promise<number[]> {
   const executor = getExecutor(conn);
   const [rows] = await executor(
-    "SELECT uid AS id FROM users_events WHERE eid = ? ORDER BY uid ASC",
+    "SELECT ue.uid AS id FROM users_events ue JOIN users u ON u.matrikelnummer = ue.uid WHERE ue.eid = ? AND u.archive IS NULL ORDER BY ue.uid ASC",
     [eventId],
   );
   return asRows<IdRow>(rows)
@@ -402,7 +402,7 @@ export async function selectInvitedUserIds(
 ): Promise<number[]> {
   const executor = getExecutor(conn);
   const [rows] = await executor(
-    "SELECT uid AS id FROM events_attendances WHERE eid = ? ORDER BY uid ASC",
+    "SELECT ea.uid AS id FROM events_attendances ea JOIN users u ON u.matrikelnummer = ea.uid WHERE ea.eid = ? AND u.archive IS NULL ORDER BY ea.uid ASC",
     [eventId],
   );
   return asRows<IdRow>(rows)

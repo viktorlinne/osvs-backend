@@ -163,6 +163,15 @@ export function validateUpdateUserProfileBody(
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(body, "archive")) {
+    const value = body.archive;
+    if (value === null || value === "Avliden" || value === "Urgången") {
+      out.archive = value;
+    } else {
+      fields.archive = "Ogiltigt värde";
+    }
+  }
+
   if (Object.keys(fields).length > 0) {
     return failFields(fields);
   }
