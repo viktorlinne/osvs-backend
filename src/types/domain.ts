@@ -94,6 +94,8 @@ export type PublicUser = {
   address: string;
   zipcode: string;
   notes?: string | null;
+  lodgeId?: number | null;
+  lodgeName?: string | null;
 };
 
 export type UserMapPin = {

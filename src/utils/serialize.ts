@@ -34,5 +34,11 @@ export function toPublicUser(user: UserRecord): PublicUser {
     address: user.address,
     zipcode: user.zipcode,
     notes: user.notes ?? null,
+    lodgeId: (user as unknown as Record<string, unknown>).lodgeId != null
+      ? Number((user as unknown as Record<string, unknown>).lodgeId)
+      : null,
+    lodgeName: (user as unknown as Record<string, unknown>).lodgeName != null
+      ? String((user as unknown as Record<string, unknown>).lodgeName)
+      : null,
   } as PublicUser;
 }

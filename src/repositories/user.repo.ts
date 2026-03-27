@@ -600,8 +600,12 @@ export async function listUsers(
 ): Promise<UserListPage> {
   const { whereSql, params } = buildListUsersWhere(filters);
   const offset = Math.max(0, (pagination.page - 1) * pagination.pageSize);
-  const selectSql = `SELECT u.matrikelnummer, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work, u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable, u.archive
-    FROM users u ${whereSql} ORDER BY u.matrikelnummer DESC LIMIT ? OFFSET ?`;
+  const selectSql = `SELECT u.matrikelnummer, u.email, u.createdAt, u.revokedAt, u.picture, u.firstname, u.lastname, u.dateOfBirth, u.work, u.mobile, u.homeNumber, u.city, u.address, u.zipcode, u.notes, u.accommodationAvailable, u.archive,
+      ul.lid AS lodgeId, l.name AS lodgeName
+    FROM users u
+    LEFT JOIN users_lodges ul ON ul.uid = u.matrikelnummer
+    LEFT JOIN lodges l ON l.id = ul.lid
+    ${whereSql} ORDER BY u.matrikelnummer DESC LIMIT ? OFFSET ?`;
   const countSql = `SELECT COUNT(*) AS cnt FROM users u ${whereSql}`;
 
   const [[rows], [countRows]] = await Promise.all([
