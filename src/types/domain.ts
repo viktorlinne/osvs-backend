@@ -159,6 +159,8 @@ export type AttendedEventsSummary = {
   sinceLastAchievementCount: number;
   lastAchievementAt: string | null;
   totalMeetingsCount: number;
+  meetingsAfterGrade8Count: number;
+  createdAt: string | null;
 };
 
 export type EventAttendanceRow = {

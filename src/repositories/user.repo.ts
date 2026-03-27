@@ -446,6 +446,30 @@ export async function countAttendedEventsSinceLatestAchievement(userId: number) 
   return Number(arr[0].cnt ?? 0);
 }
 
+export async function countAttendedEventsAfterGrade8(userId: number) {
+  const sql = `
+    SELECT COUNT(*) AS cnt
+    FROM events_attendances ea
+    JOIN events e ON e.id = ea.eid
+    WHERE ea.uid = ?
+      AND ea.attended = 1
+      AND e.startDate > COALESCE(
+        (
+          SELECT ua.awardedAt
+          FROM users_achievements ua
+          WHERE ua.uid = ? AND ua.aid = 8
+          ORDER BY ua.awardedAt ASC
+          LIMIT 1
+        ),
+        '9999-12-31 00:00:00'
+      )
+  `;
+  const [rows] = await exec(sql, [userId, userId]);
+  const arr = asRows<CountRow>(rows);
+  if (arr.length === 0) return 0;
+  return Number(arr[0].cnt ?? 0);
+}
+
 export async function countAttendedEventsForUser(userId: number) {
   const sql = `
     SELECT COUNT(*) AS cnt
@@ -758,6 +782,7 @@ export default {
   getLatestAchievementAwardedAt,
   countAttendedEventsSinceLatestAchievement,
   countAttendedEventsForUser,
+  countAttendedEventsAfterGrade8,
   listAchievements,
   selectUserAllergies,
   setUserAllergies,

@@ -63,12 +63,14 @@ export async function getUserAchievements(
 export async function getUserAttendedEventsSummary(
   userId: number,
 ): Promise<AttendedEventsSummary> {
-  const [eventRows, lastAchievementRaw, sinceCountRaw, totalCountRaw] =
+  const [eventRows, lastAchievementRaw, sinceCountRaw, totalCountRaw, afterGrade8Raw, userRow] =
     await Promise.all([
     userRepo.listAttendedEventsForUser(userId),
     userRepo.getLatestAchievementAwardedAt(userId),
     userRepo.countAttendedEventsSinceLatestAchievement(userId),
     userRepo.countAttendedEventsForUser(userId),
+    userRepo.countAttendedEventsAfterGrade8(userId),
+    userRepo.getUserPublicById(userId),
   ]);
 
   const events = eventRows
@@ -87,6 +89,8 @@ export async function getUserAttendedEventsSummary(
       : 0,
     lastAchievementAt: toIsoString(lastAchievementRaw),
     totalMeetingsCount: Number.isFinite(totalCountRaw) ? totalCountRaw : 0,
+    meetingsAfterGrade8Count: Number.isFinite(afterGrade8Raw) ? afterGrade8Raw : 0,
+    createdAt: userRow ? toIsoString((userRow as Record<string, unknown>).createdAt) : null,
   };
 }
 
