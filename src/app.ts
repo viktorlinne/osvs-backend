@@ -31,6 +31,7 @@ import officialsRouter from "./routes/officials";
 import allergiesRouter from "./routes/allergies";
 import revisionsRouter from "./routes/revisions";
 import documentsRouter from "./routes/documents";
+import mediaRouter from "./routes/media";
 
 const app = express();
 const browserOriginConfig = getBrowserOriginConfig();
@@ -170,6 +171,8 @@ app.use("/api/allergies", allergiesRouter);
 app.use("/api/revisions", revisionsRouter);
 // Documents routes
 app.use("/api/documents", documentsRouter);
+// DB-backed media routes
+app.use("/api/media", mediaRouter);
 // Payments routes
 app.use("/api/payments", paymentsRouter);
 

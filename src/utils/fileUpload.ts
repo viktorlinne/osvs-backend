@@ -3,7 +3,7 @@ import type { Request } from "express";
 import sharp from "sharp";
 import path from "path";
 import logger from "./logger";
-import { supabaseStorageAdapter } from "../infra/storage/supabase";
+import { databaseStorageAdapter } from "../infra/storage/database";
 import type { StorageAdapter } from "../infra/storage/adapter";
 import { PROFILE_PICTURE_MAX_SIZE } from "../config/constants";
 import {
@@ -12,11 +12,8 @@ import {
   singleFieldError,
 } from "./errors";
 
-// Only Supabase storage adapter is supported in production.
-// `supabaseStorageAdapter` will throw helpful errors if Supabase isn't configured.
-const storageAdapter: StorageAdapter = supabaseStorageAdapter;
-
-// No local uploads directory is used when using Supabase adapter.
+// Uploads are stored in MySQL and served through /api/media/:id.
+const storageAdapter: StorageAdapter = databaseStorageAdapter;
 
 // Use memoryStorage — we upload to adapter after multer parses the file
 const memory = multer.memoryStorage();
@@ -264,13 +261,12 @@ export async function getPublicUrl(
 ): Promise<string | null> {
   if (!key) return null;
   try {
-    // If the stored value is already an absolute URL, return it unchanged.
-    // This avoids the local storage adapter encoding an absolute URL into
-    // `/uploads/https%3A/...` when keys accidentally contain full URLs.
-    if (typeof key === "string" && /^(https?:)\/\//i.test(key)) {
+    // Keep user-supplied external URLs and frontend public assets working.
+    if (typeof key === "string" && (/^(https?:)\/\//i.test(key) || key.startsWith("/"))) {
       return key;
     }
-    return await storageAdapter.getUrl(key);
+    const url = await storageAdapter.getUrl(key);
+    return url || null;
   } catch (err) {
     logger.warn("Failed to resolve public URL for key", key, err);
     return null;

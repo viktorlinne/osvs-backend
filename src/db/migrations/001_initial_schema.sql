@@ -7,6 +7,20 @@
 -- =====================================================
 -- BASE LOOKUP TABLES
 -- =====================================================
+-- Stored media
+CREATE TABLE `media_assets` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `original_key` varchar(512) NOT NULL,
+  `content_type` varchar(128) NOT NULL,
+  `byte_size` int unsigned NOT NULL,
+  `checksum_sha256` char(64) NOT NULL,
+  `data` longblob NOT NULL,
+  `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_media_original_key` (`original_key`),
+  KEY `idx_media_checksum_sha256` (`checksum_sha256`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
+
 -- Roles
 CREATE TABLE `roles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -22,7 +36,7 @@ CREATE TABLE `lodges` (
   `city` varchar(256) NOT NULL,
   `description` text NOT NULL,
   `email` varchar(256) DEFAULT NULL,
-  `picture` varchar(256) DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/coatOfArmsPlaceholder.webp',
+  `picture` varchar(256) DEFAULT '/osvs.png',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_lodges_name` (`name`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
@@ -60,7 +74,7 @@ CREATE TABLE `users` (
   `email` varchar(256) NOT NULL,
   `passwordHash` varchar(512) NOT NULL,
   `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/profiles/profilePlaceholder.png',
+  `picture` varchar(256) NOT NULL DEFAULT 'profiles/profilePlaceholder.png',
   `archive` enum('Deceased', 'Retired', 'Removed') DEFAULT NULL,
   `firstname` varchar(256) NOT NULL,
   `lastname` varchar(256) NOT NULL,
@@ -101,7 +115,7 @@ CREATE TABLE `posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
   `description` text NOT NULL,
-  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+  `picture` varchar(256) NOT NULL DEFAULT 'posts/postPlaceholder.png',
   `publicum` tinyint(1) NOT NULL DEFAULT 0,
   `createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(),
   PRIMARY KEY (`id`),
@@ -141,7 +155,7 @@ CREATE TABLE `revisions` (
   `lid` int(11) NOT NULL,
   `title` varchar(256) NOT NULL,
   `year` date NOT NULL,
-  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/coatOfArmsPlaceholder.webp',
+  `picture` varchar(256) NOT NULL DEFAULT 'revisions/revisionPlaceholder.pdf',
   PRIMARY KEY (`id`),
   KEY `fk_revisions_lodge` (`lid`),
   CONSTRAINT `fk_revisions_lodge` FOREIGN KEY (`lid`) REFERENCES `lodges` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
@@ -151,7 +165,7 @@ CREATE TABLE `revisions` (
 CREATE TABLE `documents` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(256) NOT NULL,
-  `picture` varchar(256) NOT NULL DEFAULT 'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/documentPlaceholder.png',
+  `picture` varchar(256) NOT NULL DEFAULT 'documents/documentPlaceholder.pdf',
   PRIMARY KEY (`id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci;
 

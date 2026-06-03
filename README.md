@@ -9,7 +9,7 @@ Express + TypeScript backend for the OSVS platform.
 - TypeScript
 - MySQL via `mysql2/promise`
 - OpenAPI docs served from `src/docs/openapi.ts`
-- Supabase-backed file storage adapter
+- MySQL-backed media storage for uploads
 
 ## Key Commands
 

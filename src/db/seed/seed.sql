@@ -111,21 +111,21 @@ VALUES
     1,
     'Welcome to OSVS',
     'This is the first post on our new platform!',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    'posts/postPlaceholder.png',
     0
   ),
   (
     2,
     'Upcoming Event',
     'Join us for our annual gathering next month.',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    'posts/postPlaceholder.png',
     0
   ),
   (
     3,
     'This years charitable cause',
     'Our charitable cause this year is to support local food banks.',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/posts/postPlaceholder.png',
+    'posts/postPlaceholder.png',
     1
   ) ON DUPLICATE KEY
 UPDATE
@@ -159,7 +159,7 @@ VALUES
     'Karlskrona',
     'Stamlogens Fastighetsförening bildades och verkade i sju år innan man vid ett logemöte 1939 meddelade förvärv av Johanneskapellet och året därefter bildades V - Sexans första Damklubben. Idag har Stamogen 200 medlemmar varav där är 30 i Damklubben.',
     'stamlogen@osvs.se',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/karlskrona.webp'
+    '/karlskrona.webp'
   ),
   (
     2,
@@ -167,7 +167,7 @@ VALUES
     'Helsingborg',
     'Vid släktmiddag i Karlskrona 1930 träffade disponent Ewald Stridh t.f.Styrande Recorn Ernst Johansson och där framförde tanke om kamratförbund i Helsingborg vilket senare välkomnades av bröderna i Karlskrona. Den handlingskraftige Bernhard Rosenlindh knöts till kretsen. Efter målmedvetet arbete gavs så framgång och 6 bröder kunde proformarecipiera i Karlskrona. Instiftning, där 40 blivande bröder deltog, avhölls 1931.Idag är vi ca 70 Bröder i varierande grader.',
     'stellapolaris@osvs.se',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/helsingborg.webp'
+    '/helsingborg.webp'
   ),
   (
     3,
@@ -175,7 +175,7 @@ VALUES
     'Ängelholm',
     'Inpulser till logens bildande kom från broderlogen Helsingborg. Den 27 juli 1932 anordnades ett sammanträffande med intresserade personer i Ängelholm och Helsingborg för information. I januari 1933 hölls invigning i Odd Fellows lokaler i närvaro av Stora Rådets medlemmar. En ny länk i Ordenskedjan bildas. Logens SR var Albin Nilsson. Logen har nu 40 Bröder och c:a 10 Damer.',
     'regulus@osvs.se',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/angelholm.webp'
+    '/angelholm.webp'
   ),
   (
     4,
@@ -183,7 +183,7 @@ VALUES
     'Göteborg',
     'Logen Orion instiftades den 26 februari 1943. Logens tillkomst föregicks av några sammanträden under senare delen av 1942 mellan från Karlskrona till Nya Varvet flyttad militär personal, och personer i Göteborg, som gjort sin värnplikt i Karlskrona. Till Logens Styrande Recor valdes Löjtnant Gustaf Idh. Från 1955 egen fastighet där logelokalen är förlagd. Idag har logen 180 medlemmar och 80 i Damklubben.',
     'orion@osvs.se',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/goteborg.webp'
+    '/goteborg.webp'
   ),
   (
     5,
@@ -191,7 +191,7 @@ VALUES
     'Halmstad',
     'Enligt ett protokoll från Förtroenderådets sammanträde i maj 1974 framgår det, att det gamla önskemålet, att Ordenssamfundet VS finge flera loger än nuvarande fyra, tycktes gå i uppfyllelse. Det gäller en loge i Halmstad, dit många av bröderna från både Göteborg och Ängelholm flyttat. Logen Capella instiftades således den 28 november 1975. Idag har logen 68 Bröder och 25 i Damklubben.',
     'capella@osvs.se',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/static/halmstad.webp'
+    '/halmstad.webp'
   ) ON DUPLICATE KEY
 UPDATE
   `name` =
@@ -488,28 +488,28 @@ VALUES
     1,
     '2026-01-01',
     'Stamlogen Revision',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+    'revisions/revisionPlaceholder.pdf'
   ),
   (
     2,
     2,
     '2026-01-01',
     'Stella Polaris Revision',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+    'revisions/revisionPlaceholder.pdf'
   ),
   (
     3,
     3,
     '2026-01-01',
     'Regulus Revision',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+    'revisions/revisionPlaceholder.pdf'
   ),
   (
     4,
     4,
     '2026-01-01',
     'Orion Revision',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/revisions/revisionPlaceholder.pdf'
+    'revisions/revisionPlaceholder.pdf'
   ) ON DUPLICATE KEY
 UPDATE
   `year` =
@@ -528,22 +528,22 @@ VALUES
   (
     1,
     'Stamlogen Stadgar',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+    'documents/documentPlaceholder.pdf'
   ),
   (
     2,
     'Stella Polaris Stadgar',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+    'documents/documentPlaceholder.pdf'
   ),
   (
     3,
     'Regulus Stadgar',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+    'documents/documentPlaceholder.pdf'
   ),
   (
     4,
     'Orion Stadgar',
-    'https://kmxmlfhkojdbuoktavul.supabase.co/storage/v1/object/public/documents/documentPlaceholder.pdf'
+    'documents/documentPlaceholder.pdf'
   ) ON DUPLICATE KEY
 UPDATE
   `title` =

@@ -1,11 +1,11 @@
 import "./env";
 
 export const STORAGE_BUCKETS = {
-  POSTS: process.env.SUPABASE_BUCKET_POSTS || "posts",
-  PROFILES: process.env.SUPABASE_BUCKET_PROFILES || "profiles",
-  DOCUMENTS: process.env.SUPABASE_BUCKET_DOCUMENTS || "documents",
-  REVISIONS: process.env.SUPABASE_BUCKET_REVISIONS || "revisions",
-  STATIC: process.env.SUPABASE_BUCKET_STATIC || "static",
+  POSTS: process.env.STORAGE_BUCKET_POSTS || "posts",
+  PROFILES: process.env.STORAGE_BUCKET_PROFILES || "profiles",
+  DOCUMENTS: process.env.STORAGE_BUCKET_DOCUMENTS || "documents",
+  REVISIONS: process.env.STORAGE_BUCKET_REVISIONS || "revisions",
+  STATIC: process.env.STORAGE_BUCKET_STATIC || "static",
 } as const;
 
 export const STORAGE_PREFIXES = {
@@ -18,6 +18,7 @@ export const STORAGE_PREFIXES = {
 export const STORAGE_KEYS = {
   POST_PLACEHOLDER: `${STORAGE_BUCKETS.POSTS}/postPlaceholder.png`,
   PROFILE_PLACEHOLDER: `${STORAGE_BUCKETS.PROFILES}/profilePlaceholder.png`,
+  LODGE_PLACEHOLDER: "/osvs.png",
   DOCUMENT_PLACEHOLDER: `${STORAGE_BUCKETS.DOCUMENTS}/documentPlaceholder.pdf`,
   REVISION_PLACEHOLDER: `${STORAGE_BUCKETS.REVISIONS}/revisionPlaceholder.pdf`,
 } as const;

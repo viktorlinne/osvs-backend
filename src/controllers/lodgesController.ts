@@ -4,6 +4,17 @@ import * as lodgeService from "../services/lodgeService";
 import { validateCreateLodgeBody, validateUpdateLodgeBody } from "../validators";
 import { sendError } from "../utils/response";
 import { parseNumericParam, unwrapValidation } from "./helpers/request";
+import { getPublicUrl } from "../utils/fileUpload";
+import { STORAGE_KEYS } from "../config/storage";
+
+async function withPictureUrl<T extends { picture?: string | null }>(
+  lodge: T,
+): Promise<T> {
+  return {
+    ...lodge,
+    picture: await getPublicUrl(lodge.picture ?? STORAGE_KEYS.LODGE_PLACEHOLDER),
+  };
+}
 
 export async function listLodgesHandler(
   _req: AuthenticatedRequest,
@@ -11,7 +22,8 @@ export async function listLodgesHandler(
   _next: NextFunction,
 ) {
   const rows = await lodgeService.listLodges();
-  return res.status(200).json({ lodges: rows });
+  const lodges = await Promise.all(rows.map(withPictureUrl));
+  return res.status(200).json({ lodges });
 }
 
 export async function getLodgeHandler(
@@ -23,7 +35,7 @@ export async function getLodgeHandler(
   if (id === null) return;
   const lodge = await lodgeService.findLodgeById(id);
   if (!lodge) return sendError(res, 404, "Logen hittades inte");
-  return res.status(200).json({ lodge });
+  return res.status(200).json({ lodge: await withPictureUrl(lodge) });
 }
 
 export async function createLodgeHandler(
