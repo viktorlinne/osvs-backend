@@ -110,26 +110,16 @@ export async function createPostHandler(
   if (!parsed) return;
 
   const { title, description, lodgeIds = [], publicum } = parsed;
-  if (!req.file) {
-    return sendError(res, 400, "Formuläret innehåller fel", {
-      fields: { picture: "Bild är obligatorisk" },
-    });
-  }
 
-  const id = await uploadImageAndPersist(req.file, {
-    folder: STORAGE_BUCKETS.POSTS,
-    prefix: STORAGE_PREFIXES.POST,
-    size: { width: 800, height: 600 },
-  }, async (pictureKey) =>
-    postsService.createPost(
-      title,
-      description,
-      publicum,
-      pictureKey,
-      lodgeIds,
-    ),
-  );
-
+  const id = req.file
+    ? await uploadImageAndPersist(req.file, {
+        folder: STORAGE_BUCKETS.POSTS,
+        prefix: STORAGE_PREFIXES.POST,
+        size: { width: 800, height: 600 },
+      }, (pictureKey) =>
+        postsService.createPost(title, description, publicum, pictureKey, lodgeIds),
+      )
+    : await postsService.createPost(title, description, publicum, STORAGE_KEYS.POST_PLACEHOLDER, lodgeIds);
 
   return res.status(201).json({ success: true, id });
 }
