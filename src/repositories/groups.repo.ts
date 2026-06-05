@@ -25,7 +25,7 @@ export async function listGroups(): Promise<Group[]> {
   const [rows] = await pool.query(
     `
       SELECT g.id, g.name, g.description, ug.uid
-      FROM groups g
+      FROM \`groups\` g
       LEFT JOIN users_groups ug ON ug.gid = g.id
       ORDER BY g.name ASC, g.id ASC, ug.uid ASC
     `,
