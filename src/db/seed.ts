@@ -107,6 +107,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<void> {
       user: dbConfig.user,
       password: dbConfig.password,
       database: dbConfig.database,
+      charset: "utf8mb4",
     });
 
     logger.info(

@@ -69,6 +69,7 @@ async function migrate() {
       port: dbConfig.port,
       user: dbConfig.user,
       password: dbConfig.password,
+      charset: "utf8mb4",
     });
 
     await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
