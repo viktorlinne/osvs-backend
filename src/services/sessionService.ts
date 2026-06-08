@@ -49,10 +49,16 @@ export async function loginWithEmail(
 
   const refreshToken = generateRefreshToken();
   const refreshDays = REFRESH_DAYS;
+  const refreshCreatedAt = new Date();
   const refreshExpires = new Date(
     Date.now() + refreshDays * 24 * 60 * 60 * 1000
   );
-  await createRefreshToken(refreshToken, user.matrikelnummer, refreshExpires);
+  await createRefreshToken(
+    refreshToken,
+    user.matrikelnummer,
+    refreshExpires,
+    refreshCreatedAt,
+  );
 
   setAuthCookies(res, accessToken, refreshToken, refreshDays);
   return { session: getSessionMetadataFromAccessToken(accessToken) };
@@ -168,6 +174,7 @@ async function renewSessionFromCookie(
 
   const newRefresh = generateRefreshToken();
   const refreshDays = REFRESH_DAYS;
+  const rotatedAt = new Date();
   const refreshExpires = new Date(
     Date.now() + refreshDays * 24 * 60 * 60 * 1000,
   );
@@ -176,6 +183,7 @@ async function renewSessionFromCookie(
     newRefresh,
     user.matrikelnummer,
     refreshExpires,
+    rotatedAt,
   );
   if (!rotated) {
     try {

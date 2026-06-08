@@ -57,10 +57,11 @@ export async function insertRefreshToken(
   hash: string,
   userId: number,
   expiresAt: Date,
+  createdAt: Date,
 ) {
   const sql =
-    "INSERT INTO refresh_tokens (token_hash, uid, expiresAt, createdAt, isRevoked) VALUES (?, ?, ?, NOW(), 0)";
-  await pool.query(sql, [hash, userId, expiresAt]);
+    "INSERT INTO refresh_tokens (token_hash, uid, expiresAt, createdAt, isRevoked) VALUES (?, ?, ?, ?, 0)";
+  await pool.query(sql, [hash, userId, expiresAt, createdAt]);
 }
 
 export type RefreshTokenRowOut = {
@@ -117,11 +118,12 @@ export async function findRefreshTokenByHash(
 
 export async function markRefreshTokenRevokedByHash(
   hash: string,
+  lastUsedAt: Date,
   replacedByHash?: string | null,
 ) {
   const sql =
-    "UPDATE refresh_tokens SET isRevoked = 1, replacedBy = ?, lastUsed = NOW() WHERE token_hash = ? AND isRevoked = 0";
-  const params = [replacedByHash ?? null, hash];
+    "UPDATE refresh_tokens SET isRevoked = 1, replacedBy = ?, lastUsed = ? WHERE token_hash = ? AND isRevoked = 0";
+  const params = [replacedByHash ?? null, lastUsedAt, hash];
   const [result] = await pool.query(sql, params);
   const execResult = result as ExecResult;
   return typeof execResult?.affectedRows === "number"

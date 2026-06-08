@@ -37,10 +37,11 @@ export async function cleanupExpiredRefreshTokens(): Promise<void> {
 export async function createRefreshToken(
   token: string,
   userId: number,
-  expiresAt: Date
+  expiresAt: Date,
+  createdAt: Date = new Date(),
 ): Promise<void> {
   const hash = crypto.createHash("sha256").update(token).digest("hex");
-  await tokenRepo.insertRefreshToken(hash, userId, expiresAt);
+  await tokenRepo.insertRefreshToken(hash, userId, expiresAt, createdAt);
 }
 export type RefreshTokenRow = {
   uid: number;
@@ -60,10 +61,15 @@ export async function findRefreshToken(
 
 export async function markRefreshTokenRevoked(
   token: string,
+  lastUsedAt: Date,
   replacedByHash?: string | null
 ): Promise<number> {
   const hash = crypto.createHash("sha256").update(token).digest("hex");
-  return await tokenRepo.markRefreshTokenRevokedByHash(hash, replacedByHash);
+  return await tokenRepo.markRefreshTokenRevokedByHash(
+    hash,
+    lastUsedAt,
+    replacedByHash,
+  );
 }
 
 /**
@@ -74,12 +80,13 @@ export async function rotateRefreshToken(
   oldToken: string,
   newToken: string,
   userId: number,
-  newExpiresAt: Date
+  newExpiresAt: Date,
+  rotatedAt: Date = new Date(),
 ): Promise<boolean> {
   const newHash = crypto.createHash("sha256").update(newToken).digest("hex");
-  const affected = await markRefreshTokenRevoked(oldToken, newHash);
+  const affected = await markRefreshTokenRevoked(oldToken, rotatedAt, newHash);
   if (affected === 0) return false;
-  await createRefreshToken(newToken, userId, newExpiresAt);
+  await createRefreshToken(newToken, userId, newExpiresAt, rotatedAt);
   return true;
 }
 

@@ -71,9 +71,53 @@ Migration command:
 
 ```bash
 npm run migrate
+npm run seed
 ```
 
 See AGENTS.md for migration safety rules.
+
+## Docker Desktop MySQL
+
+For local development you can start a MySQL container with:
+
+```bash
+docker compose up -d
+```
+
+The compose file lives at [`docker-compose.yml`](./docker-compose.yml) and
+starts MySQL on `localhost:3306` with:
+
+- database: `osvs_dev`
+- user: `root`
+- password: `osvs_local_root_password`
+
+Set your local `.env` to match before starting the backend:
+
+```dotenv
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_NAME=osvs_dev
+DB_PASS=osvs_local_root_password
+```
+
+Then run the backend migration command once the container is healthy:
+
+```bash
+npm run migrate
+npm run seed
+```
+
+If port `3306` is already in use on your machine, change the left side of the
+port mapping in `docker-compose.yml` and update `DB_PORT` to the same host
+port.
+
+`npm run seed` applies the baseline development seed plus the optional add-on
+seed files in `src/db/seed`. To load only the baseline seed, run:
+
+```bash
+npm run seed -- --base-only
+```
 
 ## Testing and CI
 

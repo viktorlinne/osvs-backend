@@ -95,6 +95,124 @@ export async function findPaymentsForUser(
   return asRows<MembershipPaymentRow>(rows);
 }
 
+export interface ListAllPaymentsFilters {
+  name?: string;
+  achievementId?: number;
+  lodgeId?: number;
+  officialId?: number;
+  accommodationAvailable?: boolean;
+  year?: number;
+}
+
+export interface AllPaymentsPage {
+  rows: MembershipPaymentRow[];
+  total: number;
+}
+
+type CountRow = { cnt?: unknown };
+
+function buildAllPaymentsWhere(filters?: ListAllPaymentsFilters) {
+  const where: string[] = ["u.archive IS NULL"];
+  const params: Array<string | number | null> = [];
+
+  if (filters?.name) {
+    const term = `%${filters.name}%`;
+    const numericTerm = Number(filters.name);
+    if (/^\d+$/.test(filters.name) && Number.isFinite(numericTerm)) {
+      where.push("(u.firstname LIKE ? OR u.lastname LIKE ? OR u.matrikelnummer = ?)");
+      params.push(term, term, numericTerm);
+    } else {
+      where.push("(u.firstname LIKE ? OR u.lastname LIKE ?)");
+      params.push(term, term);
+    }
+  }
+
+  if (typeof filters?.achievementId === "number") {
+    where.push(
+      "EXISTS (SELECT 1 FROM users_achievements ua WHERE ua.uid = u.matrikelnummer AND ua.aid = ?)",
+    );
+    params.push(filters.achievementId);
+  }
+
+  if (typeof filters?.lodgeId === "number") {
+    where.push(
+      "EXISTS (SELECT 1 FROM users_lodges ul2 WHERE ul2.uid = u.matrikelnummer AND ul2.lid = ?)",
+    );
+    params.push(filters.lodgeId);
+  }
+
+  if (typeof filters?.officialId === "number") {
+    where.push(
+      "EXISTS (SELECT 1 FROM users_officials uo WHERE uo.uid = u.matrikelnummer AND uo.oid = ? AND uo.unAppointedAt IS NULL)",
+    );
+    params.push(filters.officialId);
+  }
+
+  if (filters?.accommodationAvailable === true) {
+    where.push("u.accommodationAvailable = 1");
+  }
+
+  if (typeof filters?.year === "number") {
+    where.push("mp.year = ?");
+    params.push(filters.year);
+  }
+
+  return {
+    whereSql: `WHERE ${where.join(" AND ")}`,
+    params,
+  };
+}
+
+export async function updatePaymentStatus(
+  id: number,
+  status: "Pending" | "Paid",
+): Promise<void> {
+  await pool.execute(
+    "UPDATE membership_payments SET status = ?, updatedAt = NOW() WHERE id = ?",
+    [status, id],
+  );
+}
+
+export async function listAllPaymentsWithUser(
+  filters: ListAllPaymentsFilters | undefined,
+  pagination: { page: number; pageSize: number },
+): Promise<AllPaymentsPage> {
+  const { whereSql, params } = buildAllPaymentsWhere(filters);
+  const offset = Math.max(0, (pagination.page - 1) * pagination.pageSize);
+
+  const selectSql = `
+    SELECT mp.id, mp.uid, mp.amount, mp.year, mp.status, mp.createdAt, mp.updatedAt,
+      u.firstname, u.lastname,
+      ul.lid AS lodgeId, l.name AS lodgeName
+    FROM membership_payments mp
+    JOIN users u ON u.matrikelnummer = mp.uid
+    LEFT JOIN users_lodges ul ON ul.uid = u.matrikelnummer
+    LEFT JOIN lodges l ON l.id = ul.lid
+    ${whereSql}
+    ORDER BY mp.year DESC, u.lastname ASC, u.firstname ASC
+    LIMIT ? OFFSET ?
+  `;
+
+  const countSql = `
+    SELECT COUNT(*) AS cnt
+    FROM membership_payments mp
+    JOIN users u ON u.matrikelnummer = mp.uid
+    LEFT JOIN users_lodges ul ON ul.uid = u.matrikelnummer
+    LEFT JOIN lodges l ON l.id = ul.lid
+    ${whereSql}
+  `;
+
+  const [[rows], [countRows]] = await Promise.all([
+    pool.query(selectSql, [...params, pagination.pageSize, offset]),
+    pool.query(countSql, params),
+  ]);
+
+  const totalRows = asRows<CountRow>(countRows);
+  const total = Number((totalRows.length > 0 ? totalRows[0].cnt : 0) ?? 0) || 0;
+
+  return { rows: asRows<MembershipPaymentRow>(rows), total };
+}
+
 export default {
   insertMembershipPayment,
   findById,
@@ -102,5 +220,7 @@ export default {
   bulkInsertIfMissing,
   findPaymentsForUsers,
   findPaymentsForUser,
+  listAllPaymentsWithUser,
+  updatePaymentStatus,
 };
 

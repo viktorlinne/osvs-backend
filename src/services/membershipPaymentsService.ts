@@ -94,6 +94,92 @@ export async function createMembershipPaymentsIfMissingBulk(
   return mapRowsToPayments(rows);
 }
 
+export interface ListAllMembershipPaymentsOpts {
+  name?: string;
+  achievementId?: number;
+  lodgeId?: number;
+  officialId?: number;
+  accommodationAvailable?: boolean;
+  year?: number;
+  page: number;
+  pageSize: number;
+}
+
+export type MembershipPaymentWithUser = MembershipPayment & {
+  firstname: string;
+  lastname: string;
+  lodgeName: string | null;
+};
+
+export interface PaginatedMembershipPayments {
+  payments: MembershipPaymentWithUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+function toPaymentWithUser(row: unknown): MembershipPaymentWithUser | null {
+  if (!row || typeof row !== "object") return null;
+  const source = row as Record<string, unknown>;
+
+  const base = toMembershipPayment(row);
+  if (!base) return null;
+
+  const firstname = String(source.firstname ?? "").trim();
+  const lastname = String(source.lastname ?? "").trim();
+  if (!firstname && !lastname) return null;
+
+  const lodgeName =
+    typeof source.lodgeName === "string" && source.lodgeName.trim().length > 0
+      ? source.lodgeName.trim()
+      : null;
+
+  return { ...base, firstname, lastname, lodgeName };
+}
+
+export async function setMembershipPaymentStatus(
+  id: number,
+  status: "Pending" | "Paid",
+): Promise<MembershipPayment | null> {
+  await membershipRepo.updatePaymentStatus(id, status);
+  const row = await membershipRepo.findById(id);
+  return toMembershipPayment(row);
+}
+
+export async function listAllMembershipPayments(
+  opts: ListAllMembershipPaymentsOpts,
+): Promise<PaginatedMembershipPayments> {
+  const page = Math.max(1, Math.floor(opts.page));
+  const pageSize = Math.max(1, Math.floor(opts.pageSize));
+
+  const { rows, total } = await membershipRepo.listAllPaymentsWithUser(
+    {
+      name: opts.name,
+      achievementId: opts.achievementId,
+      lodgeId: opts.lodgeId,
+      officialId: opts.officialId,
+      accommodationAvailable: opts.accommodationAvailable,
+      year: opts.year,
+    },
+    { page, pageSize },
+  );
+
+  const payments: MembershipPaymentWithUser[] = [];
+  for (const row of rows) {
+    const p = toPaymentWithUser(row);
+    if (p) payments.push(p);
+  }
+
+  return {
+    payments,
+    total,
+    page,
+    pageSize,
+    totalPages: total > 0 ? Math.ceil(total / pageSize) : 0,
+  };
+}
+
 export async function listMembershipPaymentsForUser(
   uid: number,
   year?: number,
