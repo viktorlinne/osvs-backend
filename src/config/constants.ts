@@ -1,4 +1,5 @@
 import "./env";
+import { getMailConfig } from "./env";
 import { STORAGE_KEYS } from "./storage";
 
 // ENV variables and defaults for authentication configuration
@@ -14,6 +15,10 @@ export const CRON_INTERVAL_MS = Number(
 // Token timing and defaults
 export const ACCESS_EXPIRES_MS = 15 * 60 * 1000; // 15 minutes
 export const REFRESH_TOKEN_DEFAULT_DAYS = REFRESH_DAYS;
+export const PASSWORD_ACTION_TOKEN_HOURS =
+  getMailConfig().passwordActionTokenHours;
+export const PASSWORD_ACTION_TOKEN_TTL_MS =
+  PASSWORD_ACTION_TOKEN_HOURS * 60 * 60 * 1000;
 
 // Upload limits
 export const PROFILE_PICTURE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -32,6 +37,8 @@ export default {
   REFRESH_COOKIE,
   ACCESS_EXPIRES_MS,
   REFRESH_TOKEN_DEFAULT_DAYS,
+  PASSWORD_ACTION_TOKEN_HOURS,
+  PASSWORD_ACTION_TOKEN_TTL_MS,
   PROFILE_PICTURE_MAX_SIZE,
   DEFAULT_TOKEN_FUTURE_MS,
 };

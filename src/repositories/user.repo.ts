@@ -326,9 +326,13 @@ export async function getUserRoles(userId: number): Promise<string[]> {
     .filter((role): role is string => typeof role === "string");
 }
 
-export async function updatePassword(userId: number, passwordHash: string) {
+export async function updatePassword(
+  userId: number,
+  passwordHash: string,
+  conn?: PoolConnection,
+) {
   const sql = "UPDATE users SET passwordHash = ? WHERE matrikelnummer = ?";
-  await exec(sql, [passwordHash, userId]);
+  await exec(sql, [passwordHash, userId], conn);
 }
 
 export async function updatePicture(userId: number, pictureKey: string | null) {
@@ -347,9 +351,18 @@ export async function updatePicture(userId: number, pictureKey: string | null) {
   return oldKey;
 }
 
-export async function setUserRevokedAt(userId: number, when: Date) {
+export async function setUserRevokedAt(
+  userId: number,
+  when: Date,
+  conn?: PoolConnection,
+) {
   const sql = "UPDATE users SET revokedAt = ? WHERE matrikelnummer = ?";
-  await exec(sql, [when, userId]);
+  await exec(sql, [when, userId], conn);
+}
+
+export async function deleteUser(userId: number, conn?: PoolConnection) {
+  const sql = "DELETE FROM users WHERE matrikelnummer = ?";
+  await exec(sql, [userId], conn);
 }
 
 export async function setUserAchievement(
@@ -779,6 +792,9 @@ export default {
   deleteUserRoles,
   insertUserRolesBulk,
   updateUserGeocode,
+  updatePassword,
+  setUserRevokedAt,
+  deleteUser,
   listUsers,
   listUsersMapPins,
   getUserPublicById,

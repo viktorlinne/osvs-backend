@@ -34,6 +34,32 @@ const registerLimiter = rateLimit({
     ),
 });
 
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    sendError(
+      res,
+      429,
+      "FÃ¶r mÃ¥nga fÃ¶rsÃ¶k att skicka Ã¥terstÃ¤llningsmejl, fÃ¶rsÃ¶k igen senare.",
+    ),
+});
+
+const passwordActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    sendError(
+      res,
+      429,
+      "FÃ¶r mÃ¥nga fÃ¶rsÃ¶k, fÃ¶rsÃ¶k igen senare.",
+    ),
+});
+
 // Auth schemas are imported from ./schemas/auth
 
 router.post(
@@ -46,6 +72,21 @@ router.post(
 );
 
 router.post("/login", loginLimiter, wrapAsync(authController.login));
+router.post(
+  "/forgot-password",
+  forgotPasswordLimiter,
+  wrapAsync(authController.forgotPassword),
+);
+router.post(
+  "/password-actions/verify",
+  passwordActionLimiter,
+  wrapAsync(authController.verifyPasswordAction),
+);
+router.post(
+  "/password-actions/complete",
+  passwordActionLimiter,
+  wrapAsync(authController.completePasswordAction),
+);
 
 router.post("/refresh", wrapAsync(authController.refresh));
 router.post("/heartbeat", wrapAsync(authController.heartbeat));

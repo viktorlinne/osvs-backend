@@ -1,30 +1,38 @@
-import type { Request, Response, NextFunction } from "express";
-import type { RequestWithBody, RequestWithCookies } from "../types/requests";
-import sessionService from "../services/sessionService";
-import { getSessionMetadata } from "../services/sessionService";
+import type { NextFunction, Request, Response } from "express";
+import { REFRESH_COOKIE, PROFILE_PLACEHOLDER } from "../config/constants";
+import { STORAGE_BUCKETS, STORAGE_PREFIXES } from "../config/storage";
 import {
-  revokeAllSessions,
   createUser,
+  deleteUserAccount,
   findById,
-  getUserRoles,
   getUserAchievements,
   getUserAllergies,
   getUserOfficials,
   getUserOfficialsHistory,
+  getUserRoles,
+  revokeAllSessions,
 } from "../services/userService";
-import { hashPassword } from "../services/authService";
-import { REFRESH_COOKIE, PROFILE_PLACEHOLDER } from "../config/constants";
-import { STORAGE_BUCKETS, STORAGE_PREFIXES } from "../config/storage";
+import passwordActionService from "../services/passwordActionService";
+import sessionService, { getSessionMetadata } from "../services/sessionService";
 import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import { getPublicUrl } from "../utils/fileUpload";
 import { toPublicUser } from "../utils/serialize";
 import type { AuthenticatedRequest } from "../types/auth";
-import type { LoginBody, RegisterBody } from "../types";
+import type {
+  CompletePasswordActionBody,
+  ForgotPasswordBody,
+  LoginBody,
+  RegisterBody,
+  VerifyPasswordActionBody,
+} from "../types";
+import type { RequestWithBody, RequestWithCookies } from "../types/requests";
 import { parseNumericIds } from "../validators";
+import { HttpError } from "../utils/errors";
 import { requireAuthMatrikelnummer } from "./helpers/request";
 import { uploadImageAndPersist } from "./helpers/storage";
-import { HttpError } from "../utils/errors";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function hasProvidedNonEmptyValue(value: unknown): boolean {
   if (Array.isArray(value)) {
@@ -36,6 +44,10 @@ function hasProvidedNonEmptyValue(value: unknown): boolean {
   }
 
   return value != null;
+}
+
+function requiredFieldMessage(): string {
+  return "Det här fältet är obligatoriskt";
 }
 
 export async function login(
@@ -51,6 +63,75 @@ export async function login(
   const out = await sessionService.loginWithEmail(email, password, res);
   if (!out) return sendError(res, 401, "Felaktiga inloggningsuppgifter");
   return res.json(out);
+}
+
+export async function forgotPassword(
+  req: RequestWithBody<ForgotPasswordBody>,
+  res: Response,
+): Promise<Response | void> {
+  const email =
+    typeof req.body?.email === "string" ? req.body.email.trim() : "";
+
+  if (!email) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { email: requiredFieldMessage() },
+    });
+  }
+
+  if (!EMAIL_PATTERN.test(email)) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { email: "Ogiltig e-postadress" },
+    });
+  }
+
+  try {
+    await passwordActionService.requestPasswordReset(email);
+  } catch (err) {
+    logger.error({ err }, "Failed to request password reset email");
+  }
+
+  return res.status(200).json({
+    message:
+      "Om e-postadressen finns registrerad skickar vi ett mejl med en länk för att välja ett nytt lösenord.",
+  });
+}
+
+export async function verifyPasswordAction(
+  req: RequestWithBody<VerifyPasswordActionBody>,
+  res: Response,
+): Promise<Response | void> {
+  const token =
+    typeof req.body?.token === "string" ? req.body.token.trim() : "";
+
+  if (!token) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { token: "Länken är ogiltig eller har gått ut" },
+    });
+  }
+
+  const action = await passwordActionService.verifyPasswordAction(token);
+  return res.status(200).json(action);
+}
+
+export async function completePasswordAction(
+  req: RequestWithBody<CompletePasswordActionBody>,
+  res: Response,
+): Promise<Response | void> {
+  const token =
+    typeof req.body?.token === "string" ? req.body.token.trim() : "";
+
+  if (!token) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { token: "Länken är ogiltig eller har gått ut" },
+    });
+  }
+
+  await passwordActionService.completePasswordAction(
+    token,
+    typeof req.body?.password === "string" ? req.body.password : "",
+  );
+
+  return res.status(200).json({ message: "Lösenordet har uppdaterats" });
 }
 
 export async function refresh(
@@ -97,7 +178,6 @@ export async function register(
 ): Promise<Response | void> {
   const {
     email,
-    password,
     firstname,
     lastname,
     dateOfBirth,
@@ -114,7 +194,6 @@ export async function register(
 
   const requiredFields: Array<[string, unknown]> = [
     ["email", email],
-    ["password", password],
     ["firstname", firstname],
     ["lastname", lastname],
     ["dateOfBirth", dateOfBirth],
@@ -130,8 +209,15 @@ export async function register(
   if (missing.length > 0) {
     return sendError(res, 400, "Formuläret innehåller fel", {
       fields: Object.fromEntries(
-        missing.map((field) => [field, "Det här fältet är obligatoriskt"]),
+        missing.map((field) => [field, requiredFieldMessage()]),
       ),
+    });
+  }
+
+  const normalizedEmail = String(email).trim();
+  if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    return sendError(res, 400, "Formuläret innehåller fel", {
+      fields: { email: "Ogiltig e-postadress" },
     });
   }
 
@@ -160,7 +246,8 @@ export async function register(
     });
   }
 
-  const hash = await hashPassword(password as string);
+  const generatedPasswordHash =
+    await passwordActionService.createGeneratedPasswordHash();
 
   const file = req.file;
   const user = await uploadImageAndPersist(
@@ -173,8 +260,8 @@ export async function register(
     async (pictureKey) => {
       const createdUser = await createUser(
         {
-          email: email as string,
-          passwordHash: hash,
+          email: normalizedEmail,
+          passwordHash: generatedPasswordHash,
           homeNumber: (homeNumber as string) ?? null,
           work: (work as string) ?? null,
           firstname: firstname as string,
@@ -197,6 +284,25 @@ export async function register(
         throw new HttpError(500, "Kunde inte skapa användaren");
       }
 
+      try {
+        await passwordActionService.sendInitialPasswordSetupEmail(createdUser);
+      } catch (err) {
+        try {
+          await deleteUserAccount(createdUser.matrikelnummer);
+        } catch (cleanupError) {
+          logger.error(
+            { cleanupError, userId: createdUser.matrikelnummer },
+            "Failed to delete user after invite email failure",
+          );
+        }
+
+        logger.error(
+          { err, userId: createdUser.matrikelnummer },
+          "Failed to send initial password setup email",
+        );
+        throw new HttpError(500, "Kunde inte skicka inbjudningsmejlet");
+      }
+
       return createdUser;
     },
   );
@@ -209,6 +315,7 @@ export async function register(
   return res.status(201).json({
     user: { ...user, pictureUrl },
     roles,
+    inviteEmailSent: true,
   });
 }
 
@@ -275,6 +382,9 @@ export async function revokeAll(
 
 export default {
   login,
+  forgotPassword,
+  verifyPasswordAction,
+  completePasswordAction,
   refresh,
   heartbeat,
   logout,

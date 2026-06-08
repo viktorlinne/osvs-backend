@@ -221,9 +221,13 @@ export type RefreshToken = {
   lastUsed?: string | null;
 };
 
-export type PasswordReset = {
+export type PasswordActionPurpose = "SET_PASSWORD" | "RESET_PASSWORD";
+
+export type PasswordActionToken = {
   token_hash: string;
   uid: number;
+  purpose: PasswordActionPurpose;
   expiresAt: string;
   createdAt: string;
+  consumedAt?: string | null;
 };

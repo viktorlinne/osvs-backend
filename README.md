@@ -78,14 +78,21 @@ See AGENTS.md for migration safety rules.
 
 ## Docker Desktop MySQL
 
-For local development you can start a MySQL container with:
+For local development you can start MySQL together with a local SMTP catcher
+(`Mailpit`) with:
 
 ```bash
 docker compose up -d
 ```
 
 The compose file lives at [`docker-compose.yml`](./docker-compose.yml) and
-starts MySQL on `localhost:3306` with:
+starts:
+
+- MySQL on `localhost:3306`
+- Mailpit SMTP on `localhost:1025`
+- Mailpit inbox UI on `http://localhost:8025`
+
+MySQL uses:
 
 - database: `osvs_dev`
 - user: `root`
@@ -99,6 +106,10 @@ DB_PORT=3306
 DB_USER=root
 DB_NAME=osvs_dev
 DB_PASS=osvs_local_root_password
+SMTP_HOST=127.0.0.1
+SMTP_PORT=1025
+SMTP_SECURE=false
+MAIL_FROM=OSVS <no-reply@osvs.local>
 ```
 
 Then run the backend migration command once the container is healthy:

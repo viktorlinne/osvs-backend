@@ -23,6 +23,12 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   osvs_mysql_data:

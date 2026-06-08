@@ -121,9 +121,21 @@ export type LoginBody = {
   password?: string;
 };
 
+export type ForgotPasswordBody = {
+  email?: string;
+};
+
+export type VerifyPasswordActionBody = {
+  token?: string;
+};
+
+export type CompletePasswordActionBody = {
+  token?: string;
+  password?: string;
+};
+
 export type RegisterBody = {
   email?: string;
-  password?: string;
   firstname?: string;
   lastname?: string;
   dateOfBirth?: string;

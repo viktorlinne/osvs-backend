@@ -1,21 +1,25 @@
 import crypto from "crypto";
+import type { PoolConnection } from "mysql2/promise";
 import * as tokenRepo from "../repositories/token.repo";
+import type { PasswordActionPurpose } from "../types";
+
+function hashToken(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
 
 /**
  * Store a revoked token along with its expiry time (as Date).
  * `expiresAt` should be a JS Date representing when the token naturally expires.
  */
 export async function revokeJti(jti: string, expiresAt: Date): Promise<void> {
-  const hash = crypto.createHash("sha256").update(jti).digest("hex");
-  await tokenRepo.insertRevokedJti(hash, expiresAt);
+  await tokenRepo.insertRevokedJti(hashToken(jti), expiresAt);
 }
 
 /**
  * Check whether a token is revoked (present in revoked_tokens table)
  */
 export async function isJtiRevoked(jti: string): Promise<boolean> {
-  const hash = crypto.createHash("sha256").update(jti).digest("hex");
-  return await tokenRepo.isJtiRevoked(hash);
+  return await tokenRepo.isJtiRevoked(hashToken(jti));
 }
 
 /**
@@ -40,8 +44,12 @@ export async function createRefreshToken(
   expiresAt: Date,
   createdAt: Date = new Date(),
 ): Promise<void> {
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
-  await tokenRepo.insertRefreshToken(hash, userId, expiresAt, createdAt);
+  await tokenRepo.insertRefreshToken(
+    hashToken(token),
+    userId,
+    expiresAt,
+    createdAt,
+  );
 }
 export type RefreshTokenRow = {
   uid: number;
@@ -55,8 +63,7 @@ export type RefreshTokenRow = {
 export async function findRefreshToken(
   token: string
 ): Promise<RefreshTokenRow | null> {
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
-  return await tokenRepo.findRefreshTokenByHash(hash);
+  return await tokenRepo.findRefreshTokenByHash(hashToken(token));
 }
 
 export async function markRefreshTokenRevoked(
@@ -64,9 +71,8 @@ export async function markRefreshTokenRevoked(
   lastUsedAt: Date,
   replacedByHash?: string | null
 ): Promise<number> {
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
   return await tokenRepo.markRefreshTokenRevokedByHash(
-    hash,
+    hashToken(token),
     lastUsedAt,
     replacedByHash,
   );
@@ -83,7 +89,7 @@ export async function rotateRefreshToken(
   newExpiresAt: Date,
   rotatedAt: Date = new Date(),
 ): Promise<boolean> {
-  const newHash = crypto.createHash("sha256").update(newToken).digest("hex");
+  const newHash = hashToken(newToken);
   const affected = await markRefreshTokenRevoked(oldToken, rotatedAt, newHash);
   if (affected === 0) return false;
   await createRefreshToken(newToken, userId, newExpiresAt, rotatedAt);
@@ -91,14 +97,84 @@ export async function rotateRefreshToken(
 }
 
 export async function revokeRefreshToken(token: string): Promise<void> {
-  const hash = crypto.createHash("sha256").update(token).digest("hex");
-  await tokenRepo.deleteRefreshTokenByHash(hash);
+  await tokenRepo.deleteRefreshTokenByHash(hashToken(token));
 }
 
 export async function revokeAllRefreshTokensForUser(
-  userId: number
+  userId: number,
+  conn?: PoolConnection,
 ): Promise<void> {
-  await tokenRepo.deleteRefreshTokensByUser(userId);
+  await tokenRepo.deleteRefreshTokensByUser(userId, conn);
+}
+
+export type PasswordActionTokenRow = {
+  uid: number;
+  purpose: PasswordActionPurpose;
+  expiresAt: Date;
+  createdAt: Date;
+  consumedAt: Date | null;
+  email: string;
+  firstname: string | null;
+  lastname: string | null;
+};
+
+export async function createPasswordActionToken(
+  token: string,
+  userId: number,
+  purpose: PasswordActionPurpose,
+  expiresAt: Date,
+  createdAt: Date = new Date(),
+  conn?: PoolConnection,
+): Promise<void> {
+  await tokenRepo.insertPasswordActionToken(
+    hashToken(token),
+    userId,
+    purpose,
+    expiresAt,
+    createdAt,
+    conn,
+  );
+}
+
+export async function findPasswordActionToken(
+  token: string,
+  conn?: PoolConnection,
+): Promise<PasswordActionTokenRow | null> {
+  return await tokenRepo.findPasswordActionTokenByHash(hashToken(token), conn);
+}
+
+export async function findPasswordActionTokenForUpdate(
+  token: string,
+  conn: PoolConnection,
+): Promise<PasswordActionTokenRow | null> {
+  return await tokenRepo.findPasswordActionTokenByHashForUpdate(
+    hashToken(token),
+    conn,
+  );
+}
+
+export async function deletePasswordActionTokensForUserAndPurpose(
+  userId: number,
+  purpose: PasswordActionPurpose,
+  conn?: PoolConnection,
+): Promise<void> {
+  await tokenRepo.deletePasswordActionTokensByUserAndPurpose(
+    userId,
+    purpose,
+    conn,
+  );
+}
+
+export async function consumePasswordActionTokensForUser(
+  userId: number,
+  consumedAt: Date,
+  conn?: PoolConnection,
+): Promise<void> {
+  await tokenRepo.markPasswordActionTokensConsumedByUser(
+    userId,
+    consumedAt,
+    conn,
+  );
 }
 
 export default {
@@ -111,4 +187,9 @@ export default {
   revokeAllRefreshTokensForUser,
   cleanupExpiredRefreshTokens,
   rotateRefreshToken,
+  createPasswordActionToken,
+  findPasswordActionToken,
+  findPasswordActionTokenForUpdate,
+  deletePasswordActionTokensForUserAndPurpose,
+  consumePasswordActionTokensForUser,
 };

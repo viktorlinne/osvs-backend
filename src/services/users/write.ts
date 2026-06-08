@@ -188,6 +188,10 @@ export async function setUserRevokedAt(
   await userRepo.setUserRevokedAt(userId, when);
 }
 
+export async function deleteUserAccount(userId: number): Promise<void> {
+  await userRepo.deleteUser(userId);
+}
+
 export async function revokeAllSessions(userId: number): Promise<void> {
   const now = new Date();
   await setUserRevokedAt(userId, now);

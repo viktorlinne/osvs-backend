@@ -655,11 +655,68 @@ export const swaggerSpec = {
           password: { type: "string", format: "password", example: "asd123" },
         },
       },
+      ForgotPasswordRequest: {
+        type: "object",
+        required: ["email"],
+        properties: {
+          email: {
+            type: "string",
+            format: "email",
+            example: "member@example.com",
+          },
+        },
+      },
+      VerifyPasswordActionRequest: {
+        type: "object",
+        required: ["token"],
+        properties: {
+          token: {
+            type: "string",
+            example: "c6c6160bf2e14d36b6e9e4302f7cd498",
+          },
+        },
+      },
+      CompletePasswordActionRequest: {
+        type: "object",
+        required: ["token", "password"],
+        properties: {
+          token: {
+            type: "string",
+            example: "c6c6160bf2e14d36b6e9e4302f7cd498",
+          },
+          password: {
+            type: "string",
+            format: "password",
+            example: "nyttlosen123",
+          },
+        },
+      },
+      PasswordActionPurpose: {
+        type: "string",
+        enum: ["SET_PASSWORD", "RESET_PASSWORD"],
+        example: "RESET_PASSWORD",
+      },
+      PasswordActionStatusResponse: {
+        type: "object",
+        required: ["purpose", "email", "expiresAt"],
+        properties: {
+          purpose: { $ref: "#/components/schemas/PasswordActionPurpose" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "member@example.com",
+          },
+          expiresAt: {
+            type: "string",
+            format: "date-time",
+            example: "2026-06-09T10:15:00.000Z",
+          },
+        },
+      },
       RegisterRequest: {
         type: "object",
         required: [
           "email",
-          "password",
           "firstname",
           "lastname",
           "dateOfBirth",
@@ -671,7 +728,6 @@ export const swaggerSpec = {
         ],
         properties: {
           email: { type: "string", format: "email", example: "new.user@example.com" },
-          password: { type: "string", format: "password" },
           firstname: { type: "string", example: "New" },
           lastname: { type: "string", example: "User" },
           dateOfBirth: { type: "string", example: "1990-06-15" },
@@ -690,6 +746,21 @@ export const swaggerSpec = {
           },
           picture: { type: "string", format: "binary" },
         },
+      },
+      RegisterUserResponse: {
+        allOf: [
+          { $ref: "#/components/schemas/UserWithRolesResponse" },
+          {
+            type: "object",
+            required: ["inviteEmailSent"],
+            properties: {
+              inviteEmailSent: {
+                type: "boolean",
+                example: true,
+              },
+            },
+          },
+        ],
       },
       UpdateUserProfileRequest: {
         type: "object",
@@ -963,7 +1034,7 @@ export const swaggerSpec = {
         tags: ["Auth"],
         summary: "Register a new user",
         description:
-          "Creates a member onboarding record in one request. Requires authenticated Admin or Editor and profile picture upload. The backend persists roles, lodge, allergies, current-year membership payment, and the default achievement before commit.",
+          "Creates a member onboarding record in one request. Requires authenticated Admin or Editor and profile picture upload. The backend persists roles, lodge, allergies, current-year membership payment, and the default achievement before commit, then sends an email that lets the member choose their own password.",
         operationId: "registerUser",
         security: authSecurity,
         requestBody: {
@@ -979,7 +1050,7 @@ export const swaggerSpec = {
             description: "User created.",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/UserWithRolesResponse" },
+                schema: { $ref: "#/components/schemas/RegisterUserResponse" },
               },
             },
           },
@@ -1027,6 +1098,101 @@ export const swaggerSpec = {
           },
           ...badRequest,
           ...unauthorized,
+          ...rateLimited,
+          ...internal,
+        },
+      },
+    },
+    "/auth/forgot-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Request password reset email",
+        description:
+          "Accepts an email address and, when a matching account exists, sends a one-time link that lets the member choose a new password. The success response is intentionally generic.",
+        operationId: "forgotPassword",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ForgotPasswordRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Generic success response regardless of account match.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/MessageResponse" },
+                example: {
+                  message:
+                    "Om e-postadressen finns registrerad skickar vi ett mejl med en länk för att välja ett nytt lösenord.",
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...rateLimited,
+          ...internal,
+        },
+      },
+    },
+    "/auth/password-actions/verify": {
+      post: {
+        tags: ["Auth"],
+        summary: "Verify password action link",
+        description:
+          "Checks whether a password setup or reset token is still valid and returns the associated account metadata needed by the UI.",
+        operationId: "verifyPasswordAction",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/VerifyPasswordActionRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Password action token is valid.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/PasswordActionStatusResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...rateLimited,
+          ...internal,
+        },
+      },
+    },
+    "/auth/password-actions/complete": {
+      post: {
+        tags: ["Auth"],
+        summary: "Complete password setup or reset",
+        description:
+          "Consumes a valid one-time token, stores the new password, and revokes existing sessions for that member.",
+        operationId: "completePasswordAction",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CompletePasswordActionRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Password updated.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/MessageResponse" },
+                example: { message: "Lösenordet har uppdaterats" },
+              },
+            },
+          },
+          ...badRequest,
           ...rateLimited,
           ...internal,
         },

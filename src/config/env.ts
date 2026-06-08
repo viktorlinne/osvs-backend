@@ -16,9 +16,20 @@ type DatabaseConfig = {
   connectTimeoutMs: number;
 };
 
+type MailConfig = {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string | null;
+  password: string | null;
+  from: string;
+  passwordActionTokenHours: number;
+};
+
 let cachedJwtSecret: string | null = null;
 let cachedBrowserOriginConfig: BrowserOriginConfig | null = null;
 let cachedDatabaseConfig: DatabaseConfig | null = null;
+let cachedMailConfig: MailConfig | null = null;
 
 function hasExplicitEnv(name: string): boolean {
   return Object.prototype.hasOwnProperty.call(process.env, name);
@@ -50,6 +61,13 @@ function parseIntegerEnv(
     throw new Error(`Invalid environment variable ${name}: expected a positive integer`);
   }
   return parsed;
+}
+
+function parseBooleanEnv(name: string, rawValue: string): boolean {
+  const normalized = rawValue.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  throw new Error(`Invalid environment variable ${name}: expected true or false`);
 }
 
 function normalizeOrigin(value: string, sourceName: string): string {
@@ -149,8 +167,45 @@ export function getDatabaseConfig(): DatabaseConfig {
   return cachedDatabaseConfig;
 }
 
+export function getMailConfig(): MailConfig {
+  if (cachedMailConfig !== null) {
+    return cachedMailConfig;
+  }
+
+  const rawUser = process.env.SMTP_USER;
+  const user =
+    typeof rawUser === "string" && rawUser.trim().length > 0
+      ? rawUser.trim()
+      : null;
+  const rawPassword = process.env.SMTP_PASS;
+  const password =
+    typeof rawPassword === "string" && rawPassword.length > 0
+      ? rawPassword
+      : null;
+
+  if (user && !password) {
+    throw new Error("Missing required environment variable SMTP_PASS when SMTP_USER is set");
+  }
+
+  cachedMailConfig = {
+    host: requireNonEmptyEnv("SMTP_HOST"),
+    port: parseIntegerEnv("SMTP_PORT", process.env.SMTP_PORT ?? "1025"),
+    secure: parseBooleanEnv("SMTP_SECURE", process.env.SMTP_SECURE ?? "false"),
+    user,
+    password,
+    from: requireNonEmptyEnv("MAIL_FROM"),
+    passwordActionTokenHours: parseIntegerEnv(
+      "PASSWORD_ACTION_TOKEN_HOURS",
+      process.env.PASSWORD_ACTION_TOKEN_HOURS ?? "24",
+    ),
+  };
+
+  return cachedMailConfig;
+}
+
 export default {
   getJwtSecret,
   getBrowserOriginConfig,
   getDatabaseConfig,
+  getMailConfig,
 };
