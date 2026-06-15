@@ -12,6 +12,7 @@ export function formatDateOnly(d: unknown): string | unknown {
   return d;
 }
 
+/** Member-directory profile returned to any authenticated member. */
 export function toPublicUser(user: UserRecord): PublicUser {
   return {
     matrikelnummer: user.matrikelnummer,

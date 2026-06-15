@@ -308,12 +308,12 @@ export async function getUserAttendedEventsHandler(
 }
 
 export async function listUsersHandler(
-  _req: AuthenticatedRequest,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ) {
   try {
-    const q = _req.query as ListUsersQuery;
+    const q = req.query as ListUsersQuery;
     const name = typeof q.name === "string" ? q.name.trim() : undefined;
     const achievementId = q.achievementId ? Number(q.achievementId) : undefined;
     const lodgeId = q.lodgeId ? Number(q.lodgeId) : undefined;
@@ -347,6 +347,22 @@ export async function listUsersHandler(
         ...r,
         pictureUrl: await getPublicUrl(r.picture ?? PROFILE_PLACEHOLDER),
       })),
+    );
+    logger.info(
+      {
+        actorMatrikelnummer: req.user?.matrikelnummer,
+        page: result.page,
+        pageSize: result.pageSize,
+        total: result.total,
+        filters: {
+          name: name || undefined,
+          achievementId: Number.isFinite(achievementId) ? achievementId : undefined,
+          lodgeId: Number.isFinite(lodgeId) ? lodgeId : undefined,
+          officialId: Number.isFinite(officialId) ? officialId : undefined,
+          accommodationAvailable,
+        },
+      },
+      "users: member directory list accessed",
     );
     res.set("Cache-Control", "private, no-store");
     return res.status(200).json({

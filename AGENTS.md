@@ -16,16 +16,19 @@ Preserve the existing layering: `route -> controller -> service -> repository ->
   of truth.
 - Cookie-authenticated mutating requests are protected by
   `src/middleware/originProtection.ts`.
+- Token revocation checks fail closed: if revocation state cannot be verified,
+  the request is rejected.
 
 If you touch auth, authorization, cookies, or origin handling, treat the change
 as security-sensitive and add or update backend tests.
 
 ## Database Rules
 
-Schema lives in:
+Schema reference and bootstrap data:
 
-- `src/db/schema.sql`
-- `src/db/seed.sql`
+- `src/db/schema.sql` — baseline reference snapshot
+- `src/db/seed.sql` — seed data reference
+- `src/db/migrations/*.sql` — incremental migrations applied by the runner
 
 Migration command:
 
@@ -35,11 +38,12 @@ npm run migrate
 
 Important:
 
-- the migration script is destructive
-- it performs ordered delete/reset plus schema sync and reseeding
-- it must not be run without explicit confirmation
-- it only allows `_dev` or `_test` databases
-- it also requires `MIGRATE_ALLOW_DATA_RESET=true`
+- the migration runner applies **incremental, tracked SQL files** in
+  `src/db/migrations/` and records them in `_migrations`
+- it must not be run against production without explicit review and backup
+- by default it only allows databases whose name ends with `_dev` or `_test`
+- production requires `MIGRATE_ALLOW_PRODUCTION=true`
+- non-dev/test databases require `MIGRATE_ALLOW_ANY_DB=true`
 
 Prefer targeted SQL changes over broad schema churn unless the task explicitly
 calls for it.
@@ -66,6 +70,13 @@ Shared error shape:
 ```
 
 Do not introduce new error payload shapes.
+
+## Member Directory Policy
+
+User profile endpoints intentionally expose member-directory fields (email,
+contact details, allergies) to any authenticated member. Bulk list access is
+audit-logged. Do not restrict these fields without coordinating with the
+frontend.
 
 ## Testing and Verification
 

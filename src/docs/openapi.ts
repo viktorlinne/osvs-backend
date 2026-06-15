@@ -111,6 +111,7 @@ export const swaggerSpec = {
     { name: "Revisions", description: "Revision listing and upload endpoints." },
     { name: "Documents", description: "Document listing and upload endpoints." },
     { name: "Achievements", description: "Achievement catalogue endpoints." },
+    { name: "Media", description: "Authenticated media serving and public placeholders." },
   ],
   components: {
     securitySchemes: {
@@ -1459,7 +1460,7 @@ export const swaggerSpec = {
         tags: ["Users"],
         summary: "List users",
         description:
-          "Lists users with optional filtering by name, achievement, lodge, official, and accommodation availability.",
+          "Lists users with optional filtering. Any authenticated member may access the member directory, including contact details and allergies. Access is audit-logged.",
         operationId: "listUsers",
         security: authSecurity,
         parameters: [
@@ -1586,7 +1587,7 @@ export const swaggerSpec = {
         tags: ["Users"],
         summary: "Get user profile by matrikelnummer",
         description:
-          "Returns target user's public profile with achievements/allergies/officials history.",
+          "Returns a member-directory profile for any authenticated member, including email, contact details, achievements, allergies, and officials history.",
         operationId: "getUserByMatrikelnummer",
         security: authSecurity,
         parameters: [
@@ -2582,7 +2583,8 @@ export const swaggerSpec = {
       get: {
         tags: ["Events"],
         summary: "List event attendances",
-        description: "Returns attendance rows for users invited to event.",
+        description:
+          "Returns attendance rows for an event. Requires Admin or Editor role, or that the caller is invited to the event.",
         operationId: "getEventAttendancesById",
         security: authSecurity,
         parameters: [
@@ -2613,6 +2615,7 @@ export const swaggerSpec = {
           },
           ...badRequest,
           ...unauthorized,
+          ...forbidden,
           ...notFound,
           ...internal,
         },
@@ -3100,6 +3103,182 @@ export const swaggerSpec = {
           },
           ...badRequest,
           ...unauthorized,
+          ...internal,
+        },
+      },
+    },
+    "/payments/membership/admin": {
+      get: {
+        tags: ["Payments"],
+        summary: "List all membership payments (Admin)",
+        description: "Returns paginated membership payment rows for admin review.",
+        operationId: "getPaymentsMembershipAdmin",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "query",
+            name: "page",
+            required: false,
+            schema: { type: "integer", minimum: 1 },
+            example: 1,
+          },
+          {
+            in: "query",
+            name: "pageSize",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 100 },
+            example: 50,
+          },
+          {
+            in: "query",
+            name: "year",
+            required: false,
+            schema: { type: "integer" },
+            example: 2026,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paginated membership payment rows.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    payments: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/MembershipPayment" },
+                    },
+                    page: { type: "integer" },
+                    pageSize: { type: "integer" },
+                    total: { type: "integer" },
+                    totalPages: { type: "integer" },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...internal,
+        },
+      },
+    },
+    "/payments/membership/{id}/status": {
+      patch: {
+        tags: ["Payments"],
+        summary: "Update membership payment status (Admin)",
+        description: "Sets membership payment status to Pending or Paid.",
+        operationId: "patchPaymentsMembershipStatus",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 12,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["status"],
+                properties: {
+                  status: {
+                    type: "string",
+                    enum: ["Pending", "Paid"],
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated membership payment.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    payment: { $ref: "#/components/schemas/MembershipPayment" },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/media/{id}": {
+      get: {
+        tags: ["Media"],
+        summary: "Get media asset by id",
+        description:
+          "Returns binary media content. Requires authentication. Cache-Control is private.",
+        operationId: "getMediaById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 1,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Binary media content.",
+            content: {
+              "application/octet-stream": {
+                schema: { type: "string", format: "binary" },
+              },
+            },
+          },
+          ...unauthorized,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/media/placeholders/{type}": {
+      get: {
+        tags: ["Media"],
+        summary: "Get media placeholder asset",
+        description: "Public placeholder image or PDF for profile, post, document, or revision types.",
+        operationId: "getMediaPlaceholder",
+        parameters: [
+          {
+            in: "path",
+            name: "type",
+            required: true,
+            schema: {
+              type: "string",
+              enum: ["profile", "post", "document", "revision", "lodge"],
+            },
+            example: "profile",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Placeholder binary content.",
+            content: {
+              "application/octet-stream": {
+                schema: { type: "string", format: "binary" },
+              },
+            },
+          },
           ...internal,
         },
       },

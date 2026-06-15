@@ -62,10 +62,11 @@ See ARCHITECTURE.md for detailed architecture.
 
 ## Database and Migrations
 
-Schema is SQL-first:
+Schema references:
 
-- [`src/db/schema.sql`](./src/db/schema.sql)
-- [`src/db/seed.sql`](./src/db/seed.sql)
+- [`src/db/schema.sql`](./src/db/schema.sql) — baseline reference snapshot
+- [`src/db/seed.sql`](./src/db/seed.sql) — seed data reference
+- [`src/db/migrations/`](./src/db/migrations/) — incremental SQL migrations
 
 Migration command:
 
@@ -74,7 +75,14 @@ npm run migrate
 npm run seed
 ```
 
-See AGENTS.md for migration safety rules.
+The migration runner applies tracked incremental SQL files. See AGENTS.md for
+safety gates and production guidance.
+
+## Member Directory
+
+Authenticated members can list and read full member-directory profiles
+(including contact details and allergies). Bulk list access is audit-logged in
+the backend.
 
 ## Docker Desktop MySQL
 
