@@ -213,7 +213,7 @@ describe("passwordActionService", () => {
 
   it("returns a field validation error for weak passwords", async () => {
     mockedValidatePasswordInput.mockReturnValue(
-      "LÃ¶senordet mÃ¥ste vara minst 6 tecken",
+      "Lösenordet måste vara minst 6 tecken",
     );
 
     await expect(

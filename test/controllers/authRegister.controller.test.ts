@@ -176,7 +176,7 @@ describe("authController.register", () => {
     expect(mockedCreateUser).not.toHaveBeenCalled();
     expect((res.status as jest.Mock)).toHaveBeenCalledWith(400);
     expect((res.json as jest.Mock)).toHaveBeenCalledWith({
-      message: "FormulÃ¤ret innehÃ¥ller fel",
+      message: "Formuläret innehåller fel",
       details: {
         fields: {
           allergyIds: "Ogiltiga allergier",
