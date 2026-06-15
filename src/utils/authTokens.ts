@@ -5,6 +5,7 @@ import crypto from "crypto";
 import {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
+  ACCESS_EXPIRES,
   ACCESS_EXPIRES_MS,
   REFRESH_TOKEN_DEFAULT_DAYS,
 } from "../config/constants";
@@ -12,7 +13,7 @@ import { getJwtSecret } from "../config/env";
 
 export function createAccessToken(
   payload: Record<string, unknown>,
-  expiresIn = "15m"
+  expiresIn: string = ACCESS_EXPIRES,
 ) {
   const secret: Secret = getJwtSecret() as Secret;
   const options: SignOptions = { expiresIn } as SignOptions;

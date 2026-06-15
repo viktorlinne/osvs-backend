@@ -4,6 +4,22 @@ import { STORAGE_KEYS } from "./storage";
 
 // ENV variables and defaults for authentication configuration
 export const ACCESS_EXPIRES = process.env.ACCESS_EXPIRES || "15m";
+
+function parseDurationMs(value: string): number {
+  const match = /^(\d+(?:\.\d+)?)(ms|s|m|h|d)$/i.exec(value.trim());
+  if (!match) return 15 * 60 * 1000;
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const multipliers: Record<string, number> = {
+    ms: 1,
+    s: 1000,
+    m: 60_000,
+    h: 3_600_000,
+    d: 86_400_000,
+  };
+  return Math.round(amount * (multipliers[unit] ?? 60_000));
+}
+
 export const REFRESH_DAYS = Number(process.env.REFRESH_TOKEN_DAYS ?? 30);
 export const ACCESS_COOKIE = process.env.ACCESS_COOKIE?.trim() || "accessToken";
 export const REFRESH_COOKIE =
@@ -13,7 +29,7 @@ export const CRON_INTERVAL_MS = Number(
 );
 
 // Token timing and defaults
-export const ACCESS_EXPIRES_MS = 15 * 60 * 1000; // 15 minutes
+export const ACCESS_EXPIRES_MS = parseDurationMs(ACCESS_EXPIRES);
 export const REFRESH_TOKEN_DEFAULT_DAYS = REFRESH_DAYS;
 export const PASSWORD_ACTION_TOKEN_HOURS =
   getMailConfig().passwordActionTokenHours;

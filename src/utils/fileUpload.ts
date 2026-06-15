@@ -56,7 +56,7 @@ export function getUploadContentMessage(fieldName?: string | null): string {
 export function getUploadSizeLimitMessage(fieldName?: string | null): string {
   return isPictureField(fieldName)
     ? "Bilden får vara högst 5 MB"
-    : "Filen får vara högst 20 MB";
+    : "Filen får vara högst 5 MB";
 }
 
 export function getUploadFailureMessage(fieldName?: string | null): string {

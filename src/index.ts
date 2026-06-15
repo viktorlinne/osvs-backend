@@ -1,16 +1,20 @@
 import "./config/env";
 import app from "./app";
 import logger from "./utils/logger";
+import pool from "./config/db";
 
-async function testDb() {
+async function verifyDbConnection() {
   try {
+    const conn = await pool.getConnection();
+    await conn.query("SELECT 1");
+    conn.release();
     logger.info("DB connection OK.");
   } catch (err) {
-    logger.error("DB connection Failed:", err);
+    logger.error({ err }, "DB connection failed at startup");
   }
 }
 
-testDb();
+void verifyDbConnection();
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

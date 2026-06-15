@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import compression from "compression";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { getBrowserOriginConfig, getJwtSecret } from "./config/env";
 import logger from "./utils/logger";
@@ -36,6 +37,35 @@ import mediaRouter from "./routes/media";
 const app = express();
 const browserOriginConfig = getBrowserOriginConfig();
 getJwtSecret();
+
+function redactRequestHeaders(
+  headers: express.Request["headers"],
+): Record<string, unknown> {
+  const redacted: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    const lower = key.toLowerCase();
+    if (lower === "authorization" || lower === "cookie") {
+      redacted[key] = "[redacted]";
+    } else {
+      redacted[key] = value;
+    }
+  }
+  return redacted;
+}
+
+let shuttingDown = false;
+
+async function shutdownAfterFatal(reason: string, err: unknown) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.fatal({ msg: reason, err });
+  try {
+    await Sentry.close(2000);
+  } catch {
+    // ignore Sentry flush errors during shutdown
+  }
+  process.exit(1);
+}
 
 // When running behind a proxy (Vercel, Railway, etc.) Express should trust
 // the proxy so middleware like express-rate-limit can use the forwarded IP.
@@ -102,8 +132,9 @@ app.use(
 );
 // Response compression
 app.use(compression());
+app.use(helmet());
 // Request timing middleware
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 
 // Scrub sensitive fields from JSON responses
@@ -130,7 +161,7 @@ app.use(
           return {
             method: req.method,
             url: req.url,
-            headers: req.headers,
+            headers: redactRequestHeaders(req.headers),
             body,
           };
         } catch {
@@ -194,28 +225,45 @@ if (process.env.NODE_ENV !== "production") {
   }
 }
 
-app.get("/api/health", (_req, res) =>
-  res.status(200).json({ status: "OK " + Date.now() }),
-);
+app.get("/api/health", async (_req, res) => {
+  try {
+    const conn = await pool.getConnection();
+    await conn.query("SELECT 1");
+    conn.release();
+    return res.status(200).json({ status: "OK", db: "connected", timestamp: Date.now() });
+  } catch (err) {
+    logger.error({ err }, "Health check DB ping failed");
+    return res.status(503).json({ status: "degraded", db: "unavailable", timestamp: Date.now() });
+  }
+});
 app.get("/", (_req, res) => res.send("Backend is running"));
+
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.errorHandler());
+}
 
 app.use(errorHandler);
 
-// Last resort error handler to catch any unhandled errors and prevent crashes
 process.on("uncaughtException", (err) => {
   try {
     Sentry.captureException(err as Error);
   } catch {
-    logger.fatal({ msg: "uncaughtException", err });
+    // ignore Sentry errors during fatal shutdown
   }
+  void shutdownAfterFatal("uncaughtException", err);
 });
 
 process.on("unhandledRejection", (reason) => {
   try {
     Sentry.captureException(reason as Error);
   } catch {
-    logger.error({ msg: "unhandledRejection", reason });
+    // ignore Sentry errors during fatal shutdown
   }
+  if (process.env.NODE_ENV === "production") {
+    void shutdownAfterFatal("unhandledRejection", reason);
+    return;
+  }
+  logger.error({ msg: "unhandledRejection", reason });
 });
 
 export default app;
