@@ -86,7 +86,7 @@ export async function getMediaHandler(req: Request, res: Response) {
   res.setHeader("Content-Type", asset.contentType);
   res.setHeader("Content-Length", String(asset.byteSize));
   res.setHeader("ETag", etag);
-  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
   return res.status(200).send(asset.data);
 }
 

@@ -1,4 +1,5 @@
 import express from "express";
+import authMiddleware from "../middleware/auth";
 import {
   getMediaHandler,
   getMediaPlaceholderHandler,
@@ -8,6 +9,6 @@ import { wrapAsync } from "../middleware/asyncHandler";
 const router = express.Router();
 
 router.get("/placeholders/:type", getMediaPlaceholderHandler);
-router.get("/:id", wrapAsync(getMediaHandler));
+router.get("/:id", authMiddleware, wrapAsync(getMediaHandler));
 
 export default router;

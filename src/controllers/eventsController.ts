@@ -9,6 +9,7 @@ import {
   normalizeEventDateTimeInput,
 } from "../utils/eventDateTime";
 import * as eventsService from "../services/eventsService";
+import { getUserRoles } from "../services/userService";
 import {
   assertValidEventAudience,
   normalizeEventAudienceSelection,
@@ -441,11 +442,21 @@ export async function listEventAttendancesHandler(
   res: Response,
   _next: NextFunction,
 ) {
+  const uid = requireAuthMatrikelnummer(req, res);
+  if (uid === null) return;
+
   const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
 
   const ev = await eventsService.getEventById(id);
   if (!ev) return sendError(res, 404, "Mötet hittades inte");
+
+  const roles = await getUserRoles(uid);
+  const isPrivileged = roles.some((r) => r === "Admin" || r === "Editor");
+  if (!isPrivileged) {
+    const invited = await eventsService.isUserInvitedToEvent(uid, id);
+    if (!invited) return sendError(res, 403, "Åtkomst nekad");
+  }
 
   const attendances = await eventsService.listEventAttendances(id);
   return res.status(200).json({ attendances });

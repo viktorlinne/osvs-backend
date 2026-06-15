@@ -24,7 +24,7 @@ export async function authMiddleware(
   );
 
   if (!token) {
-    return sendError(res, 401, "VÃ¤nligen logga in");
+    return sendError(res, 401, "Vänligen logga in");
   }
 
   try {
@@ -48,12 +48,16 @@ export async function authMiddleware(
         const revoked = await isJtiRevoked(jti);
         if (revoked) {
           logger.warn({ msg: "Revoked token used", jti: "[redacted]" });
-          return sendError(res, 401, "Sessionen har Ã¥terkallats");
+          return sendError(res, 401, "Sessionen har återkallats");
         }
       }
     } catch (revErr) {
       logger.warn({ msg: "Failed to check token revocation", err: revErr });
-      // fall through - do not fail auth if revocation storage is temporarily unavailable
+      return sendError(
+        res,
+        503,
+        "Sessionen kunde inte verifieras, försök igen senare",
+      );
     }
 
     // User-level revocation check (revoke all tokens issued before a time)
@@ -72,7 +76,7 @@ export async function authMiddleware(
                 msg: "Token issued before user-wide revoke",
                 matrikelnummer: matrikelnummerCandidate,
               });
-              return sendError(res, 401, "Inloggning utgÃ¥ngen");
+              return sendError(res, 401, "Inloggning utgången");
             }
           }
         }
@@ -82,6 +86,11 @@ export async function authMiddleware(
         msg: "Failed to check user-level revocation",
         err: userRevErr,
       });
+      return sendError(
+        res,
+        503,
+        "Sessionen kunde inte verifieras, försök igen senare",
+      );
     }
 
     if (

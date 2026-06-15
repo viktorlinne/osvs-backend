@@ -139,4 +139,63 @@ describe("authorization middleware", () => {
     expect(response.status).toBe(401);
     expect(mockedGetUserRoles).not.toHaveBeenCalled();
   });
+
+  it("returns 503 when JTI revocation check fails", async () => {
+    const app = buildAuthorizationApp();
+    mockedIsJtiRevoked.mockRejectedValue(new Error("DB unavailable"));
+
+    const response = await request(app)
+      .get("/admin-only")
+      .set(
+        "Authorization",
+        `Bearer ${signAccessToken({ matrikelnummer: 12, jti: "active-jti" })}`,
+      );
+
+    expect(response.status).toBe(503);
+    expect(response.body.message).toBe(
+      "Sessionen kunde inte verifieras, försök igen senare",
+    );
+    expect(mockedGetUserRoles).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when user-level revocation check fails", async () => {
+    const app = buildAuthorizationApp();
+    mockedFindById.mockRejectedValue(new Error("DB unavailable"));
+
+    const response = await request(app)
+      .get("/admin-only")
+      .set(
+        "Authorization",
+        `Bearer ${signAccessToken({ matrikelnummer: 12 })}`,
+      );
+
+    expect(response.status).toBe(503);
+    expect(mockedGetUserRoles).not.toHaveBeenCalled();
+  });
+
+  it("rejects tokens issued before user-wide revoke", async () => {
+    const app = buildAuthorizationApp();
+    const revokedAt = new Date("2026-01-01T12:00:00Z");
+    mockedFindById.mockResolvedValue({
+      matrikelnummer: 55,
+      revokedAt: revokedAt.toISOString(),
+    } as never);
+
+    const token = jwt.sign(
+      {
+        matrikelnummer: 55,
+        jti: "old-session",
+        iat: Math.floor(revokedAt.getTime() / 1000) - 3600,
+      },
+      process.env.JWT_SECRET as string,
+    );
+
+    const response = await request(app)
+      .get("/admin-only")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toBe("Inloggning utgången");
+    expect(mockedGetUserRoles).not.toHaveBeenCalled();
+  });
 });
