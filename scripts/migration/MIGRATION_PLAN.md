@@ -140,6 +140,14 @@ Two-stage, given `.mdb` access requires ODBC (Windows-only, awkward from Node):
 3. Dry-run mode first (prints counts + a dedup/unmatched report, writes nothing), then an apply mode. Idempotent re-run is out of scope for a one-time migration, but the script will be safe to point at a fresh `_dev`/`_test` DB repeatedly during development.
 4. Runs under the existing `MIGRATE_ALLOW_ANY_DB`/`MIGRATE_ALLOW_PRODUCTION` gates — never against production without an explicit, separate run with backup taken first.
 
+**Implemented 2026-10-21 (OSVS-14…19):** `npm run migrate:legacy -- --extract-dir=<extract> [--cutover=YYYY-MM-DD]`
+(dry run; reports in `<extract>/_reports`). Apply: add `--apply --seed-lookups --approve-merges=<hash from merge-report.md>`
+against an empty, fully migrated `_dev`/`_test` DB. Mapping code: `lib/*.ts`, tests: `test/migration/`.
+Deviations from the text above: `events_attendances.rsvp` = 2 (unanswered) for past events, 1/2 for coming
+events (reserved → 1); the plan's `rsvp = 0` predates the tri-state rsvp. Posts default to `publicum = 0`
+(old `news` required a login; `--posts-publicum` restores the plan's `true`). tEvents are matched on
+lodge + exact date only; `Verksamhet` rows run 2015–2027, not "mostly pre-2013".
+
 ## 6. Open items before implementation starts
 
 - [ ] Confirm the exact Swedish enum value for "removed" (`Utesluten`?).
