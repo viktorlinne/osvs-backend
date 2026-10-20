@@ -19,6 +19,7 @@ import {
   validateFoodBookingBody,
   validateLinkLodgeBody,
   validatePatchAttendanceBody,
+  validateRegistrationBody,
   validateRsvpBody,
 } from "../validators";
 import {
@@ -325,6 +326,30 @@ export async function listEventLodgesHandler(
   return res.status(200).json({ lodges });
 }
 
+/**
+ * Shared rules for a member responding to an event (RSVP, food, combined
+ * registration): the event must not have started and the member must be
+ * invited. Sends the error response and returns false when not allowed.
+ */
+async function ensureMemberCanRespond(
+  res: Response,
+  uid: number,
+  ev: { id: number; startDate: string },
+  startedMessage: string,
+): Promise<boolean> {
+  if (isAtOrBeforeNowStockholm(ev.startDate)) {
+    sendError(res, 400, startedMessage);
+    return false;
+  }
+
+  const invited = await eventsService.isUserInvitedToEvent(uid, ev.id);
+  if (!invited) {
+    sendError(res, 403, "Du är inte inbjuden till det här mötet");
+    return false;
+  }
+  return true;
+}
+
 export async function rsvpHandler(
   req: AuthenticatedRequest,
   res: Response,
@@ -343,18 +368,13 @@ export async function rsvpHandler(
   const ev = await eventsService.getEventById(id);
   if (!ev) return sendError(res, 404, "Mötet hittades inte");
 
-  if (isAtOrBeforeNowStockholm(ev.startDate)) {
-    return sendError(
-      res,
-      400,
-      "Det går inte att osa till påbörjade eller avslutade möten",
-    );
-  }
-
-  const invited = await eventsService.isUserInvitedToEvent(uid, id);
-  if (!invited) {
-    return sendError(res, 403, "Du är inte inbjuden till det här mötet");
-  }
+  const allowed = await ensureMemberCanRespond(
+    res,
+    uid,
+    { id, startDate: ev.startDate },
+    "Det går inte att osa till påbörjade eller avslutade möten",
+  );
+  if (!allowed) return;
 
   await eventsService.setUserRsvp(uid, id, status);
   return res.status(200).json({ success: true, status });
@@ -417,16 +437,13 @@ export async function bookFoodHandler(
     return sendError(res, 400, "Matbokning är inte aktiverad för det här mötet");
   }
 
-  if (isAtOrBeforeNowStockholm(ev.startDate)) {
-    return sendError(
-      res,
-      400,
-      "Det går inte att boka mat till påbörjade eller avslutade möten",
-    );
-  }
-
-  const invited = await eventsService.isUserInvitedToEvent(uid, id);
-  if (!invited) return sendError(res, 403, "Du är inte inbjuden till det här mötet");
+  const allowed = await ensureMemberCanRespond(
+    res,
+    uid,
+    { id, startDate: ev.startDate },
+    "Det går inte att boka mat till påbörjade eller avslutade möten",
+  );
+  if (!allowed) return;
 
   const rsvp = await eventsService.getUserRsvp(uid, id);
   if (rsvp !== "going") {
@@ -435,6 +452,65 @@ export async function bookFoodHandler(
 
   const bookFood = await eventsService.setUserBookFood(uid, id, parsed.bookFood);
   return res.status(200).json({ success: true, bookFood });
+}
+
+export async function getUserRegistrationHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
+  if (!uid) return;
+
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
+  if (id === null) return;
+
+  const ev = await eventsService.getEventById(id);
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
+
+  const invited = await eventsService.isUserInvitedToEvent(uid, id);
+  if (!invited) return sendError(res, 403, "Du är inte inbjuden till det här mötet");
+
+  const registration = await eventsService.getUserRegistration(
+    uid,
+    id,
+    Boolean(ev.food),
+  );
+  return res.status(200).json({ registration });
+}
+
+export async function saveUserRegistrationHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  _next: NextFunction,
+) {
+  const uid = requireAuthMatrikelnummer(req, res, "Obehörig");
+  if (!uid) return;
+
+  const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
+  if (id === null) return;
+
+  const parsed = unwrapValidation(res, validateRegistrationBody(req.body));
+  if (!parsed) return;
+
+  const ev = await eventsService.getEventById(id);
+  if (!ev) return sendError(res, 404, "Mötet hittades inte");
+
+  const allowed = await ensureMemberCanRespond(
+    res,
+    uid,
+    { id, startDate: ev.startDate },
+    "Det går inte att anmäla sig till påbörjade eller avslutade möten",
+  );
+  if (!allowed) return;
+
+  const registration = await eventsService.saveUserRegistration(
+    uid,
+    id,
+    Boolean(ev.food),
+    parsed,
+  );
+  return res.status(200).json({ success: true, registration });
 }
 
 export async function listEventAttendancesHandler(

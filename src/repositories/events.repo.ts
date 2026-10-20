@@ -521,6 +521,22 @@ export async function upsertEventAttendance(
   ]);
 }
 
+/**
+ * Writes rsvp and bookFood for one member in a single statement so the two
+ * values are always stored together. `attended` is left untouched.
+ */
+export async function upsertEventRegistration(
+  userId: number,
+  eventId: number,
+  fields: { rsvp: number; bookFood: number },
+  conn?: PoolConnection,
+) {
+  const executor = getExecutor(conn);
+  const sql =
+    "INSERT INTO events_attendances (uid, eid, rsvp, bookFood) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE rsvp = VALUES(rsvp), bookFood = VALUES(bookFood)";
+  await executor(sql, [userId, eventId, fields.rsvp, fields.bookFood]);
+}
+
 export async function selectEventAttendances(
   eventId: number,
 ): Promise<EventAttendanceListRow[]> {
@@ -654,6 +670,7 @@ export default {
   getEventAttendanceFromDb,
   upsertUserBookFood,
   upsertEventAttendance,
+  upsertEventRegistration,
   selectEventAttendances,
   upsertEventPaymentStatus,
   findEventPaymentByUidEid,

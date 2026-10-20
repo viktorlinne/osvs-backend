@@ -18,9 +18,12 @@ export {
   getUserRsvp,
   getUserBookFood,
   setUserBookFood,
+  getUserRegistration,
+  saveUserRegistration,
   listEventAttendances,
   patchEventAttendanceByAdmin,
 } from "./events/rsvp";
+export type { EventRegistration } from "./events/rsvp";
 import {
   listEvents,
   listUpcomingEvents,
@@ -41,6 +44,8 @@ import {
   getUserRsvp,
   getUserBookFood,
   setUserBookFood,
+  getUserRegistration,
+  saveUserRegistration,
   listEventAttendances,
   patchEventAttendanceByAdmin,
 } from "./events/rsvp";
@@ -63,6 +68,8 @@ export default {
   getUserRsvp,
   getUserBookFood,
   setUserBookFood,
+  getUserRegistration,
+  saveUserRegistration,
   listEventAttendances,
   patchEventAttendanceByAdmin,
 };

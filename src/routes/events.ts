@@ -16,6 +16,8 @@ import {
   getUserRsvpHandler,
   getUserFoodHandler,
   bookFoodHandler,
+  getUserRegistrationHandler,
+  saveUserRegistrationHandler,
   listEventAttendancesHandler,
   patchEventAttendanceHandler,
 } from "../controllers/eventsController";
@@ -79,6 +81,18 @@ router.get("/:id/rsvp", authMiddleware, wrapAsync(getUserRsvpHandler));
 // Food booking for current user
 router.get("/:id/food", authMiddleware, wrapAsync(getUserFoodHandler));
 router.post("/:id/food", authMiddleware, wrapAsync(bookFoodHandler));
+
+// Combined attendance + food registration for current user (atomic save)
+router.get(
+  "/:id/registration",
+  authMiddleware,
+  wrapAsync(getUserRegistrationHandler),
+);
+router.put(
+  "/:id/registration",
+  authMiddleware,
+  wrapAsync(saveUserRegistrationHandler),
+);
 
 // Attendances table for invited users + admin patch endpoint
 router.get("/:id/attendances", authMiddleware, wrapAsync(listEventAttendancesHandler));

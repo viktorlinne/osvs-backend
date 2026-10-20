@@ -117,6 +117,55 @@ export async function setUserBookFood(
   return value === 1;
 }
 
+export type EventRegistration = {
+  /** `null` when the member has not answered yet. */
+  rsvp: boolean | null;
+  bookFood: boolean;
+};
+
+function toRegistration(
+  row: { rsvp?: unknown; bookFood?: unknown } | null,
+  eventHasFood: boolean,
+): EventRegistration {
+  const rsvpState = row ? fromDbRsvp(row.rsvp) : null;
+  const rsvp = rsvpState === null ? null : rsvpState === "going";
+  return {
+    rsvp,
+    bookFood: eventHasFood && rsvp === true && toDbFlag(row?.bookFood) === 1,
+  };
+}
+
+/**
+ * Current registration for a member. Rows prefilled by the standing list
+ * (rsvp=1, bookFood=1) are returned as-is so the flow can start from them.
+ */
+export async function getUserRegistration(
+  userId: number,
+  eventId: number,
+  eventHasFood: boolean,
+): Promise<EventRegistration> {
+  const row = await eventsRepo.getEventAttendanceFromDb(userId, eventId);
+  return toRegistration(row, eventHasFood);
+}
+
+/**
+ * Saves attendance and food together in one statement. Callers must already
+ * have verified that the member may respond to the event (invited, not
+ * started). bookFood is forced to false when not attending or when the event
+ * has no food.
+ */
+export async function saveUserRegistration(
+  userId: number,
+  eventId: number,
+  eventHasFood: boolean,
+  input: { rsvp: boolean; bookFood: boolean },
+): Promise<EventRegistration> {
+  const rsvp = input.rsvp ? 1 : 0;
+  const bookFood = rsvp === 1 && eventHasFood && input.bookFood ? 1 : 0;
+  await eventsRepo.upsertEventRegistration(userId, eventId, { rsvp, bookFood });
+  return { rsvp: rsvp === 1, bookFood: bookFood === 1 };
+}
+
 export async function listEventAttendances(
   eventId: number,
 ): Promise<EventAttendanceRow[]> {
