@@ -103,7 +103,7 @@ export const swaggerSpec = {
     { name: "Events", description: "Events, RSVP, food, and attendance operations." },
     { name: "Posts", description: "Post listing and content management." },
     { name: "Lodges", description: "Lodge listing and management." },
-    { name: "Groups", description: "Group listing and event audience helpers." },
+    { name: "Groups", description: "Group listing, management and membership." },
     { name: "Admin", description: "Admin utilities." },
     { name: "Payments", description: "Membership payment endpoints." },
     { name: "Officials", description: "Officials catalogue and assignments." },
@@ -308,7 +308,7 @@ export const swaggerSpec = {
       },
       Group: {
         type: "object",
-        required: ["id", "name", "userIds"],
+        required: ["id", "name", "userIds", "memberCount"],
         properties: {
           id: { type: "integer", example: 5 },
           name: { type: "string", example: "Planeringsgruppen" },
@@ -316,6 +316,81 @@ export const swaggerSpec = {
           userIds: {
             type: "array",
             items: { type: "integer", example: 1 },
+          },
+          memberCount: {
+            type: "integer",
+            example: 3,
+            description: "Number of members (equals userIds.length).",
+          },
+        },
+      },
+      GroupMember: {
+        type: "object",
+        required: ["matrikelnummer", "firstname", "lastname", "email", "archive"],
+        properties: {
+          matrikelnummer: { type: "integer", example: 7 },
+          firstname: { type: "string", example: "Anders" },
+          lastname: { type: "string", example: "Andersson" },
+          email: { type: "string", format: "email", example: "anders@example.com" },
+          archive: {
+            type: "string",
+            nullable: true,
+            enum: ["Avliden", "Urgången", "Avförd", null],
+          },
+        },
+      },
+      CreateGroupRequest: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", maxLength: 255, example: "Planeringsgruppen" },
+          description: {
+            type: "string",
+            nullable: true,
+            maxLength: 2000,
+            example: "Grupp för planering av gemensamma möten.",
+          },
+        },
+      },
+      UpdateGroupRequest: {
+        type: "object",
+        description: "At least one of name or description must be provided.",
+        properties: {
+          name: { type: "string", maxLength: 255, example: "Planeringsgruppen" },
+          description: { type: "string", nullable: true, maxLength: 2000 },
+        },
+      },
+      GroupMutationResponse: {
+        type: "object",
+        required: ["success", "group"],
+        properties: {
+          success: { type: "boolean", example: true },
+          id: { type: "integer", example: 12, description: "Present on create." },
+          group: { $ref: "#/components/schemas/Group" },
+        },
+      },
+      AddGroupMembersRequest: {
+        type: "object",
+        required: ["userIds"],
+        properties: {
+          userIds: {
+            type: "array",
+            minItems: 1,
+            maxItems: 500,
+            items: { type: "integer", example: 7 },
+          },
+        },
+      },
+      AddGroupMembersResponse: {
+        type: "object",
+        required: ["success", "added", "alreadyMembers"],
+        properties: {
+          success: { type: "boolean", example: true },
+          added: { type: "array", items: { type: "integer" }, example: [7, 9] },
+          alreadyMembers: {
+            type: "array",
+            items: { type: "integer" },
+            example: [12],
           },
         },
       },
@@ -2975,7 +3050,8 @@ export const swaggerSpec = {
       get: {
         tags: ["Groups"],
         summary: "List groups",
-        description: "Returns all groups with their member user ids.",
+        description:
+          "Returns all groups with their member user ids and member count.",
         operationId: "getGroups",
         security: authSecurity,
         responses: {
@@ -2996,6 +3072,267 @@ export const swaggerSpec = {
             },
           },
           ...unauthorized,
+          ...internal,
+        },
+      },
+      post: {
+        tags: ["Groups"],
+        summary: "Create group",
+        description:
+          "Creates a group (Admin/Editor). Names are compared case-insensitively; a duplicate name returns 409 with `details.fields.name`.",
+        operationId: "postGroups",
+        security: authSecurity,
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateGroupRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Group created.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/GroupMutationResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...conflict,
+          ...internal,
+        },
+      },
+    },
+    "/groups/{id}": {
+      get: {
+        tags: ["Groups"],
+        summary: "Get group",
+        description: "Returns one group with member ids and member count.",
+        operationId: "getGroupById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 5,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Group.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: { group: { $ref: "#/components/schemas/Group" } },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...notFound,
+          ...internal,
+        },
+      },
+      put: {
+        tags: ["Groups"],
+        summary: "Update group",
+        description:
+          "Renames a group and/or updates its description (Admin/Editor). The duplicate-name check only runs when the name changes.",
+        operationId: "putGroupById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 5,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UpdateGroupRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Group updated.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/GroupMutationResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...conflict,
+          ...internal,
+        },
+      },
+      delete: {
+        tags: ["Groups"],
+        summary: "Delete group",
+        description:
+          "Deletes a group (Admin/Editor). Memberships and event-audience links are removed via FK cascade.",
+        operationId: "deleteGroupById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 5,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Group deleted.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/SuccessResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/groups/{id}/members": {
+      get: {
+        tags: ["Groups"],
+        summary: "List group members",
+        description:
+          "Returns the members of a group sorted by last name. Archived users are included with their `archive` value.",
+        operationId: "getGroupMembersById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 5,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Member list.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    members: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/GroupMember" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...notFound,
+          ...internal,
+        },
+      },
+      post: {
+        tags: ["Groups"],
+        summary: "Add group members",
+        description:
+          "Adds one or more users to a group (Admin/Editor). Idempotent: users already in the group are returned in `alreadyMembers`. Unknown users fail the request with `details.fields.userIds`.",
+        operationId: "postGroupMembersById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 5,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AddGroupMembersRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Members added.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AddGroupMembersResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/groups/{id}/members/{matrikelnummer}": {
+      delete: {
+        tags: ["Groups"],
+        summary: "Remove group member",
+        description:
+          "Removes one user from a group (Admin/Editor). Returns 404 when the group does not exist or the user is not a member.",
+        operationId: "deleteGroupMemberById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 5,
+          },
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Member removed.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/SuccessResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
           ...internal,
         },
       },

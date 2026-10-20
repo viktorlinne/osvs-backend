@@ -3,3 +3,4 @@ export * from "./lodgeValidators";
 export * from "./eventValidators";
 export * from "./postValidators";
 export * from "./userValidators";
+export * from "./groupValidators";
