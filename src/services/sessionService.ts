@@ -1,6 +1,10 @@
 import { Response } from "express";
-import { findByEmail, findById } from "./userService";
-import { verifyPassword } from "./authService";
+import { findByEmail, findById, upgradeLegacyPassword } from "./userService";
+import { hashPassword, verifyPassword } from "./authService";
+import {
+  isLegacyPasswordPlaceholder,
+  verifyLegacyPassword,
+} from "./legacyPassword";
 import {
   createRefreshToken,
   findRefreshToken,
@@ -40,8 +44,8 @@ export async function loginWithEmail(
   res: Response
 ): Promise<SessionResponse | null> {
   const user = await findByEmail(email);
-  if (!user || !user.matrikelnummer || !user.passwordHash) return null;
-  const ok = await verifyPassword(password, user.passwordHash);
+  if (!user || !user.matrikelnummer) return null;
+  const ok = await verifyLoginPassword(user, password);
   if (!ok) return null;
   const jti = cryptoSafeId();
   const payload = { matrikelnummer: user.matrikelnummer, jti };
@@ -62,6 +66,61 @@ export async function loginWithEmail(
 
   setAuthCookies(res, accessToken, refreshToken, refreshDays);
   return { session: getSessionMetadataFromAccessToken(accessToken) };
+}
+
+type LoginCandidate = {
+  matrikelnummer: number;
+  passwordHash?: string;
+  legacyPasswordHash?: string | null;
+  legacyPasswordSalt?: string | null;
+};
+
+/**
+ * Verifies the submitted password for login. Migrated members with a legacy
+ * hash + salt are verified with the old scheme and, on success, upgraded to
+ * Argon2id with the legacy columns cleared in the same UPDATE. Members with
+ * only the migration placeholder are rejected (they must reset). Everyone
+ * else uses the normal Argon2 path. All failures look identical to callers.
+ */
+async function verifyLoginPassword(
+  user: LoginCandidate,
+  password: string,
+): Promise<boolean> {
+  const legacyHash = user.legacyPasswordHash;
+  const legacySalt = user.legacyPasswordSalt;
+
+  if (
+    typeof legacyHash === "string" &&
+    legacyHash.length > 0 &&
+    typeof legacySalt === "string" &&
+    legacySalt.length > 0
+  ) {
+    if (!verifyLegacyPassword(password, legacySalt, legacyHash)) return false;
+    const upgradedHash = await hashPassword(password);
+    const upgraded = await upgradeLegacyPassword(
+      user.matrikelnummer,
+      upgradedHash,
+      legacyHash,
+    );
+    if (!upgraded) {
+      // The legacy credential changed concurrently (e.g. a password reset).
+      logger.warn({
+        msg: "Legacy password upgrade did not apply; rejecting login",
+        matrikelnummer: user.matrikelnummer,
+      });
+      return false;
+    }
+    logger.info({
+      msg: "Upgraded legacy password to Argon2id",
+      matrikelnummer: user.matrikelnummer,
+    });
+    return true;
+  }
+
+  if (!user.passwordHash || isLegacyPasswordPlaceholder(user.passwordHash)) {
+    return false;
+  }
+  return verifyPassword(password, user.passwordHash);
 }
 
 export async function refreshFromCookie(res: Response, refresh: string) {

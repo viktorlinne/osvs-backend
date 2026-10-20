@@ -17,10 +17,14 @@ export default function scrubResponseJson(
           const userRec = rec.user as Record<string, unknown>;
           delete userRec.password;
           delete userRec.passwordHash;
+          delete userRec.legacyPasswordHash;
+          delete userRec.legacyPasswordSalt;
           rec.user = userRec;
         }
         if (typeof rec.password !== "undefined") delete rec.password;
         if (typeof rec.passwordHash !== "undefined") delete rec.passwordHash;
+        delete rec.legacyPasswordHash;
+        delete rec.legacyPasswordSalt;
       }
       return origJson(copy);
     } catch {

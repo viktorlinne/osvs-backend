@@ -17,6 +17,7 @@ export {
 export {
   updateUserProfile,
   updatePassword,
+  upgradeLegacyPassword,
   updatePicture,
   setUserRevokedAt,
   deleteUserAccount,
@@ -47,6 +48,7 @@ import {
 import {
   updateUserProfile,
   updatePassword,
+  upgradeLegacyPassword,
   updatePicture,
   setUserRevokedAt,
   deleteUserAccount,
@@ -76,6 +78,7 @@ export default {
   getPublicUserById,
   updateUserProfile,
   updatePassword,
+  upgradeLegacyPassword,
   updatePicture,
   setUserRevokedAt,
   deleteUserAccount,
