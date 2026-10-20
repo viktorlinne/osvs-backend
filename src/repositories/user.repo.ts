@@ -50,7 +50,6 @@ type OfficialHistoryRow = {
   appointedAt?: unknown;
   unappointedAt?: unknown;
 };
-type ActiveOfficialOidRow = { oid?: unknown };
 type UserMapPinRow = {
   id?: unknown;
   name?: unknown;
@@ -750,72 +749,6 @@ export async function selectUserOfficialsHistory(userId: number) {
     );
 }
 
-export async function setUserOfficials(
-  userId: number,
-  officialIds: number[],
-  conn?: PoolConnection,
-) {
-  const normalizedIds = Array.from(
-    new Set(
-      (Array.isArray(officialIds) ? officialIds : [])
-        .map((id) => Number(id))
-        .filter((id): id is number => Number.isFinite(id)),
-    ),
-  );
-
-  const [activeRows] = await exec(
-    `
-      SELECT oid
-      FROM users_officials
-      WHERE uid = ? AND unAppointedAt IS NULL
-      FOR UPDATE
-    `,
-    [userId],
-    conn,
-  );
-
-  const activeIds = new Set(
-    asRows<ActiveOfficialOidRow>(activeRows)
-      .map((row) => Number(row.oid))
-      .filter((id): id is number => Number.isFinite(id)),
-  );
-  const desiredIds = new Set(normalizedIds);
-
-  const toUnappoint = Array.from(activeIds).filter((id) => !desiredIds.has(id));
-  const toAppoint = Array.from(desiredIds).filter((id) => !activeIds.has(id));
-
-  if (toUnappoint.length > 0) {
-    const placeholders = toUnappoint.map(() => "?").join(",");
-    await exec(
-      `
-        UPDATE users_officials
-        SET unAppointedAt = NOW()
-        WHERE uid = ?
-          AND unAppointedAt IS NULL
-          AND oid IN (${placeholders})
-      `,
-      [userId, ...toUnappoint],
-      conn,
-    );
-  }
-
-  if (toAppoint.length > 0) {
-    const placeholders = toAppoint.map(() => "(?, ?, NOW(), NULL)").join(",");
-    const params: number[] = [];
-    for (const oid of toAppoint) {
-      params.push(userId, oid);
-    }
-    await exec(
-      `
-        INSERT INTO users_officials (uid, oid, appointedAt, unAppointedAt)
-        VALUES ${placeholders}
-      `,
-      params,
-      conn,
-    );
-  }
-}
-
 export default {
   findByEmail,
   findById,
@@ -843,5 +776,4 @@ export default {
   setUserAllergies,
   selectUserOfficials,
   selectUserOfficialsHistory,
-  setUserOfficials,
 };

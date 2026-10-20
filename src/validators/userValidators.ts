@@ -4,11 +4,16 @@ import type {
 } from "../types";
 import {
   ValidationResult,
+  ValidationFieldMap,
   asObject,
   fail,
   failFields,
   ok,
 } from "./shared";
+import {
+  NOTE_MAX_LENGTH,
+  NOTE_TOO_LONG_MESSAGE,
+} from "./memberHistoryValidators";
 
 /** Profile fields that only Admin/Editor may set (via PUT /users/:id). */
 export const USER_ADMIN_FLAG_KEYS = ["feeExempt", "standingList"] as const;
@@ -56,12 +61,26 @@ export function validateAddAchievementBody(
     }
   }
 
+  const noteRaw = body.note;
+  let note: string | null = null;
+  if (typeof noteRaw !== "undefined" && noteRaw !== null) {
+    const fields: ValidationFieldMap = {};
+    if (typeof noteRaw !== "string") {
+      fields.note = "Ogiltig anteckning";
+    } else if (noteRaw.trim().length > NOTE_MAX_LENGTH) {
+      fields.note = NOTE_TOO_LONG_MESSAGE;
+    }
+    if (Object.keys(fields).length > 0) return failFields(fields);
+    note = (noteRaw as string).trim() || null;
+  }
+
   return ok({
     achievementId,
     awardedAt:
       awardedAtRaw === null || typeof awardedAtRaw === "undefined"
         ? null
         : String(awardedAtRaw),
+    note,
   });
 }
 

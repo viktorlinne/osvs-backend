@@ -12,7 +12,6 @@ import {
 import { getPublicUrl } from "../utils/fileUpload";
 import {
   updatePicture,
-  setUserAchievement,
   getUserAchievements,
   getUserAttendedEventsSummary,
   getUserAllergies,
@@ -29,6 +28,10 @@ import {
   clearUserLocationOverride,
 } from "../services/userService";
 import { toPublicUser, toUserAdminFlags } from "../utils/serialize";
+import {
+  createAchievementEntry,
+  toSqlDateTime,
+} from "../services/memberHistoryService";
 import { getUserLodge, setUserLodge } from "../services/lodgeService";
 // (schemas imported above)
 import logger from "../utils/logger";
@@ -234,16 +237,29 @@ export async function addAchievementHandler(
 
     const parsed = unwrapValidation(res, validateAddAchievementBody(req.body));
     if (!parsed) return;
-    const { achievementId, awardedAt } = parsed;
-    const when = awardedAt ? new Date(String(awardedAt)) : undefined;
+    const { achievementId, awardedAt, note } = parsed;
+    const raw = awardedAt ? String(awardedAt).trim() : "";
+    const when = raw ? new Date(raw) : undefined;
+    // Calendar dates are stored as-is (midnight); other inputs keep the
+    // previous behaviour of storing the parsed local datetime.
+    const storedAwardedAt = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+      ? raw
+      : toSqlDateTime(when ?? new Date());
 
-    const newId = await setUserAchievement(
+    // Logged in the same transaction as the insert (OSVS-26).
+    const entry = await createAchievementEntry(
       targetId,
-      Number(achievementId),
-      when,
+      {
+        achievementId: Number(achievementId),
+        awardedAt: storedAwardedAt,
+        note: note ?? null,
+      },
+      callerId,
     );
 
-    return res.status(201).json({ success: true, id: newId, awardedAt: when });
+    return res
+      .status(201)
+      .json({ success: true, id: entry.id, awardedAt: when, entry });
   } catch (err) {
     logger.error("Misslyckades att tilldela utmärkelse", err);
     return next(err);

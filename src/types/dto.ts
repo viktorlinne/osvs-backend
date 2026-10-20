@@ -35,6 +35,8 @@ export type UpdateUserProfileBody = Partial<{
 export type AddAchievementBody = {
   achievementId?: number;
   awardedAt?: string | null;
+  /** Optional change-log note (OSVS-26). */
+  note?: string | null;
 };
 
 export type SetRolesBody = {
