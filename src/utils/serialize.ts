@@ -1,4 +1,4 @@
-import type { UserRecord, PublicUser } from "../types";
+import type { UserRecord, PublicUser, UserAdminFlags } from "../types";
 
 /** Format a JS Date or string to a local YYYY-MM-DD date-only string. */
 export function formatDateOnly(d: unknown): string | unknown {
@@ -42,4 +42,17 @@ export function toPublicUser(user: UserRecord): PublicUser {
       ? String((user as unknown as Record<string, unknown>).lodgeName)
       : null,
   } as PublicUser;
+}
+
+/**
+ * Admin/Editor-only per-user flags. Kept out of `toPublicUser` so they are not
+ * exposed through the member directory to ordinary members.
+ */
+export function toUserAdminFlags(
+  user: Pick<UserRecord, "feeExempt" | "standingList">,
+): UserAdminFlags {
+  return {
+    feeExempt: Number(user.feeExempt ?? 0) === 1,
+    standingList: Number(user.standingList ?? 0) === 1,
+  };
 }

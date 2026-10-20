@@ -11,7 +11,7 @@ import type {
   UserRecord,
 } from "../../types";
 import { RoleValues } from "../../types";
-import { toPublicUser } from "../../utils/serialize";
+import { toPublicUser, toUserAdminFlags } from "../../utils/serialize";
 import * as userRepo from "../../repositories/user.repo";
 import { isValidUserRecord } from "./shared";
 
@@ -233,8 +233,15 @@ export async function listUsersMapPins(): Promise<UserMapPin[]> {
     );
 }
 
-export async function getPublicUserById(id: number) {
+export async function getPublicUserById(
+  id: number,
+  options?: { includeAdminFlags?: boolean },
+): Promise<PublicUser | undefined> {
   const row = await userRepo.getUserPublicById(id);
   if (!row) return undefined;
-  return isValidUserRecord(row) ? toPublicUser(row) : undefined;
+  if (!isValidUserRecord(row)) return undefined;
+  const user = toPublicUser(row);
+  return options?.includeAdminFlags
+    ? { ...user, ...toUserAdminFlags(row) }
+    : user;
 }

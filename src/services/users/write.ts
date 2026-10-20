@@ -115,6 +115,8 @@ export async function updateUserProfile(
     notes?: string | null;
     accommodationAvailable?: boolean | null;
     archive?: "Avliden" | "Urgången" | null;
+    feeExempt?: boolean;
+    standingList?: boolean;
   }>,
 ): Promise<void> {
   const before = await userRepo.findById(userId);

@@ -4,6 +4,7 @@ import { badRequest } from "../../utils/errors";
 import type { PoolConnection } from "mysql2/promise";
 
 const RSVP_UNANSWERED = 2;
+const RSVP_GOING = 1;
 const SINGLE_LODGE_ERROR = "Ett möte kan bara ha en loge";
 const AUDIENCE_REQUIRED_ERROR = "Välj minst en målgrupp";
 
@@ -18,6 +19,12 @@ type SyncEventAudienceOptions = {
   requireAudience?: boolean;
   repricePending?: boolean;
   price?: number;
+  /**
+   * OSVS-28 "Ständiga listan": only set when the event is being created.
+   * Newly invited users with users.standingList = 1 get rsvp = 1 (going) and
+   * bookFood = 1 when the event has food. Never used on update (no backfill).
+   */
+  prefillStandingList?: { food: boolean };
 };
 
 function normalizeIds(ids: number[]): number[] {
@@ -143,8 +150,18 @@ export async function syncEventAudience(
       ? Number(options?.price)
       : await eventsRepo.selectEventPrice(eventId, conn);
 
+    const standingListSet = options?.prefillStandingList
+      ? new Set(await eventsRepo.selectStandingListUserIds(toAdd, conn))
+      : new Set<number>();
+    const prefillBookFood = options?.prefillStandingList?.food ? 1 : 0;
+
+    // INSERT IGNORE: an existing attendance row is never overwritten.
     await eventsRepo.bulkInsertEventAttendances(
-      toAdd.map((uid) => [uid, eventId, RSVP_UNANSWERED, 0, 0]),
+      toAdd.map((uid) =>
+        standingListSet.has(uid)
+          ? [uid, eventId, RSVP_GOING, prefillBookFood, 0]
+          : [uid, eventId, RSVP_UNANSWERED, 0, 0],
+      ),
       conn,
     );
     await eventsRepo.bulkInsertEventPayments(

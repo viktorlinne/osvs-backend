@@ -26,6 +26,10 @@ export type UpdateUserProfileBody = Partial<{
   notes?: string | null;
   accommodationAvailable?: boolean | null;
   archive?: "Avliden" | "Urgången" | null;
+  /** Admin/Editor only (PUT /users/:matrikelnummer). */
+  feeExempt?: boolean;
+  /** Admin/Editor only (PUT /users/:matrikelnummer). */
+  standingList?: boolean;
 }>;
 
 export type AddAchievementBody = {

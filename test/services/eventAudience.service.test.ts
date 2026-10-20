@@ -13,6 +13,7 @@ jest.mock("../../src/repositories/events.repo", () => ({
   selectEventLodgeIds: jest.fn(),
   selectGroupIdsForEvent: jest.fn(),
   selectUserIdsForEvent: jest.fn(),
+  selectStandingListUserIds: jest.fn(),
 }));
 
 jest.mock("../../src/repositories/groups.repo", () => ({
@@ -40,6 +41,7 @@ describe("events audience sync", () => {
     mockedEventsRepo.selectEventPrice.mockResolvedValue(275);
     mockedEventsRepo.updatePendingEventPaymentsAmount.mockResolvedValue(undefined);
     mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([]);
+    mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([]);
   });
 
   it("dedupes overlapping lodge, group, and direct user coverage", async () => {
@@ -210,5 +212,97 @@ describe("events audience sync", () => {
     );
     expect(mockedEventsRepo.deleteEventAttendancesForUids).not.toHaveBeenCalled();
     expect(mockedEventsRepo.bulkInsertEventAttendances).not.toHaveBeenCalled();
+  });
+
+  describe("standing list prefill (OSVS-28)", () => {
+    it("prefills going + food for standing-list invitees when the event has food", async () => {
+      mockedEventsRepo.findUsersInLodge.mockResolvedValue([{ uid: 1 }, { uid: 2 }]);
+      mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([3]);
+      mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([2, 3]);
+
+      await syncEventAudience(
+        20,
+        { lodgeIds: [4], groupIds: [6], userIds: [] },
+        { price: 250, prefillStandingList: { food: true } },
+      );
+
+      expect(mockedEventsRepo.selectStandingListUserIds).toHaveBeenCalledWith(
+        [1, 2, 3],
+        undefined,
+      );
+      expect(mockedEventsRepo.bulkInsertEventAttendances).toHaveBeenCalledWith(
+        [
+          [1, 20, 2, 0, 0],
+          [2, 20, 1, 1, 0],
+          [3, 20, 1, 1, 0],
+        ],
+        undefined,
+      );
+      // Payments are unchanged by the prefill.
+      expect(mockedEventsRepo.bulkInsertEventPayments).toHaveBeenCalledWith(
+        [
+          [1, 20, 250, "Pending"],
+          [2, 20, 250, "Pending"],
+          [3, 20, 250, "Pending"],
+        ],
+        undefined,
+      );
+    });
+
+    it("prefills going without food when the event has no food", async () => {
+      mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([5]);
+
+      await syncEventAudience(
+        21,
+        { lodgeIds: [], groupIds: [], userIds: [5, 6] },
+        { price: 0, prefillStandingList: { food: false } },
+      );
+
+      expect(mockedEventsRepo.bulkInsertEventAttendances).toHaveBeenCalledWith(
+        [
+          [5, 21, 1, 0, 0],
+          [6, 21, 2, 0, 0],
+        ],
+        undefined,
+      );
+    });
+
+    it("does not prefill when the audience changes on update (no backfill)", async () => {
+      mockedEventsRepo.selectInvitedUserIds.mockResolvedValue([1]);
+      mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([2]);
+
+      await syncEventAudience(
+        22,
+        { lodgeIds: [], groupIds: [], userIds: [1, 2] },
+        { price: 100 },
+      );
+
+      expect(mockedEventsRepo.selectStandingListUserIds).not.toHaveBeenCalled();
+      expect(mockedEventsRepo.bulkInsertEventAttendances).toHaveBeenCalledWith(
+        [[2, 22, 2, 0, 0]],
+        undefined,
+      );
+    });
+
+    it("never rewrites attendance rows of users who are already invited", async () => {
+      mockedEventsRepo.selectInvitedUserIds.mockResolvedValue([1, 2]);
+      mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([3]);
+
+      await syncEventAudience(
+        23,
+        { lodgeIds: [], groupIds: [], userIds: [1, 2, 3] },
+        { price: 100, prefillStandingList: { food: true } },
+      );
+
+      expect(mockedEventsRepo.selectStandingListUserIds).toHaveBeenCalledWith(
+        [3],
+        undefined,
+      );
+      expect(mockedEventsRepo.bulkInsertEventAttendances).toHaveBeenCalledWith(
+        [[3, 23, 1, 1, 0]],
+        undefined,
+      );
+      expect(mockedEventsRepo.deleteEventAttendancesForUids).not.toHaveBeenCalled();
+    });
   });
 });

@@ -340,6 +340,18 @@ export const swaggerSpec = {
           archive: { type: "string", nullable: true },
           createdAt: { type: "string", format: "date-time", nullable: true },
           revokedAt: { type: "string", format: "date-time", nullable: true },
+          feeExempt: {
+            type: "boolean",
+            description:
+              "\"Befriad från årsavgift\". Only included for Admin/Editor callers (GET and PUT /users/{matrikelnummer}). When true, the yearly job creates no membership payment for the user.",
+            example: false,
+          },
+          standingList: {
+            type: "boolean",
+            description:
+              "\"Ständiga listan\". Only included for Admin/Editor callers (GET and PUT /users/{matrikelnummer}). When true, the user is prefilled as attending (and booked for food when the event has food) on events created with the user in their audience.",
+            example: false,
+          },
         },
       },
       PublicUserResponse: {
@@ -776,6 +788,16 @@ export const swaggerSpec = {
           zipcode: { type: "string" },
           notes: { type: "string", nullable: true },
           accommodationAvailable: { type: "boolean", nullable: true },
+          feeExempt: {
+            type: "boolean",
+            description:
+              "Admin/Editor only, via PUT /users/{matrikelnummer}. Sending it to PUT /users/me returns 403. Must be a boolean (null is rejected with details.fields.feeExempt).",
+          },
+          standingList: {
+            type: "boolean",
+            description:
+              "Admin/Editor only, via PUT /users/{matrikelnummer}. Sending it to PUT /users/me returns 403. Must be a boolean (null is rejected with details.fields.standingList).",
+          },
         },
       },
       AddAchievementRequest: {
@@ -1370,7 +1392,8 @@ export const swaggerSpec = {
       put: {
         tags: ["Users"],
         summary: "Update current user profile",
-        description: "Updates current authenticated user profile fields.",
+        description:
+          "Updates current authenticated user profile fields. The Admin/Editor-only fields `feeExempt` and `standingList` are rejected with 403.",
         operationId: "updateUsersMe",
         security: authSecurity,
         requestBody: {
@@ -1392,6 +1415,7 @@ export const swaggerSpec = {
           },
           ...badRequest,
           ...unauthorized,
+          ...forbidden,
           ...notFound,
           ...internal,
         },
@@ -1587,7 +1611,7 @@ export const swaggerSpec = {
         tags: ["Users"],
         summary: "Get user profile by matrikelnummer",
         description:
-          "Returns a member-directory profile for any authenticated member, including email, contact details, achievements, allergies, and officials history.",
+          "Returns a member-directory profile for any authenticated member, including email, contact details, achievements, allergies, and officials history. For Admin/Editor callers the user object also includes `feeExempt` and `standingList`.",
         operationId: "getUserByMatrikelnummer",
         security: authSecurity,
         parameters: [
@@ -1636,7 +1660,8 @@ export const swaggerSpec = {
       put: {
         tags: ["Users"],
         summary: "Update another user's profile",
-        description: "Updates target user profile (Admin/Editor).",
+        description:
+          "Updates target user profile (Admin/Editor), including the flags `feeExempt` (Befriad från årsavgift) and `standingList` (Ständiga listan). The response user includes both flags.",
         operationId: "putUserByMatrikelnummer",
         security: authSecurity,
         parameters: [
@@ -2087,7 +2112,8 @@ export const swaggerSpec = {
       post: {
         tags: ["Events"],
         summary: "Create event",
-        description: "Creates a new event (Admin/Editor).",
+        description:
+          "Creates a new event (Admin/Editor). Every invited user (lodge members, group members and directly selected users) gets an attendance row. Invited, non-archived users with `standingList` = true are prefilled with rsvp = going and bookFood = true when the event has food (price > 0); everyone else starts unanswered. The prefill only happens on creation; later audience changes and flag changes do not prefill.",
         operationId: "postEvents",
         security: authSecurity,
         requestBody: {

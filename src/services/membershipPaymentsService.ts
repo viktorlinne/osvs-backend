@@ -72,25 +72,31 @@ export async function createMembershipPaymentsIfMissingBulk(
   if (!Array.isArray(uids) || uids.length === 0) return [];
   const amt = typeof amount === "number" ? amount : 600;
 
+  // OSVS-27: members flagged "Befriad från årsavgift" (users.feeExempt) get no
+  // automatic yearly payment. Payments that already exist are left untouched.
+  const exemptSet = new Set(await membershipRepo.findFeeExemptUserIds(uids));
+  const eligibleUids = uids.filter((uid) => !exemptSet.has(uid));
+  if (eligibleUids.length === 0) return [];
+
   // Find which users already have payments for this year
-  const existingRows = await membershipRepo.findExistingForUsers(year, uids);
+  const existingRows = await membershipRepo.findExistingForUsers(
+    year,
+    eligibleUids,
+  );
   const existingSet = new Set(existingRows.map((r) => Number(r.uid)));
 
   // Prepare values for missing users
   const values: Array<Array<unknown>> = [];
-  for (const uid of uids) {
+  for (const uid of eligibleUids) {
     if (existingSet.has(uid)) continue;
     values.push([uid, amt, year, "Pending"]);
   }
 
-  if (values.length === 0) {
-    const rows = await membershipRepo.findPaymentsForUsers(year, uids);
-    return mapRowsToPayments(rows);
+  if (values.length > 0) {
+    await membershipRepo.bulkInsertIfMissing(values);
   }
 
-  await membershipRepo.bulkInsertIfMissing(values);
-
-  const rows = await membershipRepo.findPaymentsForUsers(year, uids);
+  const rows = await membershipRepo.findPaymentsForUsers(year, eligibleUids);
   return mapRowsToPayments(rows);
 }
 

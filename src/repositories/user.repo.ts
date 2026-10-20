@@ -205,6 +205,8 @@ export async function updateUserProfile(
     notes?: string | null;
     accommodationAvailable?: boolean | null;
     archive?: "Avliden" | "Urgången" | null;
+    feeExempt?: boolean;
+    standingList?: boolean;
   }>,
 ) {
   const fields: string[] = [];
@@ -253,6 +255,14 @@ export async function updateUserProfile(
   if (typeof data.archive !== "undefined") {
     fields.push("archive = ?");
     params.push(data.archive ?? null);
+  }
+  if (typeof data.feeExempt === "boolean") {
+    fields.push("feeExempt = ?");
+    params.push(data.feeExempt ? 1 : 0);
+  }
+  if (typeof data.standingList === "boolean") {
+    fields.push("standingList = ?");
+    params.push(data.standingList ? 1 : 0);
   }
 
   if (fields.length === 0) return;
@@ -669,7 +679,7 @@ export async function listUsersMapPins() {
 
 export async function getUserPublicById(id: number) {
   const [rows] = await exec(
-    `SELECT matrikelnummer, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable, archive
+    `SELECT matrikelnummer, email, createdAt, revokedAt, picture, firstname, lastname, dateOfBirth, work, mobile, homeNumber, city, address, zipcode, notes, accommodationAvailable, archive, feeExempt, standingList
      FROM users WHERE matrikelnummer = ? LIMIT 1`,
     [id],
   );

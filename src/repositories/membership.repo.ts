@@ -60,6 +60,19 @@ export async function findExistingForUsers(
     .filter((r) => Number.isFinite(r.uid));
 }
 
+/** Users among `uids` flagged "Befriad från årsavgift" (users.feeExempt = 1). */
+export async function findFeeExemptUserIds(uids: number[]): Promise<number[]> {
+  if (!Array.isArray(uids) || uids.length === 0) return [];
+  const placeholders = uids.map(() => "?").join(",");
+  const [rows] = await pool.query(
+    `SELECT matrikelnummer AS uid FROM users WHERE feeExempt = 1 AND matrikelnummer IN (${placeholders})`,
+    uids,
+  );
+  return asRows<ExistingUserPaymentRow>(rows)
+    .map((r) => Number(r.uid))
+    .filter((uid) => Number.isFinite(uid));
+}
+
 export async function bulkInsertIfMissing(values: Array<Array<unknown>>) {
   if (values.length === 0) return;
   try {
@@ -217,6 +230,7 @@ export default {
   insertMembershipPayment,
   findById,
   findExistingForUsers,
+  findFeeExemptUserIds,
   bulkInsertIfMissing,
   findPaymentsForUsers,
   findPaymentsForUser,
