@@ -29,6 +29,15 @@ export type Group = {
   name: string;
   description?: string | null;
   userIds: number[];
+  memberCount: number;
+};
+
+export type GroupMember = {
+  matrikelnummer: number;
+  firstname: string;
+  lastname: string;
+  email: string;
+  archive: string | null;
 };
 
 export type Achievement = {

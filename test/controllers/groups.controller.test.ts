@@ -39,6 +39,7 @@ describe("groupsController.listGroupsHandler", () => {
         name: "Planeringsgruppen",
         description: "Tvarloge-grupp for planering av gemensamma moten.",
         userIds: [1, 9, 10],
+        memberCount: 3,
       },
     ]);
 
@@ -55,6 +56,7 @@ describe("groupsController.listGroupsHandler", () => {
           name: "Planeringsgruppen",
           description: "Tvarloge-grupp for planering av gemensamma moten.",
           userIds: [1, 9, 10],
+          memberCount: 3,
         },
       ],
     });
