@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../types/auth";
 import type { UpdateUserProfileBody, ListUsersQuery } from "../types";
 import {
+  hasUserAdminFlags,
   validateAddAchievementBody,
   validateSetLodgeBody,
   validateSetUserLocationBody,
@@ -27,7 +28,7 @@ import {
   setUserManualLocation,
   clearUserLocationOverride,
 } from "../services/userService";
-import { toPublicUser } from "../utils/serialize";
+import { toPublicUser, toUserAdminFlags } from "../utils/serialize";
 import { getUserLodge, setUserLodge } from "../services/lodgeService";
 // (schemas imported above)
 import logger from "../utils/logger";
@@ -150,6 +151,12 @@ export async function updateMeHandler(
     const uid = requireAuthMatrikelnummer(req, res, "Ogiltig session");
     if (!uid) return;
 
+    // feeExempt/standingList are managed by Admin/Editor via
+    // PUT /users/:matrikelnummer only, never through self-service.
+    if (hasUserAdminFlags(req.body)) {
+      return sendError(res, 403, "Åtkomst nekad");
+    }
+
     const payload = unwrapValidation(
       res,
       validateUpdateUserProfileBody(req.body),
@@ -198,7 +205,8 @@ export async function updateUserHandler(
     const updated = await findUserById(targetId);
     if (!updated) return sendError(res, 404, "Användaren hittades inte");
 
-    const publicUser = toPublicUser(updated);
+    // Route is Admin/Editor-only, so the admin flags can be returned here.
+    const publicUser = { ...toPublicUser(updated), ...toUserAdminFlags(updated) };
     const pictureUrl = await getPublicUrl(
       updated.picture ?? PROFILE_PLACEHOLDER,
     );
@@ -458,7 +466,12 @@ export async function getPublicUserHandler(
       "Ogiltigt användar-id",
     );
     if (matrikelnummer === null) return;
-    const user = await getPublicUserById(matrikelnummer);
+    const callerId = req.user?.matrikelnummer;
+    const callerRoles = callerId ? await getUserRoles(callerId) : [];
+    const includeAdminFlags = callerRoles.some(
+      (role) => role === "Admin" || role === "Editor",
+    );
+    const user = await getPublicUserById(matrikelnummer, { includeAdminFlags });
     if (!user) return sendError(res, 404, "Användaren hittades inte");
     const pictureUrl = await getPublicUrl(user.picture ?? PROFILE_PLACEHOLDER);
     const achievements = await getUserAchievements(matrikelnummer);

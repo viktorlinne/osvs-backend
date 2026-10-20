@@ -7,12 +7,14 @@ jest.mock("../../src/repositories", () => ({
     findPaymentsForUser: jest.fn(),
     findPaymentsForUsers: jest.fn(),
     findExistingForUsers: jest.fn(),
+    findFeeExemptUserIds: jest.fn(),
     bulkInsertIfMissing: jest.fn(),
   },
 }));
 
 import { membershipRepo } from "../../src/repositories";
 import {
+  createMembershipPaymentsIfMissingBulk,
   setMembershipPaymentStatus,
   listMembershipPaymentsForUser,
 } from "../../src/services/membershipPaymentsService";
@@ -82,5 +84,48 @@ describe("membershipPaymentsService", () => {
         updatedAt: undefined,
       },
     ]);
+  });
+
+  describe("createMembershipPaymentsIfMissingBulk (yearly job)", () => {
+    it("skips fee-exempt members and only creates missing payments for the rest", async () => {
+      mockedRepo.findFeeExemptUserIds.mockResolvedValue([2]);
+      mockedRepo.findExistingForUsers.mockResolvedValue([{ uid: 3 }]);
+      mockedRepo.bulkInsertIfMissing.mockResolvedValue(undefined);
+      mockedRepo.findPaymentsForUsers.mockResolvedValue([]);
+
+      await createMembershipPaymentsIfMissingBulk([1, 2, 3], 2026);
+
+      expect(mockedRepo.findFeeExemptUserIds).toHaveBeenCalledWith([1, 2, 3]);
+      expect(mockedRepo.findExistingForUsers).toHaveBeenCalledWith(2026, [1, 3]);
+      expect(mockedRepo.bulkInsertIfMissing).toHaveBeenCalledWith([
+        [1, 600, 2026, "Pending"],
+      ]);
+      expect(mockedRepo.findPaymentsForUsers).toHaveBeenCalledWith(2026, [1, 3]);
+    });
+
+    it("creates nothing and touches no existing payments when everyone is exempt", async () => {
+      mockedRepo.findFeeExemptUserIds.mockResolvedValue([4, 5]);
+
+      const result = await createMembershipPaymentsIfMissingBulk([4, 5], 2026);
+
+      expect(result).toEqual([]);
+      expect(mockedRepo.findExistingForUsers).not.toHaveBeenCalled();
+      expect(mockedRepo.bulkInsertIfMissing).not.toHaveBeenCalled();
+      expect(mockedRepo.updatePaymentStatus).not.toHaveBeenCalled();
+    });
+
+    it("creates payments for everyone when nobody is exempt", async () => {
+      mockedRepo.findFeeExemptUserIds.mockResolvedValue([]);
+      mockedRepo.findExistingForUsers.mockResolvedValue([]);
+      mockedRepo.bulkInsertIfMissing.mockResolvedValue(undefined);
+      mockedRepo.findPaymentsForUsers.mockResolvedValue([]);
+
+      await createMembershipPaymentsIfMissingBulk([8, 9], 2027, 700);
+
+      expect(mockedRepo.bulkInsertIfMissing).toHaveBeenCalledWith([
+        [8, 700, 2027, "Pending"],
+        [9, 700, 2027, "Pending"],
+      ]);
+    });
   });
 });

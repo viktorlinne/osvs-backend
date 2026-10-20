@@ -256,6 +256,40 @@ export async function selectEventPrice(
   return arr.length > 0 ? Number(arr[0].price ?? 0) : 0;
 }
 
+export async function selectEventFood(
+  eventId: number,
+  conn?: PoolConnection,
+): Promise<boolean> {
+  const executor = getExecutor(conn);
+  const [rows] = await executor(
+    "SELECT food FROM events WHERE id = ? LIMIT 1",
+    [eventId],
+  );
+  const arr = asRows<EventRow>(rows);
+  return arr.length > 0 && Number(arr[0].food ?? 0) === 1;
+}
+
+/**
+ * Active (non-archived) users among `uids` who are on "Ständiga listan"
+ * (users.standingList = 1).
+ */
+export async function selectStandingListUserIds(
+  uids: number[],
+  conn?: PoolConnection,
+): Promise<number[]> {
+  const ids = normalizeIds(uids);
+  if (ids.length === 0) return [];
+  const executor = getExecutor(conn);
+  const placeholders = ids.map(() => "?").join(",");
+  const [rows] = await executor(
+    `SELECT matrikelnummer AS id FROM users WHERE standingList = 1 AND archive IS NULL AND matrikelnummer IN (${placeholders}) ORDER BY matrikelnummer ASC`,
+    ids,
+  );
+  return asRows<IdRow>(rows)
+    .map((row) => Number(row.id))
+    .filter((id): id is number => Number.isFinite(id));
+}
+
 export async function findUsersInLodge(
   lodgeId: number,
   conn?: PoolConnection,

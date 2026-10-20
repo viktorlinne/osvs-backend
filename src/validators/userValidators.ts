@@ -10,6 +10,17 @@ import {
   ok,
 } from "./shared";
 
+/** Profile fields that only Admin/Editor may set (via PUT /users/:id). */
+export const USER_ADMIN_FLAG_KEYS = ["feeExempt", "standingList"] as const;
+
+export function hasUserAdminFlags(input: unknown): boolean {
+  const body = asObject(input);
+  if (!body) return false;
+  return USER_ADMIN_FLAG_KEYS.some((key) =>
+    Object.prototype.hasOwnProperty.call(body, key),
+  );
+}
+
 export type ValidSetRolesBody = {
   roleIds: number[];
 };
@@ -160,6 +171,18 @@ export function validateUpdateUserProfileBody(
       out.accommodationAvailable = value;
     } else {
       fields.accommodationAvailable = "Ogiltigt värde";
+    }
+  }
+
+  // Admin/Editor-only flags (OSVS-27, OSVS-28). Authorization is enforced by
+  // the controller; here we only check the shape (strict booleans, no null).
+  for (const key of USER_ADMIN_FLAG_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
+    const value = body[key];
+    if (typeof value === "boolean") {
+      out[key] = value;
+    } else {
+      fields[key] = "Ogiltigt värde";
     }
   }
 

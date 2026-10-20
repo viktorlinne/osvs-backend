@@ -63,10 +63,12 @@ export async function createEventWithAudience(
   try {
     await conn.beginTransaction();
     const eventId = await eventsRepo.insertEvent(payload, conn);
+    const food = await eventsRepo.selectEventFood(eventId, conn);
     await syncEventAudience(eventId, audience, {
       conn,
       requireAudience: true,
       price: payload.price,
+      prefillStandingList: { food },
     });
     await conn.commit();
     return eventId;

@@ -70,6 +70,8 @@ export type UserRecord = {
   work?: string | null;
   revokedAt?: string | Date | null;
   accommodationAvailable?: boolean | number | null;
+  feeExempt?: boolean | number | null;
+  standingList?: boolean | number | null;
   mobile: string;
   homeNumber?: string | null;
   city: string;
@@ -98,6 +100,16 @@ export type PublicUser = {
   notes?: string | null;
   lodgeId?: number | null;
   lodgeName?: string | null;
+  /** Only present for Admin/Editor callers (see UserAdminFlags). */
+  feeExempt?: boolean;
+  /** Only present for Admin/Editor callers (see UserAdminFlags). */
+  standingList?: boolean;
+};
+
+/** Per-user flags managed by Admin/Editor (OSVS-27, OSVS-28). */
+export type UserAdminFlags = {
+  feeExempt: boolean;
+  standingList: boolean;
 };
 
 export type UserMapPin = {
