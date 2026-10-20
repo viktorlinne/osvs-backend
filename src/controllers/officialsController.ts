@@ -3,10 +3,15 @@ import {
   listOfficials,
   getUserOfficials,
   getUserOfficialsHistory,
-  setUserOfficials,
 } from "../services/officialsService";
-import { parseNumericIds } from "../validators";
-import { parseNumericParam } from "./helpers/request";
+import { setMemberOngoingOfficials } from "../services/memberHistoryService";
+import type { AuthenticatedRequest } from "../types/auth";
+import { parseNumericIds, validateOptionalNote } from "../validators";
+import {
+  parseNumericParam,
+  requireAuthMatrikelnummer,
+  unwrapValidation,
+} from "./helpers/request";
 
 export async function listOfficialsHandler(
   _req: Request,
@@ -22,11 +27,13 @@ export async function listOfficialsHandler(
 }
 
 export async function setMemberOfficialsHandler(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ) {
   try {
+    const editorId = requireAuthMatrikelnummer(req, res);
+    if (!editorId) return;
     const matrikelnummer = parseNumericParam(
       res,
       req.params.matrikelnummer,
@@ -36,7 +43,15 @@ export async function setMemberOfficialsHandler(
 
     const body = req.body as { officialIds?: unknown };
     const officialIds = parseNumericIds(body?.officialIds);
-    await setUserOfficials(matrikelnummer, officialIds);
+    const noteResult = validateOptionalNote(req.body);
+    if (!noteResult.ok) {
+      unwrapValidation(res, noteResult);
+      return;
+    }
+    const note = noteResult.data;
+    // Every started/ended tjänst is written to the change log in the same
+    // transaction (OSVS-26); the note is optional on this legacy endpoint.
+    await setMemberOngoingOfficials(matrikelnummer, officialIds, editorId, note);
     const rows = await getUserOfficials(matrikelnummer);
     const history = await getUserOfficialsHistory(matrikelnummer);
     return res

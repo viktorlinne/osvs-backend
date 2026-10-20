@@ -783,7 +783,19 @@ export const swaggerSpec = {
         required: ["achievementId"],
         properties: {
           achievementId: { type: "integer", example: 1 },
-          awardedAt: { type: "string", format: "date-time", nullable: true },
+          awardedAt: {
+            type: "string",
+            nullable: true,
+            description:
+              "Calendar date (YYYY-MM-DD, stored at midnight) or ISO date-time. Defaults to now.",
+            example: "2024-05-12",
+          },
+          note: {
+            type: "string",
+            nullable: true,
+            maxLength: 1000,
+            description: "Optional note stored in the member change log.",
+          },
         },
       },
       SetRolesRequest: {
@@ -824,6 +836,133 @@ export const swaggerSpec = {
         type: "object",
         properties: {
           officialIds: { type: "array", items: { type: "integer", example: 1 } },
+          note: {
+            type: "string",
+            nullable: true,
+            maxLength: 1000,
+            description:
+              "Optional note stored with each change-log row this request creates.",
+          },
+        },
+      },
+      OfficialEntry: {
+        type: "object",
+        required: ["id", "officialId", "title", "appointedAt", "unappointedAt"],
+        properties: {
+          id: { type: "integer", example: 31, description: "users_officials.id" },
+          officialId: { type: "integer", example: 2 },
+          title: { type: "string", example: "Ordförande" },
+          appointedAt: { type: "string", format: "date", example: "2019-01-15" },
+          unappointedAt: {
+            type: "string",
+            format: "date",
+            nullable: true,
+            description: "null = pågående",
+            example: null,
+          },
+        },
+      },
+      AchievementEntry: {
+        type: "object",
+        required: ["id", "achievementId", "title", "awardedAt"],
+        properties: {
+          id: { type: "integer", example: 88, description: "users_achievements.id" },
+          achievementId: { type: "integer", example: 3 },
+          title: { type: "string", example: "III" },
+          awardedAt: { type: "string", format: "date", example: "2021-03-20" },
+        },
+      },
+      OfficialEntryRequest: {
+        type: "object",
+        required: ["officialId", "appointedAt", "datesConfirmed"],
+        description:
+          "Create/update a tjänst entry. `datesConfirmed` must be `true` (the editor explicitly confirmed both start and end date; an empty end date means pågående). `note` is optional on create and required on update.",
+        properties: {
+          officialId: { type: "integer", example: 2 },
+          appointedAt: { type: "string", format: "date", example: "2019-01-15" },
+          unappointedAt: {
+            type: "string",
+            format: "date",
+            nullable: true,
+            example: "2021-01-15",
+          },
+          datesConfirmed: { type: "boolean", enum: [true], example: true },
+          note: {
+            type: "string",
+            nullable: true,
+            maxLength: 1000,
+            example: "Rättat startdatum enligt protokoll 2019-01",
+          },
+        },
+      },
+      AchievementEntryUpdateRequest: {
+        type: "object",
+        required: ["achievementId", "awardedAt", "note"],
+        properties: {
+          achievementId: { type: "integer", example: 3 },
+          awardedAt: { type: "string", format: "date", example: "2021-03-20" },
+          note: {
+            type: "string",
+            maxLength: 1000,
+            example: "Fel datum vid migrering från gamla sajten",
+          },
+        },
+      },
+      DeleteHistoryEntryRequest: {
+        type: "object",
+        required: ["note"],
+        properties: {
+          note: {
+            type: "string",
+            maxLength: 1000,
+            example: "Dubblettpost från migreringen",
+          },
+        },
+      },
+      ChangeLogEntry: {
+        type: "object",
+        required: [
+          "id",
+          "entityType",
+          "action",
+          "entryId",
+          "itemId",
+          "oldValue",
+          "newValue",
+          "note",
+          "editorId",
+          "editorName",
+          "createdAt",
+        ],
+        properties: {
+          id: { type: "integer", example: 5 },
+          entityType: { type: "string", enum: ["official", "achievement"] },
+          action: { type: "string", enum: ["create", "update", "delete"] },
+          entryId: {
+            type: "integer",
+            description: "users_officials.id or users_achievements.id (may no longer exist)",
+          },
+          itemId: {
+            type: "integer",
+            nullable: true,
+            description: "officials.id or achievements.id",
+          },
+          oldValue: {
+            type: "object",
+            nullable: true,
+            additionalProperties: true,
+            description:
+              "Snapshot before the change: {officialId,title,appointedAt,unappointedAt} or {achievementId,title,awardedAt}; dates as 'YYYY-MM-DD HH:MM:SS'.",
+          },
+          newValue: {
+            type: "object",
+            nullable: true,
+            additionalProperties: true,
+          },
+          note: { type: "string", nullable: true },
+          editorId: { type: "integer", nullable: true, description: "Editor matrikelnummer" },
+          editorName: { type: "string", nullable: true },
+          createdAt: { type: "string", example: "2026-10-21 22:14:03" },
         },
       },
       CreateEventRequest: {
@@ -1824,7 +1963,8 @@ export const swaggerSpec = {
       post: {
         tags: ["Users"],
         summary: "Award user achievement",
-        description: "Assigns achievement to target user (Admin/Editor).",
+        description:
+          "Assigns achievement to target user (Admin/Editor). The insert is recorded in the member change log in the same transaction (optional `note`).",
         operationId: "postUserAchievementByMatrikelnummer",
         security: authSecurity,
         parameters: [
@@ -1856,6 +1996,7 @@ export const swaggerSpec = {
                       type: "object",
                       properties: {
                         awardedAt: { type: "string", format: "date-time", nullable: true },
+                        entry: { $ref: "#/components/schemas/AchievementEntry" },
                       },
                     },
                   ],
@@ -1903,6 +2044,342 @@ export const swaggerSpec = {
           },
           ...badRequest,
           ...unauthorized,
+          ...internal,
+        },
+      },
+    },
+    "/users/{matrikelnummer}/achievements/{entryId}": {
+      put: {
+        tags: ["Users"],
+        summary: "Edit achievement entry",
+        description:
+          "Admin/Editor. Changes the achievement and/or date of one entry. `note` is required (400 with details.fields.note otherwise). Logged in the same transaction.",
+        operationId: "putUserAchievementEntry",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+          {
+            in: "path",
+            name: "entryId",
+            required: true,
+            schema: { type: "integer" },
+            example: 31,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AchievementEntryUpdateRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    entry: { $ref: "#/components/schemas/AchievementEntry" },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+      delete: {
+        tags: ["Users"],
+        summary: "Delete achievement entry",
+        description:
+          "Admin/Editor. Deletes one achievement entry. JSON body with required `note`. Logged in the same transaction.",
+        operationId: "deleteUserAchievementEntry",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+          {
+            in: "path",
+            name: "entryId",
+            required: true,
+            schema: { type: "integer" },
+            example: 31,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/DeleteHistoryEntryRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/SuccessResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/users/{matrikelnummer}/history": {
+      get: {
+        tags: ["Users"],
+        summary: "Get editable member history",
+        description:
+          "Admin/Editor. All tjänst entries (ongoing first) and achievement entries with entry ids and calendar dates.",
+        operationId: "getUserHistory",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    officials: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/OfficialEntry" },
+                    },
+                    achievements: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/AchievementEntry" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          ...unauthorized,
+          ...forbidden,
+          ...internal,
+        },
+      },
+    },
+    "/users/{matrikelnummer}/officials": {
+      post: {
+        tags: ["Users"],
+        summary: "Add tjänst entry",
+        description:
+          "Admin/Editor. Requires `datesConfirmed: true` (400 with details.fields.datesConfirmed otherwise). Optional `note`. Rejects a second ongoing entry for the same official. Logged in the same transaction.",
+        operationId: "postUserOfficialEntry",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OfficialEntryRequest" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    entry: { $ref: "#/components/schemas/OfficialEntry" },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/users/{matrikelnummer}/officials/{entryId}": {
+      put: {
+        tags: ["Users"],
+        summary: "Edit tjänst entry",
+        description:
+          "Admin/Editor. Requires `datesConfirmed: true` and a non-empty `note`. Logged (old and new values) in the same transaction.",
+        operationId: "putUserOfficialEntry",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+          {
+            in: "path",
+            name: "entryId",
+            required: true,
+            schema: { type: "integer" },
+            example: 31,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OfficialEntryRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    entry: { $ref: "#/components/schemas/OfficialEntry" },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+      delete: {
+        tags: ["Users"],
+        summary: "Delete tjänst entry",
+        description:
+          "Admin/Editor. JSON body with required `note`. Logged in the same transaction.",
+        operationId: "deleteUserOfficialEntry",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+          {
+            in: "path",
+            name: "entryId",
+            required: true,
+            schema: { type: "integer" },
+            example: 31,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/DeleteHistoryEntryRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/SuccessResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/users/{matrikelnummer}/change-log": {
+      get: {
+        tags: ["Users"],
+        summary: "Get member change log (Ändringslogg)",
+        description:
+          "Admin/Editor. All create/update/delete events for the member's tjänster and utmärkelser, newest first.",
+        operationId: "getUserChangeLog",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "matrikelnummer",
+            required: true,
+            schema: { type: "integer" },
+            example: 7,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    entries: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/ChangeLogEntry" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          ...unauthorized,
+          ...forbidden,
           ...internal,
         },
       },
@@ -3315,7 +3792,7 @@ export const swaggerSpec = {
         tags: ["Officials"],
         summary: "Set member officials",
         description:
-          "Sets official assignments for target member (Admin/Editor) and returns current officials plus official history.",
+          "Sets official assignments for target member (Admin/Editor) and returns current officials plus official history. Each started/ended tjänst is recorded in the member change log in the same transaction (optional `note`).",
         operationId: "putOfficialsMemberByMatrikelnummer",
         security: authSecurity,
         parameters: [

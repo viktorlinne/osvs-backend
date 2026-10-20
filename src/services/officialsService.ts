@@ -1,4 +1,3 @@
-import pool from "../config/db";
 import { officialsRepo } from "../repositories";
 import * as userRepo from "../repositories/user.repo";
 import type { Official, OfficialHistory } from "../types";
@@ -30,34 +29,8 @@ export async function getUserOfficialsHistory(
   })) as OfficialHistory[];
 }
 
-export async function setUserOfficials(
-  userId: number,
-  officialIds: number[],
-): Promise<void> {
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-    await userRepo.setUserOfficials(userId, officialIds, conn);
-    await conn.commit();
-  } catch (err) {
-    try {
-      await conn.rollback();
-    } catch {
-      // ignore
-    }
-    throw err;
-  } finally {
-    try {
-      conn.release();
-    } catch {
-      // ignore
-    }
-  }
-}
-
 export default {
   listOfficials,
   getUserOfficials,
   getUserOfficialsHistory,
-  setUserOfficials,
 };

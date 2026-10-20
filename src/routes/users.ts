@@ -1,5 +1,6 @@
 import express from "express";
 import usersController from "../controllers/usersController";
+import memberHistoryController from "../controllers/memberHistoryController";
 import { wrapAsync } from "../middleware/asyncHandler";
 import authMiddleware from "../middleware/auth";
 import { uploadProfilePicture } from "../utils/fileUpload";
@@ -84,6 +85,62 @@ router.get(
   "/:matrikelnummer/achievements",
   authMiddleware,
   wrapAsync(usersController.getAchievementsHandler)
+);
+
+// Edit a single achievement entry (note required; change-logged)
+router.put(
+  "/:matrikelnummer/achievements/:entryId",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(memberHistoryController.updateAchievementEntryHandler)
+);
+
+// Delete a single achievement entry (note required; change-logged)
+router.delete(
+  "/:matrikelnummer/achievements/:entryId",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(memberHistoryController.deleteAchievementEntryHandler)
+);
+
+// Editable history: tjänst entries + achievement entries with ids/dates
+router.get(
+  "/:matrikelnummer/history",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(memberHistoryController.getMemberHistoryHandler)
+);
+
+// Add a tjänst entry (datesConfirmed required; change-logged)
+router.post(
+  "/:matrikelnummer/officials",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(memberHistoryController.createOfficialEntryHandler)
+);
+
+// Edit a tjänst entry (datesConfirmed + note required; change-logged)
+router.put(
+  "/:matrikelnummer/officials/:entryId",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(memberHistoryController.updateOfficialEntryHandler)
+);
+
+// Delete a tjänst entry (note required; change-logged)
+router.delete(
+  "/:matrikelnummer/officials/:entryId",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(memberHistoryController.deleteOfficialEntryHandler)
+);
+
+// Ändringslogg for a member's tjänster and utmärkelser
+router.get(
+  "/:matrikelnummer/change-log",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(memberHistoryController.getMemberChangeLogHandler)
 );
 
 // Get a user's roles
