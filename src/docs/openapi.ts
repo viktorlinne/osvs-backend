@@ -335,7 +335,7 @@ export const swaggerSpec = {
           archive: {
             type: "string",
             nullable: true,
-            enum: ["Deceased", "Retired", "Removed", null],
+            enum: ["Avliden", "Urgången", "Avförd", null],
           },
         },
       },
