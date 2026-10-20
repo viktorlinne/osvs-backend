@@ -195,6 +195,25 @@ VALUES
     'Enligt ett protokoll från Förtroenderådets sammanträde i maj 1974 framgår det, att det gamla önskemålet, att Ordenssamfundet VS finge flera loger än nuvarande fyra, tycktes gå i uppfyllelse. Det gäller en loge i Halmstad, dit många av bröderna från både Göteborg och Ängelholm flyttat. Logen Capella instiftades således den 28 november 1975. Idag har logen 68 Bröder och 25 i Damklubben.',
     'capella@osvs.se',
     '/halmstad.webp'
+  ),
+  -- Damklubbar (Access lodge codes OrionDK / StamlogenDK), added for the data
+  -- migration (OPEN-QUESTIONS.md §2). city/description are PLACEHOLDERS until
+  -- the real text is supplied.
+  (
+    6,
+    'Orion Damklubb',
+    'PLATSHÅLLARE',
+    'PLATSHÅLLARE: beskrivning saknas.',
+    NULL,
+    '/osvs.png'
+  ),
+  (
+    7,
+    'Stamlogen Damklubb',
+    'PLATSHÅLLARE',
+    'PLATSHÅLLARE: beskrivning saknas.',
+    NULL,
+    '/osvs.png'
   ) ON DUPLICATE KEY
 UPDATE
   `name` =
