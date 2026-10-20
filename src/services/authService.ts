@@ -1,6 +1,7 @@
 import "../config/env";
 import argon2 from "argon2";
 import crypto from "crypto";
+import { isLegacyPasswordPlaceholder } from "./legacyPassword";
 
 const ARGON2_MEMORY_KB = Number(process.env.ARGON2_MEMORY_KB ?? 65536); // 64 MB
 const ARGON2_TIME = Number(process.env.ARGON2_TIME ?? 3);
@@ -39,6 +40,11 @@ export async function verifyPassword(
   password: string,
   hash: string
 ): Promise<boolean> {
+  // Migrated members without a usable legacy hash carry a placeholder that
+  // must never verify (they have to use the password-reset flow).
+  if (typeof hash !== "string" || !hash || isLegacyPasswordPlaceholder(hash)) {
+    return false;
+  }
   try {
     return await argon2.verify(hash, password);
   } catch {

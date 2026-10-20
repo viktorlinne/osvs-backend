@@ -331,8 +331,32 @@ export async function updatePassword(
   passwordHash: string,
   conn?: PoolConnection,
 ) {
-  const sql = "UPDATE users SET passwordHash = ? WHERE matrikelnummer = ?";
+  // Setting a new password always retires any migrated legacy credential.
+  const sql =
+    "UPDATE users SET passwordHash = ?, legacyPasswordHash = NULL, legacyPasswordSalt = NULL WHERE matrikelnummer = ?";
   await exec(sql, [passwordHash, userId], conn);
+}
+
+/**
+ * Replaces a verified legacy credential with an Argon2id hash in one UPDATE.
+ * Only applies if the legacy hash is still the one that was verified, so a
+ * concurrent password reset is never overwritten. Returns true if a row changed.
+ */
+export async function upgradeLegacyPassword(
+  userId: number,
+  passwordHash: string,
+  verifiedLegacyHash: string,
+  conn?: PoolConnection,
+): Promise<boolean> {
+  const sql =
+    "UPDATE users SET passwordHash = ?, legacyPasswordHash = NULL, legacyPasswordSalt = NULL WHERE matrikelnummer = ? AND legacyPasswordHash = ?";
+  const [result] = await exec(
+    sql,
+    [passwordHash, userId, verifiedLegacyHash],
+    conn,
+  );
+  const header = result as ResultSetHeader | undefined;
+  return Boolean(header && header.affectedRows > 0);
 }
 
 export async function updatePicture(userId: number, pictureKey: string | null) {
@@ -785,6 +809,7 @@ export async function setUserOfficials(
 export default {
   findByEmail,
   findById,
+  upgradeLegacyPassword,
   insertUser,
   assignDefaultRoleToUser,
   lodgeExists,

@@ -59,6 +59,8 @@ export type UserRecord = {
   matrikelnummer: number;
   email: string;
   passwordHash?: string;
+  legacyPasswordHash?: string | null;
+  legacyPasswordSalt?: string | null;
   createdAt: string | Date;
   picture?: string | null;
   archive?: "Avliden" | "Urgången" | null;

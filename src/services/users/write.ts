@@ -174,6 +174,18 @@ export async function updatePassword(
   await userRepo.updatePassword(userId, passwordHash);
 }
 
+export async function upgradeLegacyPassword(
+  userId: number,
+  passwordHash: string,
+  verifiedLegacyHash: string,
+): Promise<boolean> {
+  return userRepo.upgradeLegacyPassword(
+    userId,
+    passwordHash,
+    verifiedLegacyHash,
+  );
+}
+
 export async function updatePicture(
   userId: number,
   pictureKey: string | null,
