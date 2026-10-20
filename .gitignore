@@ -146,3 +146,6 @@ vite.config.ts.timestamp-*
 /src/generated/prisma
 
 .vercel
+
+# Access extract dumps (personal data incl. personnummer) — never commit
+scripts/migration/extract/

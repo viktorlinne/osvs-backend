@@ -74,7 +74,10 @@ VALUES
   (24, 'Webbredaktör'),
   (25, 'Borgfogde'),
   (26, 'Förtroendeutskottet'),
-  (27, 'Kurator') ON DUPLICATE KEY
+  (27, 'Kurator'),
+  (28, 'Revisor'),
+  (29, 'Logefotograf'),
+  (30, 'Valberedning') ON DUPLICATE KEY
 UPDATE
   `title` =
 VALUES
