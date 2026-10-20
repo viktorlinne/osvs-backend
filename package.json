@@ -12,6 +12,7 @@
     "migrate": "ts-node src/db/migrate.ts",
     "seed": "ts-node src/db/seedRunner.ts",
     "media:import": "ts-node --files src/scripts/import_local_media.ts",
+    "migrate:legacy": "ts-node --files scripts/migration/run.ts",
     "cleanup:tokens": "ts-node src/scripts/cleanup_tokens.ts",
     "cron:tokens": "ts-node src/scripts/cron_runner.ts",
     "lint": "eslint src test --ext .ts",
