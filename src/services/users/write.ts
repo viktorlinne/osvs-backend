@@ -114,7 +114,7 @@ export async function updateUserProfile(
     zipcode?: string;
     notes?: string | null;
     accommodationAvailable?: boolean | null;
-    archive?: "Avliden" | "Urgången" | null;
+    archive?: "Avliden" | "Urgången" | "Avförd" | null;
     feeExempt?: boolean;
     standingList?: boolean;
   }>,

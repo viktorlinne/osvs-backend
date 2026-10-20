@@ -21,7 +21,8 @@ export function isValidUserRecord(value: unknown): value is UserRecord {
     (typeof record.archive === "undefined" ||
       record.archive === null ||
       record.archive === "Avliden" ||
-      record.archive === "Urgången") &&
+      record.archive === "Urgången" ||
+      record.archive === "Avförd") &&
     typeof record.firstname === "string" &&
     typeof record.lastname === "string" &&
     (typeof record.dateOfBirth === "string" ||

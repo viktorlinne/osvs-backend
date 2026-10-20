@@ -72,7 +72,7 @@ export type UserRecord = {
   legacyPasswordSalt?: string | null;
   createdAt: string | Date;
   picture?: string | null;
-  archive?: "Avliden" | "Urgången" | null;
+  archive?: "Avliden" | "Urgången" | "Avförd" | null;
   firstname: string;
   lastname: string;
   dateOfBirth: string | Date;
@@ -94,7 +94,7 @@ export type PublicUser = {
   email: string;
   createdAt: string;
   picture?: string | null;
-  archive?: "Avliden" | "Urgången" | null;
+  archive?: "Avliden" | "Urgången" | "Avförd" | null;
   firstname: string;
   lastname: string;
   dateOfBirth: string;

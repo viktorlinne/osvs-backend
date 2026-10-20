@@ -25,7 +25,7 @@ export type UpdateUserProfileBody = Partial<{
   zipcode?: string;
   notes?: string | null;
   accommodationAvailable?: boolean | null;
-  archive?: "Avliden" | "Urgången" | null;
+  archive?: "Avliden" | "Urgången" | "Avförd" | null;
   /** Admin/Editor only (PUT /users/:matrikelnummer). */
   feeExempt?: boolean;
   /** Admin/Editor only (PUT /users/:matrikelnummer). */
