@@ -16,6 +16,11 @@ export type ValidFoodBookingBody = {
   bookFood: boolean;
 };
 
+export type ValidRegistrationBody = {
+  rsvp: boolean;
+  bookFood: boolean;
+};
+
 export type ValidPatchAttendanceBody = Partial<{
   rsvp: boolean;
   bookFood: boolean;
@@ -74,6 +79,34 @@ export function validateFoodBookingBody(
   }
 
   return ok({ bookFood: body.bookFood });
+}
+
+export function validateRegistrationBody(
+  input: unknown,
+): ValidationResult<ValidRegistrationBody> {
+  const body = asObject(input);
+  if (!body) return fail("Ogiltig begäran");
+
+  const fields: Record<string, string> = {};
+  if (!Object.prototype.hasOwnProperty.call(body, "rsvp")) {
+    fields.rsvp = "Välj om du kommer eller inte";
+  } else if (typeof body.rsvp !== "boolean") {
+    fields.rsvp = "Ogiltigt svarsalternativ";
+  }
+
+  const hasBookFood =
+    Object.prototype.hasOwnProperty.call(body, "bookFood") &&
+    body.bookFood !== undefined;
+  if (hasBookFood && typeof body.bookFood !== "boolean") {
+    fields.bookFood = "Ogiltigt värde för matbokning";
+  }
+
+  if (Object.keys(fields).length > 0) return failFields(fields);
+
+  return ok({
+    rsvp: body.rsvp as boolean,
+    bookFood: hasBookFood ? (body.bookFood as boolean) : false,
+  });
 }
 
 export function validatePatchAttendanceBody(

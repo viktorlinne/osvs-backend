@@ -975,6 +975,35 @@ export const swaggerSpec = {
           bookFood: { type: "boolean", example: true },
         },
       },
+      EventRegistrationRequest: {
+        type: "object",
+        required: ["rsvp"],
+        properties: {
+          rsvp: {
+            type: "boolean",
+            description: "`true` = kommer, `false` = kommer inte.",
+            example: true,
+          },
+          bookFood: {
+            type: "boolean",
+            description:
+              "Äter / äter inte. Defaults to `false`. Forced to `false` when `rsvp` is `false` or the event has no food.",
+            example: true,
+          },
+        },
+      },
+      EventRegistration: {
+        type: "object",
+        properties: {
+          rsvp: {
+            type: "boolean",
+            nullable: true,
+            description: "`null` when the member has not answered yet.",
+            example: true,
+          },
+          bookFood: { type: "boolean", example: true },
+        },
+      },
       EventAttendancePatchRequest: {
         type: "object",
         minProperties: 1,
@@ -2667,6 +2696,96 @@ export const swaggerSpec = {
                   properties: {
                     success: { type: "boolean", example: true },
                     bookFood: { type: "boolean", example: true },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/events/{id}/registration": {
+      get: {
+        tags: ["Events"],
+        summary: "Get current user's registration",
+        description:
+          "Returns the current user's attendance + food registration for the event (e.g. values prefilled from the standing list). `bookFood` is always `false` for events without food. Requires that the caller is invited to the event.",
+        operationId: "getEventRegistrationById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 1,
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Current registration.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    registration: {
+                      $ref: "#/components/schemas/EventRegistration",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+      put: {
+        tags: ["Events"],
+        summary: "Save current user's registration",
+        description:
+          "Atomically saves attendance (`rsvp`) and food (`bookFood`) for the current user in one write. `bookFood` is forced to `false` when `rsvp` is `false` or the event has no food. Same rules as `/rsvp`: the caller must be invited and the event must not have started. Payment is not handled here.",
+        operationId: "putEventRegistrationById",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "path",
+            name: "id",
+            required: true,
+            schema: { type: "integer" },
+            example: 1,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/EventRegistrationRequest" },
+              example: { rsvp: true, bookFood: true },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Registration saved; returns the stored state.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    registration: {
+                      $ref: "#/components/schemas/EventRegistration",
+                    },
                   },
                 },
               },
