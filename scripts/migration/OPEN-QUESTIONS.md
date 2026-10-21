@@ -154,6 +154,14 @@ client tidies them in the new group UI (developer, 2026-10-20).
 
 ## 8. Deputy titles and leftover strings (from the 2026-10-20 dictionary run)
 
+**Answer (2026-10-21, decided on the developer's delegation):** the deputy titles used in
+the data were added as officials 31–44 in `seed.sql` ("Biträdande Klubbmästare" …
+"Ställföreträdande Ordensmästare"). The generic roles in `contacts.official` (Ledamot,
+Sekreterare, Kassör, Suppleant, Vice ordf) are Fastighetsföreningen roles and are kept as
+member notes. Still in the registry because their meaning is unknown: "Veterantecken"
+without a year count, "Jubelveteran", "TM Arkivarie", "TM BF", "Ti gr.", "FUsk", "LF".
+The original question follows.
+
 `build-title-dictionary.js` now classifies every distinct string (see
 `UNMATCHED-TITLES.md`). What is left for a human decision:
 

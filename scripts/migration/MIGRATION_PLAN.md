@@ -128,7 +128,7 @@ Direct structural mapping, `mail.lodge` carried as informational only (current `
 **2026-10-20:** only 1,578 of the 8,696 `mail_items` rows belong to an existing list. The other 7,118 are orphans left behind by a delete bug in the old `mailLIST\edit.asp`, and they are not migrated. Full list table and column mapping: `MAIL-LISTS.md`.
 
 ### `news`, `na_pages` → `posts`
-`message`/`description` → `posts.description` (HTML kept as-is), `publicum = true`, `createdAt` from source `dated` where available else import time.
+`news.message` → `posts.description` as **plain text** (2026-10-21: the app shows post text as plain text; HTML is converted, keeping paragraphs, bullets and link text). The first image becomes `posts.picture` (imported into `media_assets`); other linked files are listed by name at the end of the text. `publicum = 0` (see §5). `news` has no date: `createdAt` is estimated from the attachment folder dates (`posts-dating.md`). `na_pages` is not migrated.
 
 ## 5. Migration architecture
 
@@ -147,13 +147,16 @@ Deviations from the text above: none for `rsvp` any more (2026-10-21: every migr
 gets `rsvp` = 1, because the app only allows `bookFood` together with it). Posts default to `publicum = 0`
 (old `news` required a login; `--posts-publicum` restores the plan's `true`). tEvents are matched on
 lodge + exact date only; `Verksamhet` rows run 2015–2027, not "mostly pre-2013".
+`--extra-site-root=<dir>` adds a second copy of the old site for files missing from the FTP
+download (2026-10-21: 11 post images and 12 profile photos fetched from the live site into
+`C:OSVSFTP OSVS 2026-10-21 supplement`). Trial import and reconciliation: `RECONCILIATION.md`.
 
 ## 6. Open items before implementation starts
 
-- [ ] Confirm the exact Swedish enum value for "removed" (`Utesluten`?).
-- [ ] `accesslevel` (0–4) → role mapping.
-- [ ] `events_items.labeled` — what did it mean?
-- [ ] `event_payments.amount` for migrated `paid=true` rows — use `events.price` or a fixed default?
-- [ ] Locate the `db/archives/...` folder for `na_NodesTable` content.
-- [ ] Review pass on the `contacts_cv`/`official` normalization dictionary once drafted.
-- [ ] Review the duplicate-contact merge report before it's applied.
+- [x] Exact Swedish enum value for "removed": **Avförd** (2026-10-20).
+- [x] `accesslevel` (0–4) → role mapping (§2, 2026-10-20).
+- [x] `events_items.labeled`: "Märkes", display-only, skipped (`OLD-SITE-FINDINGS.md`).
+- [x] `event_payments` for migrated `paid` rows: none are created (§2).
+- [ ] Locate the `db/archives/...` folder for `na_NodesTable` content. Gone from the live server too (404 in the IIS logs); needs a host backup.
+- [x] Review pass on the normalization dictionary (2026-10-20/21; Q14 deputy titles added; 11 strings left for review).
+- [x] Duplicate-contact merge report reviewed and approved (hash `e492fff31df5`, 2026-10-21, on the developer's delegation).
