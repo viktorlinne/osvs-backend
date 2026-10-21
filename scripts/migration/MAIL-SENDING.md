@@ -63,6 +63,23 @@ exceeding the limit blocks the mailbox for 60 minutes. One mailing to the larges
 7. Optional: a link to the event page (requires login) instead of the old email-keyed
    meal link.
 
+## All outgoing mail through one queue (added 2026-10-21)
+
+What the app sends today: only "set password" and "reset password" mails
+(`passwordActionService` → `mailService.sendMail`). Event invitations are not
+mailed; invited members see the event when they log in.
+
+| Mail type | Today | Proposal |
+|---|---|---|
+| Set / reset password | Sent directly via `sendMail` | Keep it immediate, bypassing the queue, but count it toward the hourly limit, so the queue reserves ≈ 50 per hour for these |
+| Group mailing (OSVS-24) | — | Queued, per recipient, ≤ 250 per hour |
+| Event invitation | — | Queued like a group mailing, **opt-in** with a "Skicka inbjudan via e-post" checkbox at event creation (not automatic: small events and edits should not mail). Body: title, date, lodge, link to the event page (login required). Standing-list members get a variant ("Du är anmäld via Ständiga listan …") |
+| Welcome / set password at cutover | — | ≈ 570 active members → must be queued (≈ 2.5 h at Websupport's limit). 136 active members have no legacy hash; the 247 placeholder addresses cannot be mailed at all |
+
+One `mail_outbox` table (type, recipient, subject, body, status, attempts, sentAt,
+error) and one worker. One sender, one rate limit, per-recipient status, and the
+existing `buildEmailHtml` template.
+
 ## Questions for the client (replace the old Q11)
 
 - May the app use the existing `noreply@osvs.se` mailbox at Websupport for group mail, and
