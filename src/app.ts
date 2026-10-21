@@ -132,7 +132,12 @@ app.use(
 );
 // Response compression
 app.use(compression());
-app.use(helmet());
+// Media (profile photos, post images) is served by the API and embedded by the
+// frontend, which runs on another origin of the same site (another port in
+// development, a sibling host in production). Helmet's default CORP
+// "same-origin" makes browsers block those images; "same-site" allows the
+// frontend and still blocks embedding from other sites.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "same-site" } }));
 // Request timing middleware
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
