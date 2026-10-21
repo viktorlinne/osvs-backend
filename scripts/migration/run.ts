@@ -36,6 +36,8 @@ type Args = {
   extractDir: string;
   reportsDir: string;
   oldSiteRoot: string;
+  /** Optional second copy of the old site (files fetched later), checked after oldSiteRoot. */
+  extraSiteRoot: string | null;
   postsPublicum: boolean;
   apply: boolean;
   approveMerges: string | null;
@@ -54,7 +56,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     if (!m) throw new Error(`Unknown argument: ${arg}`);
     values.set(m[1], m[2] ?? true);
   }
-  const known = ["cutover", "extract-dir", "reports-dir", "old-site-root", "posts-publicum", "apply", "approve-merges", "seed-lookups"];
+  const known = ["cutover", "extract-dir", "reports-dir", "old-site-root", "extra-site-root", "posts-publicum", "apply", "approve-merges", "seed-lookups"];
   for (const k of values.keys()) if (!known.includes(k)) throw new Error(`Unknown option --${k}`);
   const str = (k: string): string | null => {
     const v = values.get(k);
@@ -72,6 +74,7 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     extractDir,
     reportsDir: path.resolve(str("reports-dir") ?? path.join(extractDir, "_reports")),
     oldSiteRoot: path.resolve(str("old-site-root") ?? env.OLD_SITE_ROOT ?? DEFAULT_OLD_SITE_ROOT),
+    extraSiteRoot: str("extra-site-root") ?? env.OLD_SITE_EXTRA_ROOT ?? null,
     postsPublicum: values.has("posts-publicum"),
     apply: values.has("apply"),
     approveMerges: str("approve-merges"),
@@ -95,6 +98,21 @@ function loadExtract(dir: string): Extract {
     mailItems: loadJson(dir, "mail_items.json"),
     news: loadJson(dir, "news.json"),
     sourceDate: String(summary.sourceDate ?? "").slice(0, 10) || today(),
+  };
+}
+
+/**
+ * Resolves a path relative to the old site's WWWRoot ("db/contacts/1.jpg") to
+ * an existing file: the main download first, then the optional extra root
+ * (files fetched from the live site after the download).
+ */
+function siteFileResolver(roots: string[]): (rel: string) => string | null {
+  return (rel) => {
+    for (const root of roots) {
+      const p = path.join(root, ...rel.split("/"));
+      if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+    }
+    return null;
   };
 }
 
@@ -136,9 +154,13 @@ async function runApply(args: Args, plan: ReturnType<typeof transform>): Promise
   });
   try {
     console.log(`Applying to ${db.database}@${db.host} ...`);
+    const resolve = siteFileResolver([args.oldSiteRoot, ...(args.extraSiteRoot ? [args.extraSiteRoot] : [])]);
     const result = await applyPlan(conn, plan, {
-      photosDir: path.join(args.oldSiteRoot, "db", "contacts"),
-      oldSiteRoot: args.oldSiteRoot,
+      resolveSiteFile: (rel) => {
+        const p = resolve(rel);
+        if (!p) throw new Error(`Old-site file not found: ${rel}`);
+        return p;
+      },
       lookupSeedStatements,
       log: (m) => console.log(m),
     });
@@ -156,6 +178,9 @@ async function main(): Promise<void> {
   const extract = loadExtract(args.extractDir);
   const photosDir = path.join(args.oldSiteRoot, "db", "contacts");
   if (!fs.existsSync(photosDir)) console.warn(`WARNING: photos folder not found: ${photosDir}`);
+  const roots = [args.oldSiteRoot, ...(args.extraSiteRoot ? [args.extraSiteRoot] : [])];
+  if (args.extraSiteRoot) console.log(`Extra site root: ${args.extraSiteRoot}`);
+  const resolveSiteFile = siteFileResolver(roots);
   const newsDir = path.join(args.oldSiteRoot, "db", "news");
   if (!fs.existsSync(newsDir)) console.warn(`WARNING: news folder not found: ${newsDir} (posts are dated by Id only)`);
 
@@ -164,16 +189,16 @@ async function main(): Promise<void> {
     { cutover: args.cutover, postsPublicum: args.postsPublicum, eventToleranceDays: 0 },
     {
       newsFolderDates: newsFolderDates(newsDir),
-      photoExists: (file) => fs.existsSync(path.join(photosDir, file)) && fs.statSync(path.join(photosDir, file)).isFile(),
+      photoExists: (file) => resolveSiteFile(`db/contacts/${file}`) !== null,
       postFiles: {
-        exists: (rel) => {
-          const p = path.join(args.oldSiteRoot, ...rel.split("/"));
-          return fs.existsSync(p) && fs.statSync(p).isFile();
-        },
+        exists: (rel) => resolveSiteFile(rel) !== null,
         folderFiles: (id) => {
-          const dir = path.join(newsDir, String(id));
-          if (!fs.existsSync(dir)) return [];
-          return fs.readdirSync(dir).sort().map((f) => `db/news/${id}/${f}`);
+          const names = new Set<string>();
+          for (const root of roots) {
+            const dir = path.join(root, "db", "news", String(id));
+            if (fs.existsSync(dir)) for (const f of fs.readdirSync(dir)) names.add(f);
+          }
+          return [...names].sort().map((f) => `db/news/${id}/${f}`);
         },
       },
     },

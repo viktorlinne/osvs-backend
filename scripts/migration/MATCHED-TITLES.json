@@ -29,7 +29,21 @@
     "Kurator",
     "Revisor",
     "Logefotograf",
-    "Valberedning"
+    "Valberedning",
+    "Biträdande Klubbmästare",
+    "Biträdande Ljudtekniker",
+    "Biträdande Webbredaktör",
+    "Biträdande Instruktionsbroder",
+    "Biträdande Orator",
+    "Biträdande Ceremonimästare",
+    "Biträdande Logefotograf",
+    "Biträdande Kurator",
+    "Biträdande Ledande Broder",
+    "Biträdande Visdomens Broder",
+    "Biträdande Kanslisekreterare",
+    "Biträdande Logeskattmästare",
+    "Biträdande Webmaster",
+    "Ställföreträdande Ordensmästare"
   ],
   "canonicalAchievements": [
     "I:a Graden",
@@ -1994,6 +2008,14 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Stf Ordensmästare",
+      "count": 2,
+      "kind": "official",
+      "title": "Ställföreträdande Ordensmästare",
+      "yearRange": null
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Logesekreterare",
       "count": 2,
       "kind": "official",
@@ -2142,6 +2164,15 @@
       "title": "Biträdande Barmästare",
       "yearRange": null,
       "viaAbbreviation": "BM"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. IB",
+      "count": 2,
+      "kind": "official",
+      "title": "Biträdande Instruktionsbroder",
+      "yearRange": null,
+      "viaAbbreviation": "IB"
     },
     {
       "source": "contacts.official",
@@ -2850,6 +2881,15 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Bitr LSM-03/04",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Logeskattmästare",
+      "yearRange": null,
+      "viaAbbreviation": "LSM"
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Klubbmästare (2001-2005)",
       "count": 1,
       "kind": "official",
@@ -3148,6 +3188,17 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Stf Ordensmästare (2004-2006)",
+      "count": 1,
+      "kind": "official",
+      "title": "Ställföreträdande Ordensmästare",
+      "yearRange": {
+        "start": 2004,
+        "end": 2006
+      }
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Ordensmästare 2004-2006",
       "count": 1,
       "kind": "official",
@@ -3241,6 +3292,14 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Biträdande Orator",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Orator",
+      "yearRange": null
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Ledamot av Förtroendeutskottet (2007-2016)",
       "count": 1,
       "kind": "official",
@@ -3328,6 +3387,15 @@
         "start": 2008,
         "end": 2010
       }
+    },
+    {
+      "source": "contacts_cv.description",
+      "raw": "Bitr.WR",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Webbredaktör",
+      "yearRange": null,
+      "viaAbbreviation": "WR"
     },
     {
       "source": "contacts_cv.description",
@@ -3518,11 +3586,29 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Bitr. O",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Orator",
+      "yearRange": null,
+      "viaAbbreviation": "O"
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Revisor  --fortfarande",
       "count": 1,
       "kind": "official",
       "title": "Revisor",
       "yearRange": null
+    },
+    {
+      "source": "contacts_cv.description",
+      "raw": "Bitr. KM Regulus",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Klubbmästare",
+      "yearRange": null,
+      "viaAbbreviation": "KM"
     },
     {
       "source": "contacts_cv.description",
@@ -3550,6 +3636,14 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Bitr. CM (Ceremonimästare)",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ceremonimästare",
+      "yearRange": null
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Bitr. BM",
       "count": 1,
       "kind": "official",
@@ -3563,6 +3657,22 @@
       "count": 1,
       "kind": "official",
       "title": "Director Musices",
+      "yearRange": null
+    },
+    {
+      "source": "contacts_cv.description",
+      "raw": "Bitr.WR (Webbredaktör)",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Webbredaktör",
+      "yearRange": null
+    },
+    {
+      "source": "contacts_cv.description",
+      "raw": "Bitr. Logefotograf",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Logefotograf",
       "yearRange": null
     },
     {
@@ -4228,6 +4338,14 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Bitr. KM ( Klubbmästare)",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Klubbmästare",
+      "yearRange": null
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Ledamot av Förtroendeutskottet (2012-2015)",
       "count": 1,
       "kind": "official",
@@ -4302,6 +4420,14 @@
         "start": 2013,
         "end": 2021
       }
+    },
+    {
+      "source": "contacts_cv.description",
+      "raw": "Bitr. WR (Webbredaktör)",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Webbredaktör",
+      "yearRange": null
     },
     {
       "source": "contacts_cv.description",
@@ -5103,6 +5229,17 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Stf. Ordensmästare (2022-2024)",
+      "count": 1,
+      "kind": "official",
+      "title": "Ställföreträdande Ordensmästare",
+      "yearRange": {
+        "start": 2022,
+        "end": 2024
+      }
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "Kurator (2020-)",
       "count": 1,
       "kind": "official",
@@ -5287,6 +5424,15 @@
     },
     {
       "source": "contacts_cv.description",
+      "raw": "Stf OM",
+      "count": 1,
+      "kind": "official",
+      "title": "Ställföreträdande Ordensmästare",
+      "yearRange": null,
+      "viaAbbreviation": "OM"
+    },
+    {
+      "source": "contacts_cv.description",
       "raw": "---Logemästare---",
       "count": 1,
       "kind": "official",
@@ -5460,6 +5606,16 @@
       "yearRange": null,
       "category": "ÄM",
       "viaAbbreviation": "WM"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "TM Bitr.KS",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Kanslisekreterare",
+      "yearRange": null,
+      "category": "TM",
+      "viaAbbreviation": "KS"
     },
     {
       "source": "contacts.official",
@@ -5886,11 +6042,30 @@
     },
     {
       "source": "contacts.official",
+      "raw": "FR.XLM. FU. Stf. OM.",
+      "count": 1,
+      "kind": "official",
+      "title": "Ställföreträdande Ordensmästare",
+      "yearRange": null,
+      "category": "FR",
+      "viaAbbreviation": "OM"
+    },
+    {
+      "source": "contacts.official",
       "raw": "Kurator grad II",
       "count": 1,
       "kind": "official",
       "title": "Kurator",
       "yearRange": null
+    },
+    {
+      "source": "contacts.official",
+      "raw": "TM Biträdande Kurator",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Kurator",
+      "yearRange": null,
+      "category": "TM"
     },
     {
       "source": "contacts.official",
@@ -5954,6 +6129,24 @@
       "kind": "official",
       "title": "Kurator",
       "yearRange": null
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. VB",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Visdomens Broder",
+      "yearRange": null,
+      "viaAbbreviation": "VB"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. LT",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ljudtekniker",
+      "yearRange": null,
+      "viaAbbreviation": "LT"
     },
     {
       "source": "contacts.official",
@@ -6080,6 +6273,15 @@
     },
     {
       "source": "contacts.official",
+      "raw": "LM. bitr. LT",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ljudtekniker",
+      "yearRange": null,
+      "viaAbbreviation": "LT"
+    },
+    {
+      "source": "contacts.official",
       "raw": "Bitr Intendent",
       "count": 1,
       "kind": "official",
@@ -6131,9 +6333,27 @@
       "raw": "Bitr. LT,  FU",
       "count": 1,
       "kind": "official",
+      "title": "Biträdande Ljudtekniker",
+      "yearRange": null,
+      "viaAbbreviation": "LT"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. LT,  FU",
+      "count": 1,
+      "kind": "official",
       "title": "Förtroendeutskottet",
       "yearRange": null,
       "viaAbbreviation": "FU"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr IB",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Instruktionsbroder",
+      "yearRange": null,
+      "viaAbbreviation": "IB"
     },
     {
       "source": "contacts.official",
@@ -6181,6 +6401,15 @@
       "title": "Kurator",
       "yearRange": null,
       "viaAbbreviation": "KUR"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "KUR Bitr WM",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Webmaster",
+      "yearRange": null,
+      "viaAbbreviation": "WM"
     },
     {
       "source": "contacts.official",
@@ -6241,12 +6470,39 @@
     },
     {
       "source": "contacts.official",
+      "raw": "Bitr. CM",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ceremonimästare",
+      "yearRange": null,
+      "viaAbbreviation": "CM"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. LT",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ljudtekniker",
+      "yearRange": null,
+      "viaAbbreviation": "LT"
+    },
+    {
+      "source": "contacts.official",
       "raw": "IB, Bitr LT",
       "count": 1,
       "kind": "official",
       "title": "Instruktionsbroder",
       "yearRange": null,
       "viaAbbreviation": "IB"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "IB, Bitr LT",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ljudtekniker",
+      "yearRange": null,
+      "viaAbbreviation": "LT"
     },
     {
       "source": "contacts.official",
@@ -6257,6 +6513,16 @@
       "yearRange": null,
       "category": "ÄM",
       "viaAbbreviation": "LB"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "ÄM. LB Bitr. KM",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Klubbmästare",
+      "yearRange": null,
+      "category": "ÄM",
+      "viaAbbreviation": "KM"
     },
     {
       "source": "contacts.official",
@@ -6332,6 +6598,16 @@
     },
     {
       "source": "contacts.official",
+      "raw": "FU, Bitr. kur I-V gr, Logefotograf",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Kurator",
+      "yearRange": null,
+      "viaAbbreviation": "KUR",
+      "unparsed": "I-V gr Logefotograf"
+    },
+    {
+      "source": "contacts.official",
       "raw": "Webbredaktör",
       "count": 1,
       "kind": "official",
@@ -6345,6 +6621,16 @@
       "kind": "official",
       "title": "Klubbmästare",
       "yearRange": null
+    },
+    {
+      "source": "contacts.official",
+      "raw": "TM Bitr.KM",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Klubbmästare",
+      "yearRange": null,
+      "category": "TM",
+      "viaAbbreviation": "KM"
     },
     {
       "source": "contacts.official",
@@ -6406,6 +6692,23 @@
     },
     {
       "source": "contacts.official",
+      "raw": "Bitr. O",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Orator",
+      "yearRange": null,
+      "viaAbbreviation": "O"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. logefotograf",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Logefotograf",
+      "yearRange": null
+    },
+    {
+      "source": "contacts.official",
       "raw": "ÄM INT",
       "count": 1,
       "kind": "official",
@@ -6431,6 +6734,15 @@
       "kind": "official",
       "title": "Revisor",
       "yearRange": null
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. LB",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ledande Broder",
+      "yearRange": null,
+      "viaAbbreviation": "LB"
     },
     {
       "source": "contacts.official",
@@ -6520,6 +6832,16 @@
     },
     {
       "source": "contacts.official",
+      "raw": "VB LF. Bitr WR",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Webbredaktör",
+      "yearRange": null,
+      "viaAbbreviation": "WR",
+      "unparsed": "LF"
+    },
+    {
+      "source": "contacts.official",
       "raw": "TM KM KUR",
       "count": 1,
       "kind": "official",
@@ -6546,6 +6868,15 @@
       "title": "Revisor",
       "yearRange": null,
       "viaAbbreviation": "REV"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr. LT 1",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Ljudtekniker",
+      "yearRange": null,
+      "viaAbbreviation": "LT"
     },
     {
       "source": "contacts.official",
@@ -6591,6 +6922,16 @@
       "yearRange": null,
       "category": "ÄM",
       "viaAbbreviation": "LS"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "FR ÄM LS Bitr.WR",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Webbredaktör",
+      "yearRange": null,
+      "category": "ÄM",
+      "viaAbbreviation": "WR"
     },
     {
       "source": "contacts.official",
@@ -6822,6 +7163,15 @@
       "yearRange": null,
       "viaAbbreviation": "KS",
       "unparsed": "tfo"
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Bitr KM",
+      "count": 1,
+      "kind": "official",
+      "title": "Biträdande Klubbmästare",
+      "yearRange": null,
+      "viaAbbreviation": "KM"
     },
     {
       "source": "contacts_cv.description",
@@ -8500,6 +8850,13 @@
       }
     },
     {
+      "source": "contacts.official",
+      "raw": "Ledamot",
+      "count": 3,
+      "kind": "member-note",
+      "yearRange": null
+    },
+    {
       "source": "contacts_cv.description",
       "raw": "Deltagit i web-utbildning i Gbg",
       "count": 2,
@@ -8539,7 +8896,21 @@
     },
     {
       "source": "contacts.official",
+      "raw": "Sekreterare",
+      "count": 2,
+      "kind": "member-note",
+      "yearRange": null
+    },
+    {
+      "source": "contacts.official",
       "raw": "Nöjeskommite’n",
+      "count": 2,
+      "kind": "member-note",
+      "yearRange": null
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Suppleant",
       "count": 2,
       "kind": "member-note",
       "yearRange": null
@@ -8840,6 +9211,20 @@
     {
       "source": "contacts.official",
       "raw": "FR",
+      "count": 1,
+      "kind": "member-note",
+      "yearRange": null
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Kassör",
+      "count": 1,
+      "kind": "member-note",
+      "yearRange": null
+    },
+    {
+      "source": "contacts.official",
+      "raw": "Vice ordf",
       "count": 1,
       "kind": "member-note",
       "yearRange": null

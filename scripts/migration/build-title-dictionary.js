@@ -35,6 +35,26 @@ const CANONICAL_ACHIEVEMENTS = [
 // its own: in the data it only ever prefixes one ("ÄM VB", "ÄM DM"), like TM.
 const ADDED_OFFICIALS = ["Revisor", "Logefotograf", "Valberedning"];
 
+// Deputy titles used in the data ("Bitr. KM", "Stf OM" ...) that had no
+// canonical entry (Q14). Added 2026-10-21 on the developer's delegation, the
+// same way the seed already has Biträdande Barmästare/Intendent/CKf.
+const DEPUTY_OFFICIALS = [
+  "Biträdande Klubbmästare",
+  "Biträdande Ljudtekniker",
+  "Biträdande Webbredaktör",
+  "Biträdande Instruktionsbroder",
+  "Biträdande Orator",
+  "Biträdande Ceremonimästare",
+  "Biträdande Logefotograf",
+  "Biträdande Kurator",
+  "Biträdande Ledande Broder",
+  "Biträdande Visdomens Broder",
+  "Biträdande Kanslisekreterare",
+  "Biträdande Logeskattmästare",
+  "Biträdande Webmaster",
+  "Ställföreträdande Ordensmästare"
+];
+
 const CANONICAL_OFFICIALS = [
   "Ordensmästare", "Ordenssekreterare", "Logemästare", "Logekansler",
   "Logesekreterare", "Logeskattmästare", "Överceremonimästare",
@@ -45,6 +65,7 @@ const CANONICAL_OFFICIALS = [
   "Biträdande Chef för köksförvaltningen", "Webmaster", "Webbredaktör",
   "Borgfogde", "Förtroendeutskottet", "Kurator",
   ...ADDED_OFFICIALS,
+  ...DEPUTY_OFFICIALS,
 ];
 
 // Abbreviation -> canonical official. The first block was harvested from the
@@ -196,6 +217,7 @@ const MEMBER_NOTE = [
   /inträde|utträde|återinträd|avförd|avförs|lämnade|transporterad/,
   /utsk|arbetsuts|kommit/, // Arbetsutskott, Nöjesutskott, Barutskott, Köksutskott, Nöjeskommitté …
   /fastighetsför|fastghetsför|^fastighets|^ff\b|^ffkass/, // Fastighetsföreningen (FF) roles
+  /^(ledamot|sekreterare|kassör|suppleant|vice ordf)\b/, // generic FF roles in contacts.official (Q14)
   /^fr\b/, // Förtroenderådet (FR), a council (mail list "Förtroenderådet (FR)")
   /gåva/,
   /utbildning/,
@@ -311,9 +333,10 @@ function classify(rawText) {
 // "Bitr."/"Stf" + title: use the canonical "Biträdande <title>" when it
 // exists, otherwise send to review rather than recording the full title.
 function resolveDeputy(title, isDeputy, base) {
-  if (!isDeputy || title.startsWith("Biträdande")) return { kind: "official", title, ...base };
-  const deputy = `Biträdande ${title}`;
-  if (CANONICAL_OFFICIALS.includes(deputy)) return { kind: "official", title: deputy, ...base };
+  if (!isDeputy || /^(Biträdande|Ställföreträdande) /.test(title)) return { kind: "official", title, ...base };
+  for (const deputy of [`Biträdande ${title}`, `Ställföreträdande ${title}`]) {
+    if (CANONICAL_OFFICIALS.includes(deputy)) return { kind: "official", title: deputy, ...base };
+  }
   return { kind: "review", note: `deputy (bitr./stf) ${title}: no canonical title`, ...base };
 }
 

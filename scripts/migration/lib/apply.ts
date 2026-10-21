@@ -90,9 +90,8 @@ function requireAll(map: Map<string, number>, wanted: Iterable<string>, label: s
 }
 
 export type ApplyOptions = {
-  photosDir: string;
-  /** The old site's WWWRoot; post pictures are resolved against it. */
-  oldSiteRoot: string;
+  /** Absolute path of an old-site file given relative to WWWRoot ("db/contacts/1.jpg"). */
+  resolveSiteFile: (rel: string) => string;
   lookupSeedStatements: string[] | null;
   log: Log;
 };
@@ -192,7 +191,7 @@ export async function applyPlan(conn: Connection, plan: MigrationPlan, options: 
   await inTransaction(conn, "photos", log, async () => {
     for (const u of plan.users) {
       if (!u.photoFile) continue;
-      const file = path.join(options.photosDir, u.photoFile);
+      const file = options.resolveSiteFile(`db/contacts/${u.photoFile}`);
       const data = fs.readFileSync(file);
       const contentType = CONTENT_TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream";
       const checksum = createHash("sha256").update(data).digest("hex");
@@ -251,7 +250,7 @@ export async function applyPlan(conn: Connection, plan: MigrationPlan, options: 
       if (!p.picture) continue;
       const data =
         p.picture.kind === "file"
-          ? fs.readFileSync(path.join(options.oldSiteRoot, ...p.picture.path.split("/")))
+          ? fs.readFileSync(options.resolveSiteFile(p.picture.path))
           : Buffer.from(p.picture.base64, "base64");
       const contentType =
         p.picture.kind === "file"

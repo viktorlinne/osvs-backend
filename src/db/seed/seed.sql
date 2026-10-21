@@ -77,7 +77,21 @@ VALUES
   (27, 'Kurator'),
   (28, 'Revisor'),
   (29, 'Logefotograf'),
-  (30, 'Valberedning') ON DUPLICATE KEY
+  (30, 'Valberedning'),
+  (31, 'Biträdande Klubbmästare'),
+  (32, 'Biträdande Ljudtekniker'),
+  (33, 'Biträdande Webbredaktör'),
+  (34, 'Biträdande Instruktionsbroder'),
+  (35, 'Biträdande Orator'),
+  (36, 'Biträdande Ceremonimästare'),
+  (37, 'Biträdande Logefotograf'),
+  (38, 'Biträdande Kurator'),
+  (39, 'Biträdande Ledande Broder'),
+  (40, 'Biträdande Visdomens Broder'),
+  (41, 'Biträdande Kanslisekreterare'),
+  (42, 'Biträdande Logeskattmästare'),
+  (43, 'Biträdande Webmaster'),
+  (44, 'Ställföreträdande Ordensmästare') ON DUPLICATE KEY
 UPDATE
   `title` =
 VALUES
