@@ -185,6 +185,16 @@ describe("PUT /users/me user flags", () => {
     expect(mockedUpdateUserProfile).not.toHaveBeenCalled();
   });
 
+  it("ignores archive in self-service updates", async () => {
+    const response = await request(buildApp())
+      .put("/users/me")
+      .set("Authorization", token(42))
+      .send({ firstname: "Sven", archive: "Avliden" });
+
+    expect(response.status).toBe(200);
+    expect(mockedUpdateUserProfile).toHaveBeenCalledWith(42, { firstname: "Sven" });
+  });
+
   it("does not expose the flags in the self-service response", async () => {
     const response = await request(buildApp())
       .put("/users/me")

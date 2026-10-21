@@ -166,7 +166,12 @@ export async function updateMeHandler(
     );
     if (!payload) return;
 
-    await updateUserProfile(uid, payload as UpdateUserProfileBody);
+    // Archive status (Avliden/Urgången/Avförd) is set by Admin/Editor only.
+    // The shared profile form always sends `archive`, so drop it here instead
+    // of rejecting the request.
+    const selfPayload = { ...(payload as UpdateUserProfileBody) };
+    delete selfPayload.archive;
+    await updateUserProfile(uid, selfPayload);
 
     const updated = await findUserById(uid);
     if (!updated) return sendError(res, 404, "Användaren hittades inte");
