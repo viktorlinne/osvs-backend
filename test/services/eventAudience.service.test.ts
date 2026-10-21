@@ -14,6 +14,7 @@ jest.mock("../../src/repositories/events.repo", () => ({
   selectGroupIdsForEvent: jest.fn(),
   selectUserIdsForEvent: jest.fn(),
   selectStandingListUserIds: jest.fn(),
+  selectUidsWithRegistration: jest.fn(),
 }));
 
 jest.mock("../../src/repositories/groups.repo", () => ({
@@ -42,6 +43,7 @@ describe("events audience sync", () => {
     mockedEventsRepo.updatePendingEventPaymentsAmount.mockResolvedValue(undefined);
     mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([]);
     mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([]);
+    mockedEventsRepo.selectUidsWithRegistration.mockResolvedValue([]);
   });
 
   it("dedupes overlapping lodge, group, and direct user coverage", async () => {
@@ -304,6 +306,19 @@ describe("events audience sync", () => {
         undefined,
       );
       expect(mockedEventsRepo.bulkInsertEventAttendances).not.toHaveBeenCalled();
+    });
+
+    it("keeps members who said kommer, attended or paid when their lodge is removed", async () => {
+      mockedEventsRepo.selectInvitedUserIds.mockResolvedValue([1, 2, 3, 4]);
+      mockedEventsRepo.findUsersInLodges.mockResolvedValue([{ uid: 4 }]);
+      // 1 answered "kommer" / paid; 2 and 3 never answered.
+      mockedEventsRepo.selectUidsWithRegistration.mockResolvedValue([1]);
+
+      await syncEventAudience(33, { lodgeIds: [2] }, { price: 0 });
+
+      expect(mockedEventsRepo.selectUidsWithRegistration).toHaveBeenCalledWith(33, [1, 2, 3], undefined);
+      expect(mockedEventsRepo.deleteEventAttendancesForUids).toHaveBeenCalledWith(33, [2, 3], undefined);
+      expect(mockedEventsRepo.deleteEventPaymentsForUids).toHaveBeenCalledWith(33, [2, 3], undefined);
     });
   });
 

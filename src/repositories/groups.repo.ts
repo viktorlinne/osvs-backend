@@ -266,10 +266,11 @@ export async function selectUserIdsForGroups(
   const executor = getExecutor(conn);
   const [rows] = await executor(
     `
-      SELECT DISTINCT uid
-      FROM users_groups
-      WHERE gid IN (${placeholders})
-      ORDER BY uid ASC
+      SELECT DISTINCT ug.uid
+      FROM users_groups ug
+      JOIN users u ON u.matrikelnummer = ug.uid AND u.archive IS NULL
+      WHERE ug.gid IN (${placeholders})
+      ORDER BY ug.uid ASC
     `,
     normalizedGroupIds,
   );

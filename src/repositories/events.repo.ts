@@ -290,7 +290,7 @@ export async function selectStandingListUserIds(
     .filter((id): id is number => Number.isFinite(id));
 }
 
-/** Distinct members of any of the given lodges. */
+/** Distinct active (non-archived) members of any of the given lodges. */
 export async function findUsersInLodges(
   lodgeIds: number[],
   conn?: PoolConnection,
@@ -300,10 +300,38 @@ export async function findUsersInLodges(
   const executor = getExecutor(conn);
   const placeholders = ids.map(() => "?").join(",");
   const [rows] = await executor(
-    `SELECT DISTINCT uid FROM users_lodges WHERE lid IN (${placeholders}) ORDER BY uid ASC`,
+    `SELECT DISTINCT ul.uid FROM users_lodges ul
+     JOIN users u ON u.matrikelnummer = ul.uid AND u.archive IS NULL
+     WHERE ul.lid IN (${placeholders}) ORDER BY ul.uid ASC`,
     ids,
   );
   return asRows<UserIdRow>(rows);
+}
+
+/**
+ * Of the given members, those whose registration must survive leaving the
+ * audience: they answered "kommer", attended, or have a paid payment.
+ */
+export async function selectUidsWithRegistration(
+  eventId: number,
+  uids: number[],
+  conn?: PoolConnection,
+): Promise<number[]> {
+  const ids = normalizeIds(uids);
+  if (ids.length === 0) return [];
+  const placeholders = ids.map(() => "?").join(",");
+  const executor = getExecutor(conn);
+  const [rows] = await executor(
+    `SELECT ea.uid AS id FROM events_attendances ea
+     WHERE ea.eid = ? AND ea.uid IN (${placeholders}) AND (ea.rsvp = 1 OR ea.attended = 1)
+     UNION
+     SELECT ep.uid AS id FROM event_payments ep
+     WHERE ep.eid = ? AND ep.uid IN (${placeholders}) AND ep.status = 'Paid'`,
+    [eventId, ...ids, eventId, ...ids],
+  );
+  return asRows<IdRow>(rows)
+    .map((row) => Number(row.id))
+    .filter((id): id is number => Number.isFinite(id));
 }
 
 export async function bulkInsertEventPayments(

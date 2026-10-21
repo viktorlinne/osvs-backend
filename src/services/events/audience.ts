@@ -135,8 +135,14 @@ export async function syncEventAudience(
   const toAdd = nextInvitedUserIds.filter((uid) => !currentInvitedSet.has(uid));
 
   if (toRemove.length > 0) {
-    await eventsRepo.deleteEventAttendancesForUids(eventId, toRemove, conn);
-    await eventsRepo.deleteEventPaymentsForUids(eventId, toRemove, conn);
+    // Members who said "kommer", attended or paid keep their registration even
+    // when the audience no longer covers them; only untouched invites go.
+    const keep = new Set(
+      await eventsRepo.selectUidsWithRegistration(eventId, toRemove, conn),
+    );
+    const removable = toRemove.filter((uid) => !keep.has(uid));
+    await eventsRepo.deleteEventAttendancesForUids(eventId, removable, conn);
+    await eventsRepo.deleteEventPaymentsForUids(eventId, removable, conn);
   }
 
   if (toAdd.length > 0) {
