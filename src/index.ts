@@ -1,7 +1,11 @@
-import "./config/env";
+import { getMailingConfig } from "./config/env";
 import app from "./app";
 import logger from "./utils/logger";
 import pool from "./config/db";
+import { startMailWorker } from "./services/mailWorker";
+
+// Fail fast on invalid MAIL_RATE_PER_HOUR / MAIL_DEV_ALLOWLIST.
+getMailingConfig();
 
 async function verifyDbConnection() {
   try {
@@ -26,4 +30,7 @@ app.listen(PORT, () => {
 if (process.env.NODE_ENV !== "test" && process.env.CRON_RUNNER !== "false") {
   // Import side-effecting cron runner which schedules cleanup tasks
   import("./scripts/cron_runner");
+  // Group-mail queue worker (OSVS-24): sends queued mailings in a short
+  // interval loop (one tick at a time) inside this long-running process.
+  startMailWorker();
 }

@@ -26,10 +26,23 @@ type MailConfig = {
   passwordActionTokenHours: number;
 };
 
+type MailingConfig = {
+  /** Max group-mail sends in any rolling 60 minutes (MAIL_RATE_PER_HOUR). */
+  ratePerHour: number;
+  /** True when NODE_ENV === "production"; otherwise the dev allowlist applies. */
+  production: boolean;
+  /**
+   * MAIL_DEV_ALLOWLIST entries, lowercased: full addresses ("a@b.se") or
+   * domain suffixes ("@b.se"). Ignored in production.
+   */
+  devAllowlist: string[];
+};
+
 let cachedJwtSecret: string | null = null;
 let cachedBrowserOriginConfig: BrowserOriginConfig | null = null;
 let cachedDatabaseConfig: DatabaseConfig | null = null;
 let cachedMailConfig: MailConfig | null = null;
+let cachedMailingConfig: MailingConfig | null = null;
 
 function hasExplicitEnv(name: string): boolean {
   return Object.prototype.hasOwnProperty.call(process.env, name);
@@ -203,9 +216,59 @@ export function getMailConfig(): MailConfig {
   return cachedMailConfig;
 }
 
+function parseDevAllowlist(rawValue: string): string[] {
+  const entries = rawValue
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+  for (const entry of entries) {
+    const valid = entry.startsWith("@")
+      ? /^@[^\s@]+\.[^\s@]+$/.test(entry)
+      : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry);
+    if (!valid) {
+      throw new Error(
+        `Invalid environment variable MAIL_DEV_ALLOWLIST: "${entry}" is neither an e-mail address nor an @domain suffix`,
+      );
+    }
+  }
+  return Array.from(new Set(entries));
+}
+
+/**
+ * Group mailing settings (OSVS-24).
+ * - MAIL_RATE_PER_HOUR (default 250): the queue worker sends at most this many
+ *   messages in any rolling 60 minutes. Keep it below the SMTP host's limit
+ *   (Websupport: 300/h per mailbox) to leave room for password mails.
+ * - MAIL_DEV_ALLOWLIST (comma-separated): outside production the worker only
+ *   sends to these addresses / @domain suffixes; every other recipient is
+ *   marked skipped. Empty outside production means nothing is sent.
+ */
+export function getMailingConfig(): MailingConfig {
+  if (cachedMailingConfig !== null) {
+    return cachedMailingConfig;
+  }
+
+  cachedMailingConfig = {
+    ratePerHour: parseIntegerEnv(
+      "MAIL_RATE_PER_HOUR",
+      process.env.MAIL_RATE_PER_HOUR?.trim() || "250",
+    ),
+    production: process.env.NODE_ENV === "production",
+    devAllowlist: parseDevAllowlist(process.env.MAIL_DEV_ALLOWLIST ?? ""),
+  };
+
+  return cachedMailingConfig;
+}
+
+/** Test helper: drop cached mailing config so env changes take effect. */
+export function resetMailingConfigCache(): void {
+  cachedMailingConfig = null;
+}
+
 export default {
   getJwtSecret,
   getBrowserOriginConfig,
   getDatabaseConfig,
   getMailConfig,
+  getMailingConfig,
 };

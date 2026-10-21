@@ -8,6 +8,8 @@ type MailMessage = {
   subject: string;
   text: string;
   html: string;
+  /** Optional Reply-To (group mailings reply to the sender, not noreply). */
+  replyTo?: string;
 };
 
 type PasswordActionMailInput = {
@@ -56,14 +58,7 @@ function buildPasswordActionLink(token: string): string {
   return link.toString();
 }
 
-function buildEmailHtml(opts: {
-  greeting: string;
-  body: string;
-  buttonHref: string;
-  buttonLabel: string;
-  expiresAt: string;
-  footnote: string;
-}): string {
+function buildEmailShell(cardHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -87,21 +82,7 @@ function buildEmailHtml(opts: {
           <tr>
             <td style="background-color:#ffffff;border:1px solid #e3dcd2;border-radius:8px;padding:36px 40px;">
 
-              <p style="margin:0 0 20px;font-family:Georgia,'EB Garamond',serif;font-size:15px;color:#1c1610;line-height:1.65;">${opts.greeting}</p>
-              <p style="margin:0 0 28px;font-family:Georgia,'EB Garamond',serif;font-size:15px;color:#1c1610;line-height:1.65;">${opts.body}</p>
-
-              <!-- Button -->
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-                <tr>
-                  <td style="background-color:#208f44;border-radius:6px;">
-                    <a href="${opts.buttonHref}" style="display:inline-block;padding:10px 20px;font-family:Georgia,'EB Garamond',serif;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">${opts.buttonLabel}</a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0 0 16px;font-family:Georgia,'EB Garamond',serif;font-size:13px;color:#5c5248;line-height:1.65;">Länken gäller till ${opts.expiresAt}.</p>
-              <p style="margin:0;font-family:Georgia,'EB Garamond',serif;font-size:13px;color:#5c5248;line-height:1.65;">${opts.footnote}</p>
-
+${cardHtml}
             </td>
           </tr>
 
@@ -118,6 +99,66 @@ function buildEmailHtml(opts: {
   </table>
 </body>
 </html>`;
+}
+
+function buildEmailHtml(opts: {
+  greeting: string;
+  body: string;
+  buttonHref: string;
+  buttonLabel: string;
+  expiresAt: string;
+  footnote: string;
+}): string {
+  return buildEmailShell(`              <p style="margin:0 0 20px;font-family:Georgia,'EB Garamond',serif;font-size:15px;color:#1c1610;line-height:1.65;">${opts.greeting}</p>
+              <p style="margin:0 0 28px;font-family:Georgia,'EB Garamond',serif;font-size:15px;color:#1c1610;line-height:1.65;">${opts.body}</p>
+
+              <!-- Button -->
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="background-color:#208f44;border-radius:6px;">
+                    <a href="${opts.buttonHref}" style="display:inline-block;padding:10px 20px;font-family:Georgia,'EB Garamond',serif;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:6px;">${opts.buttonLabel}</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 16px;font-family:Georgia,'EB Garamond',serif;font-size:13px;color:#5c5248;line-height:1.65;">Länken gäller till ${opts.expiresAt}.</p>
+              <p style="margin:0;font-family:Georgia,'EB Garamond',serif;font-size:13px;color:#5c5248;line-height:1.65;">${opts.footnote}</p>
+`);
+}
+
+/** HTML-escapes user-provided text for use inside the mail template. */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function buildMailingFooter(groupName: string): string {
+  return `Detta utskick skickades till gruppen ${groupName} via OSVS.`;
+}
+
+/**
+ * Group mailing (OSVS-24): plain-text body as written by the sender plus a
+ * footer, and the branded HTML version with the body escaped and line breaks
+ * preserved.
+ */
+export function buildGroupMailingMessage(input: {
+  groupName: string;
+  subject: string;
+  body: string;
+}): Omit<MailMessage, "to" | "replyTo"> {
+  const footer = buildMailingFooter(input.groupName);
+  const body = input.body.replace(/\r\n?/g, "\n");
+  const bodyHtml = escapeHtml(body).replace(/\n/g, "<br>\n");
+  return {
+    subject: input.subject,
+    text: `${body}\n\n--\n${footer}\n`,
+    html: buildEmailShell(`              <p style="margin:0 0 28px;font-family:Georgia,'EB Garamond',serif;font-size:15px;color:#1c1610;line-height:1.65;">${bodyHtml}</p>
+              <p style="margin:0;font-family:Georgia,'EB Garamond',serif;font-size:13px;color:#5c5248;line-height:1.65;">${escapeHtml(footer)}</p>`),
+  };
 }
 
 function buildPasswordActionCopy(
@@ -186,6 +227,7 @@ export async function sendMail(message: MailMessage): Promise<void> {
     subject: message.subject,
     text: message.text,
     html: message.html,
+    ...(message.replyTo ? { replyTo: message.replyTo } : {}),
   });
 }
 

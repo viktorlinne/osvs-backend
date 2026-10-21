@@ -4,4 +4,5 @@ export * from "./eventValidators";
 export * from "./postValidators";
 export * from "./userValidators";
 export * from "./groupValidators";
+export * from "./mailingValidators";
 export * from "./memberHistoryValidators";

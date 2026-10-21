@@ -149,7 +149,10 @@ and recent schema safety checks.
 
 ## Development Notes
 
-- Background cron jobs start from [`src/index.ts`](./src/index.ts) unless
-  `CRON_RUNNER=false`.
+- Background cron jobs and the group-mail queue worker start from
+  [`src/index.ts`](./src/index.ts) unless `CRON_RUNNER=false`.
+- Group mailings: outside `NODE_ENV=production` mail is only sent to
+  `MAIL_DEV_ALLOWLIST` (addresses or `@domain` suffixes); everyone else is
+  marked skipped. `MAIL_RATE_PER_HOUR` (default 250) caps sends per rolling hour.
 - Request/response logging uses pino.
 - See AGENTS.md for the shared error envelope contract.

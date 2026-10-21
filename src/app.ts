@@ -33,6 +33,7 @@ import allergiesRouter from "./routes/allergies";
 import revisionsRouter from "./routes/revisions";
 import documentsRouter from "./routes/documents";
 import mediaRouter from "./routes/media";
+import mailingsRouter from "./routes/mailings";
 
 const app = express();
 const browserOriginConfig = getBrowserOriginConfig();
@@ -193,6 +194,8 @@ app.use("/api/admin", adminRouter);
 app.use("/api/lodges", lodgesRouter);
 // Group routes
 app.use("/api/groups", groupsRouter);
+// Group mailing details (OSVS-24)
+app.use("/api/mailings", mailingsRouter);
 // Post routes
 app.use("/api/posts", postsRouter);
 // Events routes

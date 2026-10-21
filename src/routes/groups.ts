@@ -12,6 +12,11 @@ import {
   removeGroupMemberHandler,
   updateGroupHandler,
 } from "../controllers/groupsController";
+import {
+  createGroupMailingHandler,
+  listGroupMailingsHandler,
+  previewGroupMailingHandler,
+} from "../controllers/mailingsController";
 
 const router = express.Router();
 const canManageGroups = requireRole("Admin", "Editor");
@@ -29,6 +34,26 @@ router.delete(
 );
 
 router.get("/:id/members", authMiddleware, wrapAsync(listGroupMembersHandler));
+
+// Group mailings (OSVS-24), Admin/Editor only.
+router.get(
+  "/:id/mailings/preview",
+  authMiddleware,
+  canManageGroups,
+  wrapAsync(previewGroupMailingHandler),
+);
+router.get(
+  "/:id/mailings",
+  authMiddleware,
+  canManageGroups,
+  wrapAsync(listGroupMailingsHandler),
+);
+router.post(
+  "/:id/mailings",
+  authMiddleware,
+  canManageGroups,
+  wrapAsync(createGroupMailingHandler),
+);
 router.post(
   "/:id/members",
   authMiddleware,

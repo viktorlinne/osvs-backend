@@ -40,6 +40,59 @@ export type GroupMember = {
   archive: string | null;
 };
 
+export type MailingStatus = "queued" | "sending" | "done" | "cancelled";
+export type OutboxStatus = "pending" | "sending" | "sent" | "failed" | "skipped";
+export type MailingSkipReason =
+  | "archived"
+  | "no_email"
+  | "placeholder"
+  | "invalid_email"
+  | "duplicate"
+  | "dev_allowlist";
+
+export type MailingCounts = {
+  sent: number;
+  /** pending + in progress */
+  pending: number;
+  failed: number;
+  skipped: number;
+};
+
+export type MailingSummary = {
+  id: number;
+  groupId: number | null;
+  groupName: string;
+  subject: string;
+  senderId: number | null;
+  senderName: string | null;
+  senderEmail: string | null;
+  status: MailingStatus;
+  createdAt: string;
+  counts: MailingCounts;
+};
+
+export type MailingRecipient = {
+  id: number;
+  uid: number | null;
+  name: string | null;
+  email: string | null;
+  status: OutboxStatus;
+  skipReason: string | null;
+  /** Swedish explanation of skipReason, null when not skipped. */
+  reason: string | null;
+  attempts: number;
+  lastError: string | null;
+  sentAt: string | null;
+};
+
+export type MailingPreview = {
+  recipients: number;
+  skipped: number;
+  skippedByReason: Partial<Record<MailingSkipReason, number>>;
+  /** Outside production: how many of `recipients` the dev allowlist blocks. */
+  devAllowlist: { active: boolean; blocked: number };
+};
+
 export type Achievement = {
   id: number;
   aid?: number;

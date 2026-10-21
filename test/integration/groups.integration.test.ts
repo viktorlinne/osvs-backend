@@ -26,6 +26,10 @@ jest.mock("../../src/repositories/groups.repo", () => ({
   selectUserIdsForGroups: jest.fn(),
 }));
 
+// The groups router also mounts the mailing endpoints (covered in
+// mailings.integration.test.ts); keep this suite free of a real DB pool.
+jest.mock("../../src/repositories/mailings.repo", () => ({}));
+
 jest.mock("../../src/utils/logger", () => ({
   __esModule: true,
   default: {

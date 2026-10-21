@@ -157,6 +157,17 @@ server starts. If the API is horizontally scaled, run cron on a single instance
 only (`CRON_RUNNER=false` on other instances) or move jobs to an external
 scheduler.
 
+The group-mail queue worker (`src/services/mailWorker.ts`, OSVS-24) starts
+under the same guard. Every 15 s it runs one tick (ticks never overlap): it
+returns rows stuck in `sending` for > 10 min to `pending`, respects a global
+pause in `mail_worker_state`, sends at most `MAIL_RATE_PER_HOUR` messages per
+rolling 60 minutes (counted from `mail_outbox.sentAt`), retries a failed
+recipient up to 3 attempts (5 min apart), pauses all sending for 60 min on an
+SMTP 4xx/"limit" reply, and marks finished mailings `done`. Rows are claimed
+atomically, so several instances do not double-send. Outside production it
+only sends to `MAIL_DEV_ALLOWLIST`. The worker needs a long-running process;
+it does not run on serverless hosting.
+
 ## Documentation
 
 OpenAPI source:

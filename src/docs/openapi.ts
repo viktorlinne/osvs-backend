@@ -104,6 +104,10 @@ export const swaggerSpec = {
     { name: "Posts", description: "Post listing and content management." },
     { name: "Lodges", description: "Lodge listing and management." },
     { name: "Groups", description: "Group listing, management and membership." },
+    {
+      name: "Mailings",
+      description: "E-mail to the members of a group, sent through a throttled queue (Admin/Editor).",
+    },
     { name: "Admin", description: "Admin utilities." },
     { name: "Payments", description: "Membership payment endpoints." },
     { name: "Officials", description: "Officials catalogue and assignments." },
@@ -393,6 +397,154 @@ export const swaggerSpec = {
             example: [12],
           },
         },
+      },
+      MailingSkippedByReason: {
+        type: "object",
+        description:
+          "Skipped recipients per reason code. archived = arkiverad medlem, no_email = saknar e-post, placeholder = migrerad platshållaradress (saknas+…@osvs.invalid), invalid_email = ogiltig adress, duplicate = samma adress som en annan mottagare, dev_allowlist = utanför produktion och ej i MAIL_DEV_ALLOWLIST (sätts av utskicksjobbet).",
+        properties: {
+          archived: { type: "integer", example: 2 },
+          no_email: { type: "integer", example: 3 },
+          placeholder: { type: "integer", example: 1 },
+          invalid_email: { type: "integer" },
+          duplicate: { type: "integer" },
+          dev_allowlist: { type: "integer" },
+        },
+      },
+      MailingCounts: {
+        type: "object",
+        required: ["sent", "pending", "failed", "skipped"],
+        properties: {
+          sent: { type: "integer", example: 12 },
+          pending: {
+            type: "integer",
+            example: 3,
+            description: "Not yet sent (waiting, being sent or waiting for a retry).",
+          },
+          failed: { type: "integer", example: 0 },
+          skipped: { type: "integer", example: 5 },
+        },
+      },
+      MailingPreview: {
+        type: "object",
+        required: ["recipients", "skipped", "skippedByReason", "devAllowlist"],
+        properties: {
+          recipients: { type: "integer", example: 41, description: "Members who will be queued." },
+          skipped: { type: "integer", example: 5 },
+          skippedByReason: { $ref: "#/components/schemas/MailingSkippedByReason" },
+          devAllowlist: {
+            type: "object",
+            required: ["active", "blocked"],
+            properties: {
+              active: {
+                type: "boolean",
+                description: "True outside production: only MAIL_DEV_ALLOWLIST recipients receive mail.",
+              },
+              blocked: {
+                type: "integer",
+                description: "How many of `recipients` the dev allowlist will skip.",
+              },
+            },
+          },
+        },
+      },
+      CreateMailingRequest: {
+        type: "object",
+        required: ["subject", "body"],
+        properties: {
+          subject: { type: "string", minLength: 1, maxLength: 200, example: "Kallelse till möte" },
+          body: {
+            type: "string",
+            minLength: 1,
+            maxLength: 20000,
+            description: "Plain text. Line breaks are kept; HTML is escaped in the mail.",
+            example: "Hej!\n\nVälkommen till mötet på torsdag kl 19.",
+          },
+        },
+      },
+      CreateMailingResponse: {
+        type: "object",
+        required: ["success", "mailing"],
+        properties: {
+          success: { type: "boolean", example: true },
+          mailing: {
+            type: "object",
+            required: ["id", "status", "queued", "skipped", "skippedByReason"],
+            properties: {
+              id: { type: "integer", example: 17 },
+              status: {
+                type: "string",
+                enum: ["queued", "done"],
+                description: "`done` when there was nobody to send to.",
+              },
+              queued: { type: "integer", example: 41 },
+              skipped: { type: "integer", example: 5 },
+              skippedByReason: { $ref: "#/components/schemas/MailingSkippedByReason" },
+            },
+          },
+        },
+      },
+      MailingSummary: {
+        type: "object",
+        required: ["id", "groupId", "groupName", "subject", "status", "createdAt", "counts"],
+        properties: {
+          id: { type: "integer", example: 17 },
+          groupId: { type: "integer", nullable: true, example: 5 },
+          groupName: { type: "string", example: "Planeringsgruppen", description: "Snapshot at creation." },
+          subject: { type: "string", example: "Kallelse till möte" },
+          senderId: { type: "integer", nullable: true, example: 4089 },
+          senderName: { type: "string", nullable: true, example: "Anna Andersson" },
+          senderEmail: {
+            type: "string",
+            nullable: true,
+            example: "anna@example.com",
+            description: "Snapshot; used as Reply-To.",
+          },
+          status: { type: "string", enum: ["queued", "sending", "done", "cancelled"] },
+          createdAt: { type: "string", format: "date-time" },
+          counts: { $ref: "#/components/schemas/MailingCounts" },
+        },
+      },
+      MailingRecipient: {
+        type: "object",
+        required: ["id", "uid", "name", "email", "status", "attempts"],
+        properties: {
+          id: { type: "integer", example: 301 },
+          uid: { type: "integer", nullable: true, example: 7 },
+          name: { type: "string", nullable: true, example: "Anders Andersson" },
+          email: { type: "string", nullable: true, example: "anders@example.com" },
+          status: { type: "string", enum: ["pending", "sending", "sent", "failed", "skipped"] },
+          skipReason: {
+            type: "string",
+            nullable: true,
+            enum: ["archived", "no_email", "placeholder", "invalid_email", "duplicate", "dev_allowlist", null],
+          },
+          reason: {
+            type: "string",
+            nullable: true,
+            example: "Arkiverad medlem",
+            description: "Swedish explanation of skipReason.",
+          },
+          attempts: { type: "integer", example: 1 },
+          lastError: { type: "string", nullable: true },
+          sentAt: { type: "string", format: "date-time", nullable: true },
+        },
+      },
+      MailingDetail: {
+        allOf: [
+          { $ref: "#/components/schemas/MailingSummary" },
+          {
+            type: "object",
+            required: ["body", "recipients"],
+            properties: {
+              body: { type: "string" },
+              recipients: {
+                type: "array",
+                items: { $ref: "#/components/schemas/MailingRecipient" },
+              },
+            },
+          },
+        ],
       },
       PublicUser: {
         type: "object",
@@ -3933,6 +4085,139 @@ export const swaggerSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/SuccessResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/groups/{id}/mailings/preview": {
+      get: {
+        tags: ["Mailings"],
+        summary: "Preview a group mailing",
+        description:
+          "Admin/Editor. Counts how many group members a mailing would be queued for and how many are skipped, per reason. Outside production `devAllowlist.blocked` tells how many queued recipients the worker will skip because they are not in MAIL_DEV_ALLOWLIST.",
+        operationId: "getGroupMailingPreview",
+        security: authSecurity,
+        parameters: [
+          { in: "path", name: "id", required: true, schema: { type: "integer" }, example: 5 },
+        ],
+        responses: {
+          "200": {
+            description: "Preview counts.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["preview"],
+                  properties: { preview: { $ref: "#/components/schemas/MailingPreview" } },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/groups/{id}/mailings": {
+      get: {
+        tags: ["Mailings"],
+        summary: "List a group's mailings",
+        description: "Admin/Editor. Newest first, with per-status recipient counts.",
+        operationId: "getGroupMailings",
+        security: authSecurity,
+        parameters: [
+          { in: "path", name: "id", required: true, schema: { type: "integer" }, example: 5 },
+        ],
+        responses: {
+          "200": {
+            description: "Mailings.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["mailings"],
+                  properties: {
+                    mailings: {
+                      type: "array",
+                      items: { $ref: "#/components/schemas/MailingSummary" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+      post: {
+        tags: ["Mailings"],
+        summary: "Send a mailing to a group",
+        description:
+          "Admin/Editor. Snapshots the group's members as recipients and queues one message per recipient; returns 202 immediately. Archived members, empty and placeholder addresses and duplicate addresses (case-insensitive) are stored as skipped with a reason. A background worker sends From MAIL_FROM with Reply-To set to the sender's e-mail, at most MAIL_RATE_PER_HOUR messages per rolling hour. Validation errors use `details.fields.subject` / `details.fields.body`.",
+        operationId: "postGroupMailing",
+        security: authSecurity,
+        parameters: [
+          { in: "path", name: "id", required: true, schema: { type: "integer" }, example: 5 },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateMailingRequest" },
+            },
+          },
+        },
+        responses: {
+          "202": {
+            description: "Mailing queued.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CreateMailingResponse" },
+              },
+            },
+          },
+          ...badRequest,
+          ...unauthorized,
+          ...forbidden,
+          ...notFound,
+          ...internal,
+        },
+      },
+    },
+    "/mailings/{id}": {
+      get: {
+        tags: ["Mailings"],
+        summary: "Get a mailing with per-recipient status",
+        description: "Admin/Editor.",
+        operationId: "getMailingById",
+        security: authSecurity,
+        parameters: [
+          { in: "path", name: "id", required: true, schema: { type: "integer" }, example: 17 },
+        ],
+        responses: {
+          "200": {
+            description: "Mailing.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["mailing"],
+                  properties: { mailing: { $ref: "#/components/schemas/MailingDetail" } },
+                },
               },
             },
           },
