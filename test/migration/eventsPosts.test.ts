@@ -1,5 +1,13 @@
 import { mapAccessEvent, mapAttendance, mapTEvent, matchEvents } from "../../scripts/migration/lib/events";
-import { estimatePostDates, inWindow, mapPost, titleFromHtml, windowStart } from "../../scripts/migration/lib/posts";
+import {
+  estimatePostDates,
+  htmlToText,
+  inWindow,
+  mapPost,
+  oldSitePath,
+  titleFromHtml,
+  windowStart,
+} from "../../scripts/migration/lib/posts";
 import type { AccessEvent, EventItem, TEvent } from "../../scripts/migration/lib/types";
 
 const ev = (Id: number, dated: string, lodge: string, description = "Grad I"): AccessEvent => ({
@@ -112,11 +120,68 @@ describe("migration posts", () => {
     const html = "<b>Capellas nya bröder &amp; gäster</b>";
     const p = mapPost({ Id: 9, message: html, page: 1, col: 1, row: 0, share: false, lodge: "Capella" }, "2026-01-02", false);
     expect(p).toEqual({
-      sourceId: 9, title: "Capellas nya bröder & gäster", description: html, publicum: false,
-      createdAt: "2026-01-02 12:00:00", lodges: ["Capella"],
+      sourceId: 9, title: "Capellas nya bröder & gäster", description: "Capellas nya bröder & gäster", publicum: false,
+      createdAt: "2026-01-02 12:00:00", lodges: ["Capella"], picture: null, attachments: [], missingFiles: [],
     });
     const shared = mapPost({ Id: 9, message: html, page: 1, col: 1, row: 0, share: true, lodge: "Capella" }, "2026-01-02", true);
     expect(shared.lodges).toHaveLength(7);
     expect(shared.publicum).toBe(true);
+  });
+});
+
+describe("post HTML conversion", () => {
+  it("turns old-site HTML into plain text with line breaks", () => {
+    const html =
+      "<h1>Rubrik</h1><p>F&ouml;rsta stycket<br />rad tv&aring; &rdquo;citat&rdquo;</p>" +
+      "<ul><li>Ett</li><li>Tv&#229;</li></ul><div><img src=\"../db/news/1/a.jpg\" /></div>" +
+      "<a href=\"javascript:winopen_blank('../db/news/1/prog.pdf')\">Program</a> " +
+      "<a href=\"https://example.org/x\">Extern</a>";
+    expect(htmlToText(html)).toBe(
+      "Rubrik\n\nFörsta stycket\nrad två ”citat”\n\n• Ett\n• Två\n\nProgram Extern (https://example.org/x)",
+    );
+  });
+
+  it("normalises old-site references", () => {
+    expect(oldSitePath("../db/news/929/H%C3%B6gtid 1.jpg")).toBe("db/news/929/Högtid 1.jpg");
+    expect(oldSitePath("javascript:winopen_blank('../DRead/news/5/x.pdf')")).toBe("DRead/news/5/x.pdf");
+    expect(oldSitePath("http://www.osvs.se/news/bild.jpg")).toBe("news/bild.jpg");
+    expect(oldSitePath("https://example.org/x.jpg")).toBeNull();
+    expect(oldSitePath("mailto:a@b.se")).toBeNull();
+  });
+
+  it("picks the first existing image as picture and lists other files", () => {
+    const files = new Set(["db/news/7/poster.jpg", "db/news/7/prog.pdf", "db/news/7/extra.jpg"]);
+    const p = mapPost(
+      {
+        Id: 7,
+        message:
+          "<img src=\"../db/news/7/gone.jpg\"><img src=\"../db/news/7/poster.jpg\">Text " +
+          "<a href=\"javascript:winopen_blank('../db/news/7/prog.pdf')\">Program</a>",
+        page: 1, col: 1, row: 0, share: false, lodge: "Orion",
+      },
+      "2026-03-01",
+      false,
+      { exists: (r) => files.has(r), folderFiles: () => ["db/news/7/extra.jpg"] },
+    );
+    expect(p.picture).toEqual({ kind: "file", path: "db/news/7/poster.jpg", name: "poster.jpg" });
+    expect(p.attachments).toEqual(["prog.pdf"]);
+    expect(p.missingFiles).toEqual(["db/news/7/gone.jpg"]);
+    expect(p.description).toBe("Text Program\n\nBilagor på gamla webbplatsen: prog.pdf");
+  });
+
+  it("falls back to an image in the post folder and to inline data images", () => {
+    const folder = mapPost(
+      { Id: 8, message: "Bara text", page: 1, col: 1, row: 0, share: false, lodge: "Orion" },
+      "2026-03-01",
+      false,
+      { exists: () => true, folderFiles: () => ["db/news/8/a.pdf", "db/news/8/b.png"] },
+    );
+    expect(folder.picture).toEqual({ kind: "file", path: "db/news/8/b.png", name: "b.png" });
+    const inline = mapPost(
+      { Id: 9, message: "<img src=\"data:image/png;base64,iVBORw0K\">", page: 1, col: 1, row: 0, share: false, lodge: null },
+      "2026-03-01",
+      false,
+    );
+    expect(inline.picture).toEqual({ kind: "data", contentType: "image/png", base64: "iVBORw0K", name: "inline-9" });
   });
 });

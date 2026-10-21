@@ -138,6 +138,7 @@ async function runApply(args: Args, plan: ReturnType<typeof transform>): Promise
     console.log(`Applying to ${db.database}@${db.host} ...`);
     const result = await applyPlan(conn, plan, {
       photosDir: path.join(args.oldSiteRoot, "db", "contacts"),
+      oldSiteRoot: args.oldSiteRoot,
       lookupSeedStatements,
       log: (m) => console.log(m),
     });
@@ -164,6 +165,17 @@ async function main(): Promise<void> {
     {
       newsFolderDates: newsFolderDates(newsDir),
       photoExists: (file) => fs.existsSync(path.join(photosDir, file)) && fs.statSync(path.join(photosDir, file)).isFile(),
+      postFiles: {
+        exists: (rel) => {
+          const p = path.join(args.oldSiteRoot, ...rel.split("/"));
+          return fs.existsSync(p) && fs.statSync(p).isFile();
+        },
+        folderFiles: (id) => {
+          const dir = path.join(newsDir, String(id));
+          if (!fs.existsSync(dir)) return [];
+          return fs.readdirSync(dir).sort().map((f) => `db/news/${id}/${f}`);
+        },
+      },
     },
   );
   const files = writeReports(args.reportsDir, plan, extract);

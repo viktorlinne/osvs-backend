@@ -21,7 +21,7 @@ import type { ClassifiedCv, HistoryIssue } from "./history";
 import { isoDay, mapAccessEvent, mapAttendance, mapTEvent, matchEvents } from "./events";
 import type { AttendanceStats, EventMatchResult } from "./events";
 import { estimatePostDates, inWindow, mapPost, windowStart } from "./posts";
-import type { PostDate } from "./posts";
+import type { PostDate, PostFiles } from "./posts";
 
 export type TransformOptions = {
   cutover: string; // YYYY-MM-DD
@@ -32,6 +32,8 @@ export type TransformOptions = {
 export type TransformEnv = {
   newsFolderDates: Map<number, string>;
   photoExists: (file: string) => boolean;
+  /** Old-site file lookups for post pictures/attachments (default: none exist). */
+  postFiles?: PostFiles;
 };
 
 export type IdMapRow = { contactId: number; survivorContactId: number; matrikelnummer: number; memberno: string };
@@ -396,7 +398,16 @@ export function transform(extract: Extract, options: TransformOptions, env: Tran
   for (const n of extract.news.slice().sort((a, b) => a.Id - b.Id)) {
     const d = postDates.get(n.Id) as PostDate;
     const inside = inWindow(d.date, options.cutover);
-    if (inside) posts.push(mapPost(n, d.date, options.postsPublicum));
+    if (inside) {
+      const { missingFiles, ...post } = mapPost(n, d.date, options.postsPublicum, env.postFiles);
+      posts.push(post);
+      if (missingFiles.length) {
+        registry.add({ category: "post", subject: `news ${n.Id}`, detail: `referenced file(s) missing on the old site: ${missingFiles.join(", ")}` });
+      }
+      if (post.attachments.length) {
+        registry.add({ category: "post", subject: `news ${n.Id}`, detail: `attachments listed by name only (no attachment field in posts): ${post.attachments.join(", ")}` });
+      }
+    }
     const straddles = (d.lower === null || d.lower < wStart) && d.upper >= wStart && d.method !== "attachment folder";
     if (straddles) {
       registry.add({

@@ -91,6 +91,8 @@ function requireAll(map: Map<string, number>, wanted: Iterable<string>, label: s
 
 export type ApplyOptions = {
   photosDir: string;
+  /** The old site's WWWRoot; post pictures are resolved against it. */
+  oldSiteRoot: string;
   lookupSeedStatements: string[] | null;
   log: Log;
 };
@@ -246,6 +248,21 @@ export async function applyPlan(conn: Connection, plan: MigrationPlan, options: 
         [p.title, p.description, p.publicum ? 1 : 0, p.createdAt],
       );
       result.postIds[p.sourceId] = res.insertId;
+      if (!p.picture) continue;
+      const data =
+        p.picture.kind === "file"
+          ? fs.readFileSync(path.join(options.oldSiteRoot, ...p.picture.path.split("/")))
+          : Buffer.from(p.picture.base64, "base64");
+      const contentType =
+        p.picture.kind === "file"
+          ? CONTENT_TYPES[path.extname(p.picture.path).toLowerCase()] ?? "application/octet-stream"
+          : p.picture.contentType;
+      const [media] = await conn.query<ResultSetHeader>(
+        "INSERT INTO media_assets (original_key, content_type, byte_size, checksum_sha256, data) VALUES (?, ?, ?, ?, ?)",
+        [`posts/migrated/${p.sourceId}/${p.picture.name}`.slice(0, 512), contentType, data.length, createHash("sha256").update(data).digest("hex"), data],
+      );
+      // Same key format as the profile photos above.
+      await conn.query("UPDATE posts SET picture = ? WHERE id = ?", [`media/${media.insertId}`, res.insertId]);
     }
     await bulkInsert(
       conn,

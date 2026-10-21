@@ -147,13 +147,19 @@ export type AttendanceRow = {
 export type GroupRow = { sourceId: number; name: string; description: string };
 export type GroupMemberRow = { groupSourceId: number; matrikelnummer: number };
 
+export type PostPicture =
+  | { kind: "file"; path: string; name: string } // path relative to the old site's WWWRoot
+  | { kind: "data"; contentType: string; base64: string; name: string };
+
 export type PostRow = {
   sourceId: number;
   title: string;
-  description: string;
+  description: string; // plain text, line breaks preserved
   publicum: boolean;
   createdAt: string; // YYYY-MM-DD HH:MM:SS
   lodges: string[];
+  picture: PostPicture | null;
+  attachments: string[]; // file names listed at the end of the description
 };
 
 export type AchievementRow = {
