@@ -145,12 +145,12 @@ export type AttendanceStats = {
 /**
  * events_items -> events_attendances. `reserved` (meal booked) -> bookFood,
  * `attended` -> attended. `rsvp` is tri-state in this schema (0 = kommer inte,
- * 1 = kommer, 2 = obesvarat; see src/utils/rsvp.ts). Past events (before the
- * cutover) get rsvp=2 (unknown: the old site had no RSVP); coming events get
- * rsvp=1 where `reserved` was set (the old site pre-filled reserved from
- * Ständiga listan, which the new app expresses as an RSVP), otherwise 2. Rows with neither flag are
- * skipped; `paid` and `labeled` are not migrated. Duplicate (member, event)
- * pairs, also those created by merged contacts, are OR-ed together.
+ * 1 = kommer, 2 = obesvarat; see src/utils/rsvp.ts). The app only allows
+ * bookFood=1 together with rsvp=1 (setUserBookFood, saveUserRegistration), and
+ * a member who booked a meal or attended was coming, so rsvp=1 when `reserved`
+ * or `attended` is set; past or coming makes no difference. Rows with neither
+ * flag are skipped; `paid` and `labeled` are not migrated. Duplicate (member,
+ * event) pairs, also those created by merged contacts, are OR-ed together.
  */
 export function mapAttendance(
   items: EventItem[],
@@ -181,7 +181,7 @@ export function mapAttendance(
     const row: AttendanceRow = {
       matrikelnummer: uid,
       eventKey: `events:${item.listId}`,
-      rsvp: coming && item.reserved ? 1 : 2,
+      rsvp: 1, // every kept row has reserved or attended set (see above)
       bookFood: item.reserved ? 1 : 0,
       attended: item.attended ? 1 : 0,
     };
