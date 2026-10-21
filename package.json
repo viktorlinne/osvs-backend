@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "smoke": "ts-node --files scripts/smoke.ts",
     "migrate": "ts-node src/db/migrate.ts",
+    "migrate:prod": "node dist/db/migrate.js",
     "seed": "ts-node src/db/seedRunner.ts",
     "media:import": "ts-node --files src/scripts/import_local_media.ts",
     "migrate:legacy": "ts-node --files scripts/migration/run.ts",

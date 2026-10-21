@@ -1,0 +1,34 @@
+# systemd unit for the OSVS backend. Run exactly ONE instance: the mail
+# worker and the cron jobs (CRON_RUNNER=true) run inside this process.
+# Install: /etc/systemd/system/osvs-backend.service
+#   systemctl daemon-reload && systemctl enable --now osvs-backend
+
+[Unit]
+Description=OSVS backend (Express API, mail worker, cron)
+After=network-online.target mysql.service
+Wants=network-online.target
+Requires=mysql.service
+
+[Service]
+Type=simple
+User=osvs
+Group=osvs
+WorkingDirectory=/opt/osvs/osvs-backend
+# The backend reads /opt/osvs/osvs-backend/.env itself (dotenv); NODE_ENV is
+# set here as well so a missing .env value can never mean "development".
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+# Give in-flight requests and a mail-worker tick time to finish.
+TimeoutStopSec=20
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/osvs/osvs-backend
+
+[Install]
+WantedBy=multi-user.target
