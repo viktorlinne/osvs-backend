@@ -1,10 +1,8 @@
 import pool from "../../config/db";
 import * as eventsRepo from "../../repositories/events.repo";
 import type { EventRecord } from "../../types";
-import { badRequest } from "../../utils/errors";
 import { getNowStockholmSqlDateTime } from "../../utils/eventDateTime";
 import {
-  EVENT_AUDIENCE_ERRORS,
   type EventAudienceSelection,
   getEventAudienceSelection,
   syncEventAudience,
@@ -155,17 +153,17 @@ export async function linkLodgeToEvent(
   try {
     await conn.beginTransaction();
     const currentAudience = await getEventAudienceSelection(eventId, conn);
-    const currentLodgeId = currentAudience.lodgeIds[0];
-
-    if (Number.isFinite(currentLodgeId) && currentLodgeId !== lodgeId) {
-      throw badRequest(EVENT_AUDIENCE_ERRORS.singleLodge, {
-        fields: { lodgeIds: EVENT_AUDIENCE_ERRORS.singleLodge },
-      });
+    if (currentAudience.lodgeIds.includes(lodgeId)) {
+      // Already linked: nothing to change.
+      await conn.commit();
+      return;
     }
 
+    // Add the lodge to the existing set; its members are invited like any
+    // other audience change (no standing-list prefill outside creation).
     await syncEventAudience(
       eventId,
-      { ...currentAudience, lodgeIds: [lodgeId] },
+      { ...currentAudience, lodgeIds: [...currentAudience.lodgeIds, lodgeId] },
       { conn, requireAudience: true },
     );
     await conn.commit();
@@ -189,6 +187,8 @@ export async function unlinkLodgeFromEvent(
   try {
     await conn.beginTransaction();
     const currentAudience = await getEventAudienceSelection(eventId, conn);
+    // Only invitees no longer covered by a remaining lodge, a selected group
+    // or a direct user selection are removed (see syncEventAudience).
     await syncEventAudience(
       eventId,
       {

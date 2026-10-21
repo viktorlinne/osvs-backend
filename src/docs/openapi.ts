@@ -1073,7 +1073,11 @@ export const swaggerSpec = {
           price: { type: "number", format: "float", example: 275 },
           startDate: { type: "string", example: "2026-03-14 18:00:00" },
           endDate: { type: "string", example: "2026-03-14 21:00:00" },
-          lodgeIds: { type: "array", items: { type: "integer", example: 1 } },
+          lodgeIds: {
+            type: "array",
+            description: "Lodges in the audience. Several lodges are allowed.",
+            items: { type: "integer", example: 1 },
+          },
           groupIds: { type: "array", items: { type: "integer", example: 5 } },
           userIds: { type: "array", items: { type: "integer", example: 24 } },
         },
@@ -1087,7 +1091,12 @@ export const swaggerSpec = {
           price: { type: "number", format: "float" },
           startDate: { type: "string" },
           endDate: { type: "string" },
-          lodgeIds: { type: "array", items: { type: "integer" } },
+          lodgeIds: {
+            type: "array",
+            description:
+              "Replaces the event's lodges (several allowed). Invitees no longer covered by any selected lodge, group or user are removed.",
+            items: { type: "integer" },
+          },
           groupIds: { type: "array", items: { type: "integer" } },
           userIds: { type: "array", items: { type: "integer" } },
         },
@@ -2695,7 +2704,7 @@ export const swaggerSpec = {
         tags: ["Events"],
         summary: "Create event",
         description:
-          "Creates a new event (Admin/Editor). Every invited user (lodge members, group members and directly selected users) gets an attendance row. Invited, non-archived users with `standingList` = true are prefilled with rsvp = going and bookFood = true when the event has food (price > 0); everyone else starts unanswered. The prefill only happens on creation; later audience changes and flag changes do not prefill.",
+          "Creates a new event (Admin/Editor). `lodgeIds` may contain several lodges. Every invited user (members of all selected lodges, group members and directly selected users, deduplicated) gets an attendance row. Invited, non-archived users with `standingList` = true are prefilled with rsvp = going and bookFood = true when the event has food (price > 0); everyone else starts unanswered. The prefill only happens on creation; later audience changes and flag changes do not prefill.",
         operationId: "postEvents",
         security: authSecurity,
         requestBody: {
@@ -2895,7 +2904,7 @@ export const swaggerSpec = {
       get: {
         tags: ["Events"],
         summary: "List lodges linked to event",
-        description: "Returns lodges linked to the target event.",
+        description: "Returns all lodges linked to the target event (an event can have several).",
         operationId: "getEventLodgesById",
         security: authSecurity,
         parameters: [
@@ -2932,7 +2941,8 @@ export const swaggerSpec = {
       post: {
         tags: ["Events"],
         summary: "Link lodge to event",
-        description: "Adds lodge-event link (Admin/Editor).",
+        description:
+          "Adds the lodge to the event's lodges (Admin/Editor) and invites its members who are not already invited. Existing lodges stay linked; linking an already linked lodge is a no-op.",
         operationId: "postEventLodgesById",
         security: authSecurity,
         parameters: [
@@ -2971,7 +2981,7 @@ export const swaggerSpec = {
         tags: ["Events"],
         summary: "Unlink lodge from event",
         description:
-          "Removes lodge-event link (Admin/Editor). `lodgeId` can be provided via query or body.",
+          "Removes one lodge from the event's lodges (Admin/Editor). `lodgeId` can be provided via query or body. Only invitees who are no longer covered by another selected lodge, a selected group or a direct user selection lose their invitation (attendance and payment rows). Rejected if it would leave the event without any audience.",
         operationId: "deleteEventLodgesById",
         security: authSecurity,
         parameters: [

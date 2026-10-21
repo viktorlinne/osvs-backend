@@ -290,14 +290,18 @@ export async function selectStandingListUserIds(
     .filter((id): id is number => Number.isFinite(id));
 }
 
-export async function findUsersInLodge(
-  lodgeId: number,
+/** Distinct members of any of the given lodges. */
+export async function findUsersInLodges(
+  lodgeIds: number[],
   conn?: PoolConnection,
 ): Promise<UserIdRow[]> {
+  const ids = normalizeIds(lodgeIds);
+  if (ids.length === 0) return [];
   const executor = getExecutor(conn);
+  const placeholders = ids.map(() => "?").join(",");
   const [rows] = await executor(
-    "SELECT DISTINCT uid FROM users_lodges WHERE lid = ? ORDER BY uid ASC",
-    [lodgeId],
+    `SELECT DISTINCT uid FROM users_lodges WHERE lid IN (${placeholders}) ORDER BY uid ASC`,
+    ids,
   );
   return asRows<UserIdRow>(rows);
 }
@@ -324,24 +328,6 @@ export async function bulkInsertEventAttendances(
     "INSERT IGNORE INTO events_attendances (uid, eid, rsvp, bookFood, attended) VALUES ?",
     [values],
   );
-}
-
-export async function selectUsersToRemoveOnUnlink(
-  lodgeId: number,
-  eventId: number,
-  conn?: PoolConnection,
-): Promise<UserIdRow[]> {
-  const executor = getExecutor(conn);
-  const [rows] = await executor(
-    `
-      SELECT ea.uid
-      FROM events_attendances ea
-      JOIN users_lodges ul ON ul.uid = ea.uid
-      WHERE ea.eid = ? AND ul.lid = ?
-    `,
-    [eventId, lodgeId],
-  );
-  return asRows<UserIdRow>(rows);
 }
 
 export async function deleteEventAttendancesForUids(
@@ -685,10 +671,9 @@ export default {
   replaceEventGroups,
   replaceEventUsers,
   selectEventPrice,
-  findUsersInLodge,
+  findUsersInLodges,
   bulkInsertEventPayments,
   bulkInsertEventAttendances,
-  selectUsersToRemoveOnUnlink,
   deleteEventAttendancesForUids,
   deleteEventPaymentsForUids,
   deleteLodgeEvent,

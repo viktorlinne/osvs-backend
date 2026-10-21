@@ -3,7 +3,7 @@ jest.mock("../../src/repositories/events.repo", () => ({
   replaceEventLodges: jest.fn(),
   replaceEventGroups: jest.fn(),
   replaceEventUsers: jest.fn(),
-  findUsersInLodge: jest.fn(),
+  findUsersInLodges: jest.fn(),
   deleteEventAttendancesForUids: jest.fn(),
   deleteEventPaymentsForUids: jest.fn(),
   bulkInsertEventAttendances: jest.fn(),
@@ -33,7 +33,7 @@ describe("events audience sync", () => {
     mockedEventsRepo.replaceEventLodges.mockResolvedValue(undefined);
     mockedEventsRepo.replaceEventGroups.mockResolvedValue(undefined);
     mockedEventsRepo.replaceEventUsers.mockResolvedValue(undefined);
-    mockedEventsRepo.findUsersInLodge.mockResolvedValue([]);
+    mockedEventsRepo.findUsersInLodges.mockResolvedValue([]);
     mockedEventsRepo.deleteEventAttendancesForUids.mockResolvedValue(undefined);
     mockedEventsRepo.deleteEventPaymentsForUids.mockResolvedValue(undefined);
     mockedEventsRepo.bulkInsertEventAttendances.mockResolvedValue(undefined);
@@ -46,7 +46,7 @@ describe("events audience sync", () => {
 
   it("dedupes overlapping lodge, group, and direct user coverage", async () => {
     mockedEventsRepo.selectInvitedUserIds.mockResolvedValue([1, 2]);
-    mockedEventsRepo.findUsersInLodge.mockResolvedValue([{ uid: 1 }, { uid: 2 }]);
+    mockedEventsRepo.findUsersInLodges.mockResolvedValue([{ uid: 1 }, { uid: 2 }]);
     mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([2, 3]);
 
     await syncEventAudience(
@@ -94,7 +94,7 @@ describe("events audience sync", () => {
 
   it("preserves users who stay covered when the lodge source is switched", async () => {
     mockedEventsRepo.selectInvitedUserIds.mockResolvedValue([1, 2, 3]);
-    mockedEventsRepo.findUsersInLodge.mockResolvedValue([{ uid: 4 }, { uid: 5 }]);
+    mockedEventsRepo.findUsersInLodges.mockResolvedValue([{ uid: 4 }, { uid: 5 }]);
     mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([3, 4]);
 
     await syncEventAudience(
@@ -193,7 +193,7 @@ describe("events audience sync", () => {
 
   it("reprices pending payments without touching canonical invite membership", async () => {
     mockedEventsRepo.selectInvitedUserIds.mockResolvedValue([1]);
-    mockedEventsRepo.findUsersInLodge.mockResolvedValue([{ uid: 1 }]);
+    mockedEventsRepo.findUsersInLodges.mockResolvedValue([{ uid: 1 }]);
 
     await syncEventAudience(
       14,
@@ -214,9 +214,102 @@ describe("events audience sync", () => {
     expect(mockedEventsRepo.bulkInsertEventAttendances).not.toHaveBeenCalled();
   });
 
+  describe("multiple lodges", () => {
+    it("invites the members of every selected lodge, deduped with groups and users", async () => {
+      // Lodge 1: 1,2,3 / lodge 2: 3,4 (3 is in both) -> one query for both lodges.
+      mockedEventsRepo.findUsersInLodges.mockResolvedValue([
+        { uid: 1 },
+        { uid: 2 },
+        { uid: 3 },
+        { uid: 4 },
+      ]);
+      mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([4, 5]);
+
+      const result = await syncEventAudience(
+        30,
+        { lodgeIds: [1, 2, 2], groupIds: [7], userIds: [2, 6] },
+        { price: 100 },
+      );
+
+      expect(result.lodgeIds).toEqual([1, 2]);
+      expect(mockedEventsRepo.findUsersInLodges).toHaveBeenCalledWith(
+        [1, 2],
+        undefined,
+      );
+      expect(mockedEventsRepo.replaceEventLodges).toHaveBeenCalledWith(
+        30,
+        [1, 2],
+        undefined,
+      );
+      expect(mockedEventsRepo.bulkInsertEventAttendances).toHaveBeenCalledWith(
+        [1, 2, 3, 4, 5, 6].map((uid) => [uid, 30, 2, 0, 0]),
+        undefined,
+      );
+    });
+
+    it("prefills standing-list members of all selected lodges on creation", async () => {
+      mockedEventsRepo.findUsersInLodges.mockResolvedValue([
+        { uid: 10 },
+        { uid: 11 },
+        { uid: 20 },
+        { uid: 21 },
+      ]);
+      // 11 belongs to lodge A, 21 to lodge B; both are on the standing list.
+      mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([11, 21]);
+
+      await syncEventAudience(
+        31,
+        { lodgeIds: [3, 4], groupIds: [], userIds: [] },
+        { price: 250, prefillStandingList: { food: true } },
+      );
+
+      expect(mockedEventsRepo.selectStandingListUserIds).toHaveBeenCalledWith(
+        [10, 11, 20, 21],
+        undefined,
+      );
+      expect(mockedEventsRepo.bulkInsertEventAttendances).toHaveBeenCalledWith(
+        [
+          [10, 31, 2, 0, 0],
+          [11, 31, 1, 1, 0],
+          [20, 31, 2, 0, 0],
+          [21, 31, 1, 1, 0],
+        ],
+        undefined,
+      );
+    });
+
+    it("removing one lodge keeps invitees still covered by another lodge, a group or a user", async () => {
+      // Before: lodges 1+2. Invited: 1..6.
+      mockedEventsRepo.selectInvitedUserIds.mockResolvedValue([1, 2, 3, 4, 5, 6]);
+      // Remaining lodge 2 covers 3 and 4.
+      mockedEventsRepo.findUsersInLodges.mockResolvedValue([{ uid: 3 }, { uid: 4 }]);
+      // Group covers 2, direct user selection covers 5.
+      mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([2]);
+
+      await syncEventAudience(
+        32,
+        { lodgeIds: [2], groupIds: [8], userIds: [5] },
+        { price: 0 },
+      );
+
+      expect(mockedEventsRepo.findUsersInLodges).toHaveBeenCalledWith([2], undefined);
+      expect(mockedEventsRepo.deleteEventAttendancesForUids).toHaveBeenCalledWith(
+        32,
+        [1, 6],
+        undefined,
+      );
+      expect(mockedEventsRepo.deleteEventPaymentsForUids).toHaveBeenCalledWith(
+        32,
+        [1, 6],
+        undefined,
+      );
+      expect(mockedEventsRepo.bulkInsertEventAttendances).not.toHaveBeenCalled();
+    });
+  });
+
   describe("standing list prefill (OSVS-28)", () => {
     it("prefills going + food for standing-list invitees when the event has food", async () => {
-      mockedEventsRepo.findUsersInLodge.mockResolvedValue([{ uid: 1 }, { uid: 2 }]);
+      mockedEventsRepo.findUsersInLodges.mockResolvedValue([{ uid: 1 }, { uid: 2 }]);
       mockedGroupsRepo.selectUserIdsForGroups.mockResolvedValue([3]);
       mockedEventsRepo.selectStandingListUserIds.mockResolvedValue([2, 3]);
 

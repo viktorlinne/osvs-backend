@@ -10,6 +10,9 @@ jest.mock("../../src/repositories/events.repo", () => ({
   updatePendingEventPaymentsAmount: jest.fn(),
   insertEvent: jest.fn(),
   selectEventFood: jest.fn(),
+  selectEventLodgeIds: jest.fn(),
+  selectGroupIdsForEvent: jest.fn(),
+  selectUserIdsForEvent: jest.fn(),
 }));
 
 jest.mock("../../src/services/events/audience", () => {
@@ -22,6 +25,8 @@ import * as eventsRepo from "../../src/repositories/events.repo";
 import { syncEventAudience } from "../../src/services/events/audience";
 import {
   createEventWithAudience,
+  linkLodgeToEvent,
+  unlinkLodgeFromEvent,
   updateEvent,
 } from "../../src/services/events/eventsCrud";
 
@@ -115,4 +120,61 @@ describe("eventsCrud.createEventWithAudience", () => {
       expect(conn.commit).toHaveBeenCalled();
     },
   );
+});
+
+describe("eventsCrud lodge link/unlink (several lodges)", () => {
+  beforeEach(() => {
+    mockedSyncEventAudience.mockReset();
+    mockedEventsRepo.selectEventLodgeIds.mockResolvedValue([1]);
+    mockedEventsRepo.selectGroupIdsForEvent.mockResolvedValue([4]);
+    mockedEventsRepo.selectUserIdsForEvent.mockResolvedValue([9]);
+  });
+
+  it("adds a second lodge to the existing set instead of rejecting it", async () => {
+    const conn = createConnectionMock();
+    mockedPool.getConnection.mockResolvedValue(conn);
+    mockedSyncEventAudience.mockResolvedValue({
+      lodgeIds: [1, 2],
+      groupIds: [4],
+      userIds: [9],
+    });
+
+    await linkLodgeToEvent(14, 2);
+
+    expect(mockedSyncEventAudience).toHaveBeenCalledWith(
+      14,
+      { lodgeIds: [1, 2], groupIds: [4], userIds: [9] },
+      { conn, requireAudience: true },
+    );
+    expect(conn.commit).toHaveBeenCalled();
+  });
+
+  it("is a no-op when the lodge is already linked", async () => {
+    const conn = createConnectionMock();
+    mockedPool.getConnection.mockResolvedValue(conn);
+
+    await linkLodgeToEvent(14, 1);
+
+    expect(mockedSyncEventAudience).not.toHaveBeenCalled();
+    expect(conn.commit).toHaveBeenCalled();
+  });
+
+  it("unlinking one lodge keeps the other lodges, groups and users in the audience", async () => {
+    const conn = createConnectionMock();
+    mockedPool.getConnection.mockResolvedValue(conn);
+    mockedEventsRepo.selectEventLodgeIds.mockResolvedValue([1, 2]);
+    mockedSyncEventAudience.mockResolvedValue({
+      lodgeIds: [2],
+      groupIds: [4],
+      userIds: [9],
+    });
+
+    await unlinkLodgeFromEvent(14, 1);
+
+    expect(mockedSyncEventAudience).toHaveBeenCalledWith(
+      14,
+      { lodgeIds: [2], groupIds: [4], userIds: [9] },
+      { conn, requireAudience: true },
+    );
+  });
 });

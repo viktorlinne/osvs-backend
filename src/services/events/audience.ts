@@ -5,7 +5,6 @@ import type { PoolConnection } from "mysql2/promise";
 
 const RSVP_UNANSWERED = 2;
 const RSVP_GOING = 1;
-const SINGLE_LODGE_ERROR = "Ett möte kan bara ha en loge";
 const AUDIENCE_REQUIRED_ERROR = "Välj minst en målgrupp";
 
 export type EventAudienceSelection = {
@@ -52,12 +51,6 @@ export function assertValidEventAudience(
   audience: EventAudienceSelection,
   options?: { requireAudience?: boolean },
 ) {
-  if (audience.lodgeIds.length > 1) {
-    throw badRequest(SINGLE_LODGE_ERROR, {
-      fields: { lodgeIds: SINGLE_LODGE_ERROR },
-    });
-  }
-
   const requireAudience = options?.requireAudience !== false;
   if (
     requireAudience &&
@@ -95,7 +88,8 @@ async function resolveInvitedUserIds(
   const invited = new Set<number>();
 
   if (audience.lodgeIds.length > 0) {
-    const rows = await eventsRepo.findUsersInLodge(audience.lodgeIds[0], conn);
+    // Members of every selected lodge are invited (deduped via the Set).
+    const rows = await eventsRepo.findUsersInLodges(audience.lodgeIds, conn);
     for (const row of rows) {
       const uid = Number(row.uid);
       if (Number.isFinite(uid)) invited.add(uid);
@@ -181,6 +175,5 @@ export async function syncEventAudience(
 }
 
 export const EVENT_AUDIENCE_ERRORS = {
-  singleLodge: SINGLE_LODGE_ERROR,
   audienceRequired: AUDIENCE_REQUIRED_ERROR,
 };

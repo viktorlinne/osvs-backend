@@ -49,7 +49,7 @@ describe("eventsController audience validation", () => {
     mockedUpdateEvent.mockResolvedValue(undefined);
   });
 
-  it("rejects event creation when more than one lodge is submitted", async () => {
+  it("accepts event creation with several lodges", async () => {
     const response = await request(buildApp()).post("/events").send({
       title: "Founders Meeting",
       description: "Annual meeting",
@@ -58,16 +58,11 @@ describe("eventsController audience validation", () => {
       lodgeIds: [1, 2],
     });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({
-      message: "Ett möte kan bara ha en loge",
-      details: {
-        fields: {
-          lodgeIds: "Ett möte kan bara ha en loge",
-        },
-      },
-    });
-    expect(mockedCreateEventWithAudience).not.toHaveBeenCalled();
+    expect(response.status).toBe(201);
+    expect(mockedCreateEventWithAudience).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Founders Meeting" }),
+      { lodgeIds: [1, 2], groupIds: [], userIds: [] },
+    );
   });
 
   it("rejects event creation when no audience source is selected", async () => {
@@ -90,21 +85,17 @@ describe("eventsController audience validation", () => {
     expect(mockedCreateEventWithAudience).not.toHaveBeenCalled();
   });
 
-  it("rejects event update when more than one lodge is submitted", async () => {
+  it("accepts event update with several lodges", async () => {
     const response = await request(buildApp()).put("/events/5").send({
       lodgeIds: [1, 2],
     });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({
-      message: "Ett möte kan bara ha en loge",
-      details: {
-        fields: {
-          lodgeIds: "Ett möte kan bara ha en loge",
-        },
-      },
-    });
-    expect(mockedUpdateEvent).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(mockedUpdateEvent).toHaveBeenCalledWith(
+      5,
+      {},
+      { lodgeIds: [1, 2], groupIds: [], userIds: [] },
+    );
   });
 
   it("rejects event update when audience fields are explicitly cleared", async () => {
