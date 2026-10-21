@@ -858,6 +858,7 @@ export const swaggerSpec = {
           dateOfBirth: { type: "string" },
           work: { type: "string", nullable: true },
           mobile: { type: "string" },
+          homeNumber: { type: "string", nullable: true },
           city: { type: "string" },
           address: { type: "string" },
           zipcode: { type: "string" },

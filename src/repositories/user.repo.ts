@@ -198,6 +198,7 @@ export async function updateUserProfile(
     dateOfBirth: string;
     work?: string | null;
     mobile?: string;
+    homeNumber?: string | null;
     city?: string;
     address?: string;
     zipcode?: string;
@@ -230,6 +231,10 @@ export async function updateUserProfile(
   if (typeof data.mobile !== "undefined") {
     fields.push("mobile = ?");
     params.push(data.mobile ?? null);
+  }
+  if (typeof data.homeNumber !== "undefined") {
+    fields.push("homeNumber = ?");
+    params.push(data.homeNumber ? data.homeNumber : null);
   }
   if (typeof data.city !== "undefined") {
     fields.push("city = ?");

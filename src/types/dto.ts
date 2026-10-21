@@ -20,6 +20,7 @@ export type UpdateUserProfileBody = Partial<{
   dateOfBirth: string;
   work?: string | null;
   mobile?: string;
+  homeNumber?: string | null;
   city?: string;
   address?: string;
   zipcode?: string;

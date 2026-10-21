@@ -109,6 +109,7 @@ export async function updateUserProfile(
     dateOfBirth: string;
     work?: string | null;
     mobile?: string;
+    homeNumber?: string | null;
     city?: string;
     address?: string;
     zipcode?: string;

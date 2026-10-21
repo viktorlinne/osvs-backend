@@ -179,6 +179,7 @@ export function validateUpdateUserProfileBody(
   maybeAssignString("dateOfBirth");
   maybeAssignString("work", true);
   maybeAssignString("mobile");
+  maybeAssignString("homeNumber", true);
   maybeAssignString("city");
   maybeAssignString("address");
   maybeAssignString("zipcode");
