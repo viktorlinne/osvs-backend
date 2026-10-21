@@ -19,6 +19,10 @@ host's limit.
 | Meal link | Optional "svarslänk": appends `events/?l=<lodge>&e=<email>` for meal booking. **Insecure** (no login, the email address is the key), so don't reuse it; the new app's event page requires login |
 | Volume (IIS logs 2026-03-19 → 09-15) | 113 sendouts (≈19/month, 46 in Aug); longest request 184 s; largest list 194 members |
 
+## Verified end-to-end (2026-10-21)
+
+The test backend was configured with `SMTP_HOST=smtp.websupport.se`, `SMTP_PORT=465`, `SMTP_SECURE=true`, `SMTP_USER=noreply@osvs.se` and `MAIL_FROM=OSVS <noreply@osvs.se>` (password in the gitignored `.env`). SMTP login worked on 465 (SSL) and 587 (STARTTLS). The developer created a member with his private address. The "Sätt lösenord" and "Återställ lösenord" mails both arrived, and both links worked. MAIL_FROM must be an @osvs.se address.
+
 ## What the new app already has (`src/services/mailService.ts`)
 
 - nodemailer transport from env: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
