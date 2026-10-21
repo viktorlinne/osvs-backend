@@ -42,10 +42,9 @@ not store meaningfully anyway.
   (`"abc"` = the standard SHA-256 test vector `ba7816bf…`), ASCII + salt,
   `ö å ä` + salt, a doubled apostrophe, and `€` (truncation). For åäö and €,
   plain UTF-8 hashing gives different results, so the byte rule matters.
-- **Real credential (pending).** The known test login has not been checked
-  against its stored hash yet, because it needs the password typed by the
-  developer locally (e.g. `! node -e "…"` with the function above). Never commit
-  it.
+- **Real credential (done 2026-10-21).** The developer checked the known test login (contacts.Id 738)
+  locally with `scripts/migration/check-legacy-password.js` (hidden input; the password never left
+  his terminal): **MATCH**. The reimplemented scheme verifies a real stored hash.
 
 ## Options and recommendation
 
