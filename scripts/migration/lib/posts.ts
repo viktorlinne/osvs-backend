@@ -193,7 +193,14 @@ export function postMedia(row: NewsRow, files: PostFiles): { picture: PostPictur
     }
     missing.push(rel);
   }
-  const linked = [...new Set(hrefs.map(oldSitePath).filter((p): p is string => !!p && /\.[a-z0-9]{2,5}$/i.test(p)))];
+  // Links to old-site pages (default.asp, kalender.asp …) are navigation, not files.
+  const linked = [
+    ...new Set(
+      hrefs
+        .map(oldSitePath)
+        .filter((p): p is string => !!p && /\.[a-z0-9]{2,5}$/i.test(p) && !/\.(asp|aspx|html?|php)$/i.test(p)),
+    ),
+  ];
   if (!picture) {
     const img = linked.find((p) => IMAGE_EXT.test(p) && files.exists(p)) ?? files.folderFiles(row.Id).find((p) => IMAGE_EXT.test(p));
     if (img) picture = { kind: "file", path: img, name: img.split("/").pop() as string };

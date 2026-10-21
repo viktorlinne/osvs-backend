@@ -417,13 +417,6 @@ export function transform(extract: Extract, options: TransformOptions, env: Tran
       });
     }
   }
-  if (posts.length) {
-    registry.add({
-      category: "post",
-      subject: `${posts.length} posts`,
-      detail: "HTML kept as-is: <img src=\"../db/news/<id>/…\"> links point at the old site and will not resolve in the new app",
-    });
-  }
 
   const stats: Record<string, number | string> = {
     contacts: contacts.length,
