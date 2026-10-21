@@ -1,8 +1,13 @@
 # Access → MySQL migration plan (osvs.mdb → osvs-backend schema)
 
-Status: **draft, pending sign-off before any code is written**
+Status: **implemented and trial-imported (2026-10-21); final import at cutover**
 Source: `C:\OSVS\osvs.mdb` (Jet DB, password-protected — see `.env.migration` note below)
-Target: current live schema in `osvs-backend` (migrations `001`–`005`)
+Target: current live schema in `osvs-backend` (migrations `001`–`012`)
+**Cutover date: 2026-12-31** (set by the developer 2026-10-21). Scope rules:
+posts from the 12 months before cutover (2025-12-31 → 2026-12-31, `news` only);
+"coming events" = dated on/after 2026-12-31; past events are migrated with
+attendance history; all 53 mail lists become groups; all users incl. archived.
+Run the final import with `--cutover=2026-12-31` on a fresh extract.
 One-time migration. The old Access-backed site is retired after cutover; this
 repo's schema becomes the sole source of truth going forward.
 
