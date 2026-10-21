@@ -51,7 +51,7 @@ describe("migration events", () => {
     expect(t.food).toBe(false);
   });
 
-  it("maps attendance flags with tri-state rsvp around the cutover", () => {
+  it("maps attendance flags; booked meal or attendance means rsvp=1", () => {
     const days = new Map([[1, "2026-01-10"], [2, "2026-11-01"]]);
     const matrikel = (c: number) => (c === 99 ? undefined : c === 3 ? 2 : c);
     const { rows, stats } = mapAttendance(
@@ -70,10 +70,10 @@ describe("migration events", () => {
       "2026-10-21",
     );
     expect(rows).toEqual([
-      { matrikelnummer: 1, eventKey: "events:1", rsvp: 2, bookFood: 1, attended: 1 },
+      { matrikelnummer: 1, eventKey: "events:1", rsvp: 1, bookFood: 1, attended: 1 },
       { matrikelnummer: 1, eventKey: "events:2", rsvp: 1, bookFood: 1, attended: 0 },
-      { matrikelnummer: 2, eventKey: "events:1", rsvp: 2, bookFood: 1, attended: 1 },
-      { matrikelnummer: 4, eventKey: "events:2", rsvp: 2, bookFood: 0, attended: 1 },
+      { matrikelnummer: 2, eventKey: "events:1", rsvp: 1, bookFood: 1, attended: 1 },
+      { matrikelnummer: 4, eventKey: "events:2", rsvp: 1, bookFood: 0, attended: 1 },
     ]);
     expect(stats).toEqual({
       skippedNoFlags: 1, skippedMissingContact: 1, skippedMissingEvent: 1, mergedDuplicates: 1, past: 2, coming: 2,
