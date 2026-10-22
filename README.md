@@ -45,6 +45,31 @@ Important required values:
 Security-sensitive runtime config is validated at startup in
 [`src/config/env.ts`](./src/config/env.ts).
 
+### Rate limits
+
+Auth endpoints are rate limited in memory (per process) over a 15-minute
+window. Every limiter keys on `req.ip`, so set `TRUST_PROXY=1` when running
+behind nginx (one proxy hop); otherwise all members share the proxy's IP.
+
+| Endpoint | Per session / account | Per client IP |
+| --- | --- | --- |
+| `POST /auth/login` | 10 per IP + e-mail (`AUTH_LOGIN_RATE_PER_ACCOUNT`) | 100 (`AUTH_LOGIN_RATE_PER_IP`) |
+| `POST /auth/refresh` | 30 per refresh cookie (`AUTH_REFRESH_RATE_PER_SESSION`) | 300 (`AUTH_REFRESH_RATE_PER_IP`) |
+| `POST /auth/heartbeat` | 60 per refresh cookie (`AUTH_HEARTBEAT_RATE_PER_SESSION`) | 1200 (`AUTH_HEARTBEAT_RATE_PER_IP`) |
+| `POST /auth/forgot-password` | - | 10 |
+| `POST /auth/password-actions/*` | - | 20 |
+| `POST /auth/register` | - | 10 per hour |
+
+Session-renewal limiters key on a SHA-256 hash of the refresh-token cookie, so
+members on a shared network (lodge Wi-Fi, NAT) have independent budgets; the
+per-IP ceiling is abuse protection. Requests without a refresh cookie count
+only toward the per-IP ceiling. Because the refresh token rotates on every
+successful renewal, the per-session budget mainly stops a client from
+replaying or looping on one token. Limits count every request regardless of
+outcome, so they never reveal whether a token or e-mail address is valid. A
+blocked request gets `429` with the shared error envelope; clients must not
+treat `429` from `/auth/refresh` as a logout.
+
 ## API Docs
 
 In non-production environments the backend exposes:

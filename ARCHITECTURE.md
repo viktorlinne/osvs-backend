@@ -89,6 +89,19 @@ Current auth model:
 - cookie-authenticated mutating requests require a trusted `Origin` or
   `Referer`
 
+Auth rate limiting lives in `src/middleware/authRateLimit.ts` and is wired in
+`src/routes/auth.ts` with limits from `getAuthRateLimitConfig()` in
+`src/config/env.ts`:
+
+- login: per IP + e-mail, plus a per-IP ceiling
+- refresh and heartbeat: per session (SHA-256 of the refresh cookie; requests
+  without the cookie count only per IP), plus a higher per-IP ceiling
+- forgot-password, password actions, register: per IP
+- all limiters use `req.ip`, which follows `TRUST_PROXY` (`app.set("trust
+  proxy")` in `src/app.ts`); the 429 body is the shared error envelope
+
+See README "Rate limits" for the numbers.
+
 ## Controllers
 
 Controllers:

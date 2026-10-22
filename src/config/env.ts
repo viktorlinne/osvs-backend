@@ -38,11 +38,29 @@ type MailingConfig = {
   devAllowlist: string[];
 };
 
+type AuthRateLimitConfig = {
+  /** Shared window for the auth limiters below (15 minutes). */
+  windowMs: number;
+  /** Login attempts per IP + e-mail address (AUTH_LOGIN_RATE_PER_ACCOUNT). */
+  loginPerAccount: number;
+  /** Login attempts per client IP (AUTH_LOGIN_RATE_PER_IP). */
+  loginPerIp: number;
+  /** /auth/refresh calls per refresh-token cookie (AUTH_REFRESH_RATE_PER_SESSION). */
+  refreshPerSession: number;
+  /** /auth/refresh calls per client IP (AUTH_REFRESH_RATE_PER_IP). */
+  refreshPerIp: number;
+  /** /auth/heartbeat calls per refresh-token cookie (AUTH_HEARTBEAT_RATE_PER_SESSION). */
+  heartbeatPerSession: number;
+  /** /auth/heartbeat calls per client IP (AUTH_HEARTBEAT_RATE_PER_IP). */
+  heartbeatPerIp: number;
+};
+
 let cachedJwtSecret: string | null = null;
 let cachedBrowserOriginConfig: BrowserOriginConfig | null = null;
 let cachedDatabaseConfig: DatabaseConfig | null = null;
 let cachedMailConfig: MailConfig | null = null;
 let cachedMailingConfig: MailingConfig | null = null;
+let cachedAuthRateLimitConfig: AuthRateLimitConfig | null = null;
 
 function hasExplicitEnv(name: string): boolean {
   return Object.prototype.hasOwnProperty.call(process.env, name);
@@ -265,10 +283,44 @@ export function resetMailingConfigCache(): void {
   cachedMailingConfig = null;
 }
 
+function readPositiveIntEnv(name: string, fallback: number): number {
+  return parseIntegerEnv(name, process.env[name]?.trim() || String(fallback));
+}
+
+/**
+ * Auth rate limits, all per 15-minute window (see README "Rate limits").
+ * Session-renewal endpoints are keyed per session (hash of the refresh-token
+ * cookie) with a higher per-IP ceiling so members sharing one network (lodge
+ * Wi-Fi, NAT) do not exhaust each other's budget.
+ */
+export function getAuthRateLimitConfig(): AuthRateLimitConfig {
+  if (cachedAuthRateLimitConfig !== null) {
+    return cachedAuthRateLimitConfig;
+  }
+
+  cachedAuthRateLimitConfig = {
+    windowMs: 15 * 60 * 1000,
+    loginPerAccount: readPositiveIntEnv("AUTH_LOGIN_RATE_PER_ACCOUNT", 10),
+    loginPerIp: readPositiveIntEnv("AUTH_LOGIN_RATE_PER_IP", 100),
+    refreshPerSession: readPositiveIntEnv("AUTH_REFRESH_RATE_PER_SESSION", 30),
+    refreshPerIp: readPositiveIntEnv("AUTH_REFRESH_RATE_PER_IP", 300),
+    heartbeatPerSession: readPositiveIntEnv("AUTH_HEARTBEAT_RATE_PER_SESSION", 60),
+    heartbeatPerIp: readPositiveIntEnv("AUTH_HEARTBEAT_RATE_PER_IP", 1200),
+  };
+
+  return cachedAuthRateLimitConfig;
+}
+
+/** Test helper: drop cached auth rate-limit config so env changes take effect. */
+export function resetAuthRateLimitConfigCache(): void {
+  cachedAuthRateLimitConfig = null;
+}
+
 export default {
   getJwtSecret,
   getBrowserOriginConfig,
   getDatabaseConfig,
   getMailConfig,
   getMailingConfig,
+  getAuthRateLimitConfig,
 };
