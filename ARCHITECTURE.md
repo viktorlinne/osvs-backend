@@ -120,7 +120,7 @@ Repositories:
 Schema references:
 
 - `src/db/schema.sql` — baseline snapshot for reference and tests
-- `src/db/seed.sql` — seed data reference
+- `src/db/seed/seed.sql` — lookup/reference data only (no mock content)
 - `src/db/migrations/*.sql` — live incremental migration source
 
 ## Migrations

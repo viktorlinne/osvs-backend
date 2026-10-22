@@ -41,7 +41,8 @@ The following can be treated as independent tracks for large features:
 If persistence changes are needed:
 
 1. update `src/db/schema.sql`
-2. update `src/db/seed.sql` when lookup data or seeded shape changes
+2. update `src/db/seed/seed.sql` when lookup data changes (lookup tables only,
+   idempotent upserts; no mock content)
 3. update repositories with parameterized SQL
 4. add schema-focused tests when the change is easy to regress
 

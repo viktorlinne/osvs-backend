@@ -27,7 +27,9 @@ as security-sensitive and add or update backend tests.
 Schema reference and bootstrap data:
 
 - `src/db/schema.sql` — baseline reference snapshot
-- `src/db/seed.sql` — seed data reference
+- `src/db/seed/seed.sql` — lookup/reference data only (roles, achievements,
+  officials, allergies, lodges); never add mock members, posts or events —
+  real content comes from the Access loader (`npm run migrate:legacy`)
 - `src/db/migrations/*.sql` — incremental migrations applied by the runner
 
 Migration command:
