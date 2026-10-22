@@ -535,7 +535,17 @@ export async function listEventAttendancesHandler(
   }
 
   const attendances = await eventsService.listEventAttendances(id);
-  return res.status(200).json({ attendances });
+  if (isPrivileged) return res.status(200).json({ attendances });
+
+  // Payment status is for Admin/Editor only; invited members still see who
+  // attends (and allergies, per the member directory policy).
+  const withoutPayments = attendances.map((row) => {
+    const rest: Record<string, unknown> = { ...row };
+    delete rest.paymentStatus;
+    delete rest.paymentPaid;
+    return rest;
+  });
+  return res.status(200).json({ attendances: withoutPayments });
 }
 
 export async function patchEventAttendanceHandler(
