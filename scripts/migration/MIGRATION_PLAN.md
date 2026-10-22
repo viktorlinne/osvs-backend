@@ -157,8 +157,8 @@ download (2026-10-21: 11 post images and 12 profile photos fetched from the live
 `C:OSVSFTP OSVS 2026-10-21 supplement`). Trial import and reconciliation: `RECONCILIATION.md`.
 
 **Seed = lookups only; real data everywhere (2026-10-22, developer decision):** `src/db/seed/seed.sql`
-holds only lookup rows (roles, achievements, officials 1–44, allergies, lodges incl. the Damklubb
-placeholders 6–7); the mock users/posts/events/documents/groups and the add-on seed files were removed.
+holds only lookup rows (roles, achievements, officials 1–44, allergies, lodges incl. the Damklubbar
+6–7, which copy Orion's and Stamlogen's details until the client supplies their own); the mock users/posts/events/documents/groups and the add-on seed files were removed.
 Development, staging rehearsal and production all get their content the same way:
 
 ```bash

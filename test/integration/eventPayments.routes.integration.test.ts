@@ -109,7 +109,10 @@ function buildApp() {
 }
 
 beforeEach(() => {
-  mockedFindById.mockResolvedValue(undefined);
+  // An existing, active (non-archived) member; auth rejects unknown users.
+  mockedFindById.mockResolvedValue(
+    { matrikelnummer: 1, archive: null, revokedAt: null } as never,
+  );
   mockedIsJtiRevoked.mockResolvedValue(false);
   mockedGetUserRoles.mockResolvedValue(["Member"]);
   mockedGetEventById.mockResolvedValue({ id: 5, title: "Mårtensloge" } as never);

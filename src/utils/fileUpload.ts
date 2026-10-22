@@ -184,6 +184,12 @@ export async function uploadToStorage(
   }
 }
 
+/** PDF files start with "%PDF-" (some writers put a few bytes before it). */
+export function looksLikePdf(buffer: Buffer): boolean {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 5) return false;
+  return buffer.subarray(0, 1024).indexOf("%PDF-") !== -1;
+}
+
 function sanitizeExtension(raw: string): string {
   const ext = raw.toLowerCase();
   return /^\.[a-z0-9]+$/.test(ext) ? ext : "";
@@ -219,6 +225,12 @@ export async function uploadRawToStorage(
     if (allowed.length > 0 && !allowed.includes(extension)) {
       throw buildUploadValidationError(fieldName, getUploadTypeMessage(fieldName));
     }
+  }
+
+  // The declared MIME type comes from the client; check the bytes too so a
+  // non-PDF is never stored and served as application/pdf.
+  if (extension === ".pdf" && !looksLikePdf(file.buffer)) {
+    throw buildUploadValidationError(fieldName, getUploadContentMessage(fieldName));
   }
 
   const rand = Math.random().toString(36).slice(2, 10);

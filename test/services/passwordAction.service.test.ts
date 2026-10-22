@@ -164,6 +164,19 @@ describe("passwordActionService", () => {
     expect(mockedSendPasswordActionMail).not.toHaveBeenCalled();
   });
 
+  it("sends no reset email to an archived member (audit A-01)", async () => {
+    mockedFindByEmail.mockResolvedValue({
+      matrikelnummer: 8,
+      email: "former@example.com",
+      archive: "Urgången",
+    } as never);
+
+    await requestPasswordReset("former@example.com");
+
+    expect(mockedCreatePasswordActionToken).not.toHaveBeenCalled();
+    expect(mockedSendPasswordActionMail).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid or expired password action tokens during verification", async () => {
     mockedFindPasswordActionToken.mockResolvedValue(null);
 

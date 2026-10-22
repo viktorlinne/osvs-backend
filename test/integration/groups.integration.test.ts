@@ -17,7 +17,7 @@ jest.mock("../../src/repositories/groups.repo", () => ({
   findGroupIdByName: jest.fn(),
   insertGroup: jest.fn(),
   updateGroup: jest.fn(),
-  deleteGroup: jest.fn(),
+  softDeleteGroup: jest.fn(),
   listGroupMembers: jest.fn(),
   selectExistingUserIds: jest.fn(),
   selectMemberIdsInGroup: jest.fn(),
@@ -81,14 +81,17 @@ const sampleGroup: Group = {
 };
 
 beforeEach(() => {
-  mockedFindById.mockResolvedValue(undefined);
+  // An existing, active (non-archived) member; auth rejects unknown users.
+  mockedFindById.mockResolvedValue(
+    { matrikelnummer: 1, archive: null, revokedAt: null } as never,
+  );
   mockedIsJtiRevoked.mockResolvedValue(false);
   mockedGetUserRoles.mockResolvedValue(["Admin"]);
   repo.findGroupById.mockResolvedValue(sampleGroup);
   repo.findGroupIdByName.mockResolvedValue(null);
   repo.insertGroup.mockResolvedValue(42);
   repo.updateGroup.mockResolvedValue(undefined);
-  repo.deleteGroup.mockResolvedValue(1);
+  repo.softDeleteGroup.mockResolvedValue(1);
   repo.selectExistingUserIds.mockImplementation(async (ids) => ids);
   repo.selectMemberIdsInGroup.mockResolvedValue([]);
   repo.insertMemberships.mockResolvedValue(undefined);
@@ -135,7 +138,7 @@ describe("groups routes: authorization", () => {
     expect(response.body).toEqual({ message: "Åtkomst nekad" });
     expect(repo.insertGroup).not.toHaveBeenCalled();
     expect(repo.updateGroup).not.toHaveBeenCalled();
-    expect(repo.deleteGroup).not.toHaveBeenCalled();
+    expect(repo.softDeleteGroup).not.toHaveBeenCalled();
     expect(repo.insertMemberships).not.toHaveBeenCalled();
     expect(repo.deleteMembership).not.toHaveBeenCalled();
   });
@@ -263,7 +266,7 @@ describe("groups routes: validation", () => {
 describe("groups routes: not found", () => {
   beforeEach(() => {
     repo.findGroupById.mockResolvedValue(null);
-    repo.deleteGroup.mockResolvedValue(0);
+    repo.softDeleteGroup.mockResolvedValue(0);
   });
 
   it.each([
@@ -329,7 +332,11 @@ describe("groups routes: updates and membership", () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true });
-    expect(repo.deleteGroup).toHaveBeenCalledWith(5);
+    expect(repo.softDeleteGroup).toHaveBeenCalledWith(
+      5,
+      expect.any(Number),
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/),
+    );
   });
 
   it("treats duplicate memberships as idempotent", async () => {

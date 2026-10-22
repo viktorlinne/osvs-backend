@@ -316,6 +316,98 @@ export function resetAuthRateLimitConfigCache(): void {
   cachedAuthRateLimitConfig = null;
 }
 
+export type ProductionConfigReport = {
+  /** Settings that make a production start unsafe; startup is refused. */
+  errors: string[];
+  /** Settings that are allowed but probably wrong; logged at startup. */
+  warnings: string[];
+};
+
+const MIN_PRODUCTION_JWT_SECRET_LENGTH = 32;
+
+/**
+ * deploy/env.production.example uses "<...>" placeholders such as
+ * "<db password>" or "<contact email>". An angle-bracketed e-mail address
+ * ("OSVS <noreply@osvs.se>") is a real value, so "<...>" containing "@" is not
+ * a placeholder.
+ */
+function looksLikeTemplateValue(value: string): boolean {
+  return /<[^<>@]*>/.test(value);
+}
+
+/**
+ * Production-only sanity checks on top of the per-setting validation above.
+ * Returns no findings outside NODE_ENV=production. Pure (reads `env` only),
+ * so it can be tested without touching process.env.
+ */
+export function checkProductionConfig(
+  env: Record<string, string | undefined> = process.env,
+): ProductionConfigReport {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (env.NODE_ENV !== "production") return { errors, warnings };
+
+  const jwtSecret = (env.JWT_SECRET ?? "").trim();
+  if (jwtSecret.length < MIN_PRODUCTION_JWT_SECRET_LENGTH || looksLikeTemplateValue(jwtSecret)) {
+    errors.push(
+      `JWT_SECRET must be a random value of at least ${MIN_PRODUCTION_JWT_SECRET_LENGTH} characters (e.g. openssl rand -base64 48)`,
+    );
+  }
+
+  const dbPass = env.DB_PASS ?? "";
+  if (dbPass.length === 0 || /^<[^<>]*>$/.test(dbPass.trim())) {
+    errors.push("DB_PASS must be set to the database user's real password in production");
+  }
+
+  const frontendUrl = (env.FRONTEND_URL ?? "").trim();
+  if (!/^https:\/\//i.test(frontendUrl)) {
+    errors.push("FRONTEND_URL must be an https:// origin in production (secure cookies, links in e-mails)");
+  }
+
+  for (const name of ["SMTP_PASS", "SMTP_USER", "MAIL_FROM", "NOMINATIM_USER_AGENT", "BACKEND_URL"]) {
+    const value = env[name];
+    if (typeof value === "string" && looksLikeTemplateValue(value)) {
+      errors.push(`${name} still contains a <placeholder> from env.production.example`);
+    }
+  }
+
+  const trustProxy = (env.TRUST_PROXY ?? "").trim().toLowerCase();
+  if (trustProxy !== "1" && trustProxy !== "true") {
+    warnings.push(
+      "TRUST_PROXY is not 1: behind nginx every client shares the proxy IP, so the per-IP rate limits apply to all members together",
+    );
+  }
+  if ((env.DB_USER ?? "").trim() === "root") {
+    warnings.push("DB_USER is root: use a dedicated database user limited to the app database");
+  }
+  if ((env.CRON_RUNNER ?? "").trim().toLowerCase() === "false") {
+    warnings.push(
+      "CRON_RUNNER=false: no group mail is sent, no token cleanup and no yearly fees run in this process",
+    );
+  }
+  if (/localhost|127\.0\.0\.1|\.local\b/i.test(env.SMTP_HOST ?? "") || /\.local\b/i.test(env.MAIL_FROM ?? "")) {
+    warnings.push("SMTP_HOST / MAIL_FROM look like development values (local SMTP catcher)");
+  }
+
+  return { errors, warnings };
+}
+
+/**
+ * Called once at server start: throws (refusing to start) on production
+ * errors and returns the warnings for the caller to log.
+ */
+export function assertProductionConfig(
+  env: Record<string, string | undefined> = process.env,
+): string[] {
+  const { errors, warnings } = checkProductionConfig(env);
+  if (errors.length > 0) {
+    throw new Error(
+      `Refusing to start with an unsafe production configuration:\n - ${errors.join("\n - ")}`,
+    );
+  }
+  return warnings;
+}
+
 export default {
   getJwtSecret,
   getBrowserOriginConfig,

@@ -269,3 +269,33 @@ describe("listOutstandingEventPayments", () => {
     });
   });
 });
+
+describe("applyEventPaymentChange: concurrent first payment (audit A-12)", () => {
+  it.each(["ER_DUP_ENTRY", "ER_LOCK_DEADLOCK"])(
+    "turns %s on the missing-row insert into a 409",
+    async (code) => {
+      jest.clearAllMocks();
+      mocked.lockEventPayment.mockResolvedValue(null);
+      mocked.insertPendingEventPayment.mockRejectedValue(
+        Object.assign(new Error("conflict"), { code }),
+      );
+
+      const attempt = applyEventPaymentChange(conn, { ...base, paid: true, note: null });
+      await expect(attempt).rejects.toBeInstanceOf(HttpError);
+      await expect(attempt).rejects.toMatchObject({ status: 409 });
+      expect(mocked.markEventPaymentPaid).not.toHaveBeenCalled();
+      expect(mocked.insertEventPaymentLog).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rethrows other insert errors unchanged", async () => {
+    jest.clearAllMocks();
+    mocked.lockEventPayment.mockResolvedValue(null);
+    const failure = Object.assign(new Error("gone"), { code: "PROTOCOL_CONNECTION_LOST" });
+    mocked.insertPendingEventPayment.mockRejectedValue(failure);
+
+    await expect(
+      applyEventPaymentChange(conn, { ...base, paid: true, note: null }),
+    ).rejects.toBe(failure);
+  });
+});

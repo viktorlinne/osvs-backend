@@ -20,8 +20,10 @@ Environment=NODE_ENV=production
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=5
-# Give in-flight requests and a mail-worker tick time to finish.
-TimeoutStopSec=20
+# SIGTERM starts a graceful shutdown (src/index.ts): stop accepting requests,
+# finish in-flight ones and the mail being sent, close the DB pool. The app
+# gives up after 25 s; systemd sends SIGKILL after this.
+TimeoutStopSec=30
 
 # Hardening
 NoNewPrivileges=true

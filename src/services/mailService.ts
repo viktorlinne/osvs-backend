@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import { getBrowserOriginConfig, getMailConfig } from "../config/env";
 import type { PasswordActionPurpose } from "../types";
 import logger from "../utils/logger";
@@ -20,9 +20,9 @@ type PasswordActionMailInput = {
   expiresAt: Date;
 };
 
-let transporterPromise: Promise<nodemailer.Transporter> | null = null;
+let transporterPromise: Promise<Transporter> | null = null;
 
-async function getTransporter(): Promise<nodemailer.Transporter> {
+async function getTransporter(): Promise<Transporter> {
   if (transporterPromise) {
     return transporterPromise;
   }
@@ -171,6 +171,8 @@ function buildPasswordActionCopy(
   });
   const name = formatRecipientName(input.toName);
   const greeting = name ? `Hej ${name},` : "Hej,";
+  // The name is member-editable profile data: escape it for the HTML part.
+  const greetingHtml = escapeHtml(greeting);
 
   if (input.purpose === "SET_PASSWORD") {
     return {
@@ -185,7 +187,7 @@ Länken gäller till ${expiresAt}.
 Om du inte väntade dig det här mejlet kan du ignorera det.
 `,
       html: buildEmailHtml({
-        greeting,
+        greeting: greetingHtml,
         body: "Din medlemssida i OSVS är nu skapad. Välj ditt lösenord nedan för att aktivera ditt konto.",
         buttonHref: link,
         buttonLabel: "Välj lösenord",
@@ -207,7 +209,7 @@ Länken gäller till ${expiresAt}.
 Om du inte begärde detta kan du ignorera mejlet.
 `,
     html: buildEmailHtml({
-      greeting,
+      greeting: greetingHtml,
       body: "Vi har fått en begäran om att återställa ditt lösenord till OSVS. Klicka nedan för att fortsätta.",
       buttonHref: link,
       buttonLabel: "Återställ lösenord",

@@ -1612,7 +1612,7 @@ export const swaggerSpec = {
         tags: ["Auth"],
         summary: "Login",
         description:
-          "Authenticates with email/password and sets HTTP-only access and refresh cookies.",
+          "Authenticates with email/password and sets HTTP-only access and refresh cookies (SameSite=Lax unless `COOKIE_SAMESITE` says otherwise). `email` and `password` must be strings. A member with an archive status (Avliden, Urgången, Avförd) gets 401 with an account-inactive message and `details.reason: \"ACCOUNT_INACTIVE\"` once the password matched (the login page shows that message so the member can ask an Admin or Editor to restore the account); archived members are also rejected by every authenticated endpoint and by /auth/refresh, and get no password-reset mail.",
         operationId: "login",
         requestBody: {
           required: true,
@@ -1851,9 +1851,9 @@ export const swaggerSpec = {
         tags: ["Auth"],
         summary: "Logout current session",
         description:
-          "Revokes current session tokens and clears auth cookies on this device.",
+          "Revokes current session tokens and clears auth cookies on this device. Does not require a valid access token: an expired access cookie must not keep the refresh session alive, so the refresh cookie alone is enough.",
         operationId: "logout",
-        security: authSecurity,
+        security: [...authSecurity, { refreshCookieAuth: [] }],
         responses: {
           "200": {
             description: "Session logged out.",
@@ -2184,7 +2184,7 @@ export const swaggerSpec = {
         tags: ["Users"],
         summary: "Update another user's profile",
         description:
-          "Updates target user profile (Admin/Editor), including the flags `feeExempt` (Befriad från årsavgift) and `standingList` (Ständiga listan). The response user includes both flags.",
+          "Updates target user profile (Admin/Editor), including the flags `feeExempt` (Befriad från årsavgift) and `standingList` (Ständiga listan). The response user includes both flags. Setting `archive` ends all of the member's sessions and blocks login. Changing `archive` returns 403 when the target is the caller (archiving yourself) or when an Editor changes it for an Admin.",
         operationId: "putUserByMatrikelnummer",
         security: authSecurity,
         parameters: [
@@ -3142,7 +3142,8 @@ export const swaggerSpec = {
       delete: {
         tags: ["Events"],
         summary: "Delete event",
-        description: "Deletes event by id (Admin only).",
+        description:
+          "Soft deletes an event (Admin only): sets deletedAt/deletedBy; the event, its audience, attendances and payments (incl. paid ones) stay in the database and every read skips it. 404 when the event does not exist or is already deleted.",
         operationId: "deleteEventById",
         security: authSecurity,
         parameters: [
@@ -3166,6 +3167,7 @@ export const swaggerSpec = {
           ...badRequest,
           ...unauthorized,
           ...forbidden,
+          ...notFound,
           ...internal,
         },
       },
@@ -3850,7 +3852,8 @@ export const swaggerSpec = {
       delete: {
         tags: ["Posts"],
         summary: "Delete post",
-        description: "Deletes post (Admin only).",
+        description:
+          "Soft deletes a post (Admin only): sets deletedAt/deletedBy; the post, its lodge links and its picture stay in the database and every read skips it. 404 when the post does not exist or is already deleted.",
         operationId: "deletePostById",
         security: authSecurity,
         parameters: [
@@ -3874,6 +3877,7 @@ export const swaggerSpec = {
           ...badRequest,
           ...unauthorized,
           ...forbidden,
+          ...notFound,
           ...internal,
         },
       },
@@ -4075,7 +4079,7 @@ export const swaggerSpec = {
         tags: ["Groups"],
         summary: "Delete group",
         description:
-          "Deletes a group (Admin/Editor). Memberships and event-audience links are removed via FK cascade.",
+          "Soft deletes a group (Admin/Editor): sets deletedAt/deletedBy; memberships and event-audience links stay in the database, but lists, mailings and event audiences skip the group. 404 when the group does not exist or is already deleted.",
         operationId: "deleteGroupById",
         security: authSecurity,
         parameters: [

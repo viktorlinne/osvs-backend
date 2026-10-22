@@ -190,10 +190,6 @@ It is safe to re-run.
 
 ## Testing and CI
 
-CI workflow:
-
-- [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
-
 The backend has a small Jest + Supertest suite focused on auth, authorization,
 and recent schema safety checks.
 

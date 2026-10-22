@@ -87,7 +87,7 @@ async function insertEventRelationPairs(
 
 export async function listEvents(): Promise<EventRow[]> {
   const sql =
-    "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events ORDER BY startDate DESC";
+    "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE deletedAt IS NULL ORDER BY startDate DESC";
   const [rows] = await pool.query(sql);
   return asRows<EventRow>(rows);
 }
@@ -101,14 +101,14 @@ export async function listUpcomingEvents(
   const safeLimit = Number.isFinite(limit)
     ? Math.max(1, Math.min(50, Math.floor(limit)))
     : 10;
-  const sql = `SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE startDate >= ? ORDER BY startDate ASC LIMIT ${safeLimit}`;
+  const sql = `SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE deletedAt IS NULL AND startDate >= ? ORDER BY startDate ASC LIMIT ${safeLimit}`;
   const [rows] = await executor(sql, [nowStockholm]);
   return asRows<EventRow>(rows);
 }
 
 export async function findEventById(id: number): Promise<EventRow | null> {
   const [rows] = await pool.query(
-    "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE id = ? LIMIT 1",
+    "SELECT id, title, description, lodgeMeeting, food, price, DATE_FORMAT(startDate, '%Y-%m-%d %H:%i:%s') AS startDate, DATE_FORMAT(endDate, '%Y-%m-%d %H:%i:%s') AS endDate FROM events WHERE id = ? AND deletedAt IS NULL LIMIT 1",
     [id],
   );
   const arr = asRows<EventRow>(rows);
@@ -183,7 +183,7 @@ export async function updateEventRecord(
   }
   if (sets.length === 0) return;
   params.push(id);
-  const sql = `UPDATE events SET ${sets.join(", ")} WHERE id = ?`;
+  const sql = `UPDATE events SET ${sets.join(", ")} WHERE id = ? AND deletedAt IS NULL`;
   logger.info(
     { id, fields: sets.length },
     "events.repo: updateEventRecord executing SQL",
@@ -192,8 +192,23 @@ export async function updateEventRecord(
   await executor(sql, params);
 }
 
-export async function deleteEvent(id: number) {
-  await pool.query("DELETE FROM events WHERE id = ?", [id]);
+/**
+ * Soft delete (decision D4): the row, its audience, attendances and payments
+ * stay; reads skip it via `deletedAt IS NULL`. Returns the affected row count
+ * (0 = unknown or already deleted).
+ */
+export async function softDeleteEvent(
+  id: number,
+  deletedBy: number | null,
+  deletedAt: string,
+): Promise<number> {
+  const [result] = await pool.query<ResultSetHeader>(
+    "UPDATE events SET deletedAt = ?, deletedBy = ? WHERE id = ? AND deletedAt IS NULL",
+    [deletedAt, deletedBy, id],
+  );
+  return result && typeof result.affectedRows === "number"
+    ? result.affectedRows
+    : 0;
 }
 
 export async function insertLodgeEvent(
@@ -429,7 +444,7 @@ export async function selectGroupIdsForEvent(
 ): Promise<number[]> {
   const executor = getExecutor(conn);
   const [rows] = await executor(
-    "SELECT gid AS id FROM groups_events WHERE eid = ? ORDER BY gid ASC",
+    "SELECT ge.gid AS id FROM groups_events ge JOIN `groups` g ON g.id = ge.gid AND g.deletedAt IS NULL WHERE ge.eid = ? ORDER BY ge.gid ASC",
     [eventId],
   );
   return asRows<IdRow>(rows)
@@ -493,7 +508,7 @@ export async function listEventsForUser(userId: number): Promise<EventRow[]> {
       DATE_FORMAT(e.startDate, '%Y-%m-%d %H:%i:%s') AS startDate,
       DATE_FORMAT(e.endDate, '%Y-%m-%d %H:%i:%s') AS endDate
     FROM events_attendances ea
-    JOIN events e ON e.id = ea.eid
+    JOIN events e ON e.id = ea.eid AND e.deletedAt IS NULL
     WHERE ea.uid = ?
     ORDER BY e.startDate ASC, e.id ASC
   `;
@@ -696,7 +711,7 @@ export default {
   findEventById,
   insertEvent,
   updateEventRecord,
-  deleteEvent,
+  softDeleteEvent,
   insertLodgeEvent,
   insertGroupEvent,
   insertUserEvent,

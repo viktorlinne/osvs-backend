@@ -24,6 +24,28 @@ export function generateRefreshToken() {
   return crypto.randomBytes(48).toString("hex");
 }
 
+export type AuthCookieSameSite = "lax" | "strict" | "none";
+
+/**
+ * Cookie flags for the auth cookies.
+ *
+ * SameSite defaults to "lax": the Ubuntu deployment serves the SPA and /api
+ * from one origin, so the cookies never need to travel on cross-site
+ * requests, and "lax" keeps them off cross-site POSTs as a second CSRF layer
+ * next to originProtection. Set COOKIE_SAMESITE=none only when the frontend
+ * runs on another site; "none" always implies Secure (browsers require it).
+ */
+export function getAuthCookieSecurity(): {
+  secure: boolean;
+  sameSite: AuthCookieSameSite;
+} {
+  const isProd = process.env.NODE_ENV === "production";
+  const raw = (process.env.COOKIE_SAMESITE ?? "").trim().toLowerCase();
+  const sameSite: AuthCookieSameSite =
+    raw === "strict" || raw === "none" ? raw : "lax";
+  return { secure: isProd || sameSite === "none", sameSite };
+}
+
 export function setAuthCookies(
   res: Response,
   accessToken: string,
@@ -33,9 +55,7 @@ export function setAuthCookies(
   const refreshDaysNum = Number(
     refreshDays ?? process.env.REFRESH_TOKEN_DAYS ?? REFRESH_TOKEN_DEFAULT_DAYS
   );
-  const isProd = process.env.NODE_ENV === "production";
-  const secure = isProd;
-  const sameSite: "none" | "lax" = isProd ? "none" : "lax";
+  const { secure, sameSite } = getAuthCookieSecurity();
 
   res.cookie(ACCESS_COOKIE, accessToken, {
     httpOnly: true,
@@ -52,9 +72,7 @@ export function setAuthCookies(
 }
 
 export function clearAuthCookies(res: Response) {
-  const isProd = process.env.NODE_ENV === "production";
-  const secure = isProd;
-  const sameSite: "none" | "lax" = isProd ? "none" : "lax";
+  const { secure, sameSite } = getAuthCookieSecurity();
 
   res.clearCookie(ACCESS_COOKIE, {
     httpOnly: true,

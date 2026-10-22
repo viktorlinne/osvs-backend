@@ -12,6 +12,7 @@ import {
   revokeAllRefreshTokensForUser,
 } from "./tokenService";
 import { sendPasswordActionMail } from "./mailService";
+import { isArchivedMember } from "./accountStatus";
 import * as userRepo from "../repositories/user.repo";
 import type { PasswordActionPurpose } from "../types";
 import { badRequest, ValidationError } from "../utils/errors";
@@ -93,6 +94,9 @@ export async function requestPasswordReset(email: string): Promise<void> {
   if (!user || !user.matrikelnummer || typeof user.email !== "string") {
     return;
   }
+  // Archived members cannot log in, so they get no reset link (same silent
+  // response as an unknown address).
+  if (isArchivedMember(user)) return;
 
   await issuePasswordAction(
     {

@@ -95,7 +95,7 @@ export async function getPostHandler(
   if (postId === null) return;
 
   const post = await postsService.getPostById(postId);
-  if (!post) return sendError(res, 404, "Inlagg hittades inte");
+  if (!post) return sendError(res, 404, "Inlägget hittades inte");
 
   const pictureUrl = await getPublicUrl(post.picture ?? STORAGE_KEYS.POST_PLACEHOLDER);
   return res.status(200).json({ post: { ...post, pictureUrl } });
@@ -223,7 +223,11 @@ export async function deletePostHandler(
   const postId = parseNumericParam(res, req.params.id, "Ogiltigt inläggs-ID");
   if (postId === null) return;
 
-  await postsService.deletePostAtomic(postId);
+  const deleted = await postsService.deletePostAtomic(
+    postId,
+    req.user?.matrikelnummer ?? null,
+  );
+  if (!deleted) return sendError(res, 404, "Inlägget hittades inte");
 
   return res.status(200).json({ success: true });
 }

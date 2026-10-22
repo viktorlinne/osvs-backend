@@ -160,15 +160,31 @@ Safety gates:
 - blocked unless `DB_NAME` ends with `_dev` or `_test`, unless
   `MIGRATE_ALLOW_ANY_DB=true`
 
+- one run at a time per database (MySQL `GET_LOCK`)
+- applied files are tracked by filename only, so they are frozen:
+  `test/db/migrationsFrozen.test.ts` pins their hashes; change the schema
+  with a new numbered file
+
 This is an incremental migration runner. Production deployments should review
 SQL manually, take backups, and apply during a maintenance window.
 
 ## Background Jobs
 
-Token cleanup cron runs in-process via `src/scripts/cron_runner.ts` when the
-server starts. If the API is horizontally scaled, run cron on a single instance
-only (`CRON_RUNNER=false` on other instances) or move jobs to an external
-scheduler.
+Cron jobs run in-process via `src/scripts/cron_runner.ts` when the server
+starts, then every `CRON_INTERVAL_MS` (24 h): expired-token cleanup
+(`refresh_tokens`, `revoked_tokens`, and `password_action_tokens` 7 days after
+expiry) and yearly membership fees on the account anniversary (last 7 days
+re-checked so downtime is caught up; archived members and members created in
+the fee year are skipped, the joining year is billed at registration;
+idempotent per member and year). If the API is horizontally scaled, run cron on
+a single instance only (`CRON_RUNNER=false` on other instances) or move jobs to
+an external scheduler.
+
+`src/index.ts` refuses to start in production with unsafe settings
+(`checkProductionConfig` in `src/config/env.ts`) and shuts down gracefully on
+SIGTERM/SIGINT: it stops accepting connections, lets in-flight requests, the
+mail being sent and a running cron job finish, then closes the DB pool
+(25 s limit; systemd `TimeoutStopSec=30`).
 
 The group-mail queue worker (`src/services/mailWorker.ts`, OSVS-24) starts
 under the same guard. Every 15 s it runs one tick (ticks never overlap): it
@@ -199,10 +215,6 @@ Local gates:
 - `npm run lint`
 - `npm run build`
 - `npm run test`
-
-CI workflow:
-
-- `.github/workflows/ci.yml`
 
 Current automated coverage is still small, but it exists and should be extended
 when behavior-sensitive backend changes are made.

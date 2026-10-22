@@ -444,7 +444,7 @@ export async function listAttendedEventsForUser(userId: number) {
       DATE_FORMAT(e.startDate, '%Y-%m-%d %H:%i:%s') AS startDate,
       DATE_FORMAT(e.endDate, '%Y-%m-%d %H:%i:%s') AS endDate
     FROM events_attendances ea
-    JOIN events e ON e.id = ea.eid
+    JOIN events e ON e.id = ea.eid AND e.deletedAt IS NULL
     WHERE ea.uid = ? AND ea.attended = 1
     ORDER BY e.startDate DESC, e.id DESC
   `;
@@ -477,7 +477,7 @@ export async function countAttendedEventsSinceLatestAchievement(userId: number) 
   const sql = `
     SELECT COUNT(*) AS cnt
     FROM events_attendances ea
-    JOIN events e ON e.id = ea.eid
+    JOIN events e ON e.id = ea.eid AND e.deletedAt IS NULL
     WHERE ea.uid = ?
       AND ea.attended = 1
       AND e.startDate > COALESCE(
@@ -501,7 +501,7 @@ export async function countAttendedEventsAfterGrade8(userId: number) {
   const sql = `
     SELECT COUNT(*) AS cnt
     FROM events_attendances ea
-    JOIN events e ON e.id = ea.eid
+    JOIN events e ON e.id = ea.eid AND e.deletedAt IS NULL
     WHERE ea.uid = ?
       AND ea.attended = 1
       AND e.startDate > COALESCE(
@@ -524,8 +524,9 @@ export async function countAttendedEventsAfterGrade8(userId: number) {
 export async function countAttendedEventsForUser(userId: number) {
   const sql = `
     SELECT COUNT(*) AS cnt
-    FROM events_attendances
-    WHERE uid = ? AND attended = 1
+    FROM events_attendances ea
+    JOIN events e ON e.id = ea.eid AND e.deletedAt IS NULL
+    WHERE ea.uid = ? AND ea.attended = 1
   `;
   const [rows] = await exec(sql, [userId]);
   const arr = asRows<CountRow>(rows);

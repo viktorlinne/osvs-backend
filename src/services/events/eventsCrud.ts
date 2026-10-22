@@ -141,8 +141,20 @@ export async function updateEvent(
   }
 }
 
-export async function deleteEvent(id: number): Promise<void> {
-  await eventsRepo.deleteEvent(id);
+/**
+ * Soft delete (decision D4). Returns false when the event does not exist or
+ * was already deleted.
+ */
+export async function deleteEvent(
+  id: number,
+  deletedBy: number | null,
+): Promise<boolean> {
+  const affected = await eventsRepo.softDeleteEvent(
+    id,
+    deletedBy,
+    getNowStockholmSqlDateTime(),
+  );
+  return affected > 0;
 }
 
 export async function linkLodgeToEvent(

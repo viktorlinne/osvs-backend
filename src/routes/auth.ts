@@ -148,7 +148,9 @@ router.post(
   wrapAsync(authController.heartbeat),
 );
 router.get("/me", authMiddleware, wrapAsync(authController.me));
-router.post("/logout", authMiddleware, wrapAsync(authController.logout));
+// No authMiddleware: an expired access token must not prevent revoking the
+// refresh session; logoutFromRequest works from whichever cookies are present.
+router.post("/logout", refreshIpLimiter, wrapAsync(authController.logout));
 
 router.post("/revoke-all", authMiddleware, wrapAsync(authController.revokeAll));
 

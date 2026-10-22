@@ -36,7 +36,9 @@ describe("groups.repo", () => {
     await updateGroup(3, { description: null });
 
     const [sql, params] = mockedPool.query.mock.calls[0];
-    expect(sql).toBe("UPDATE `groups` SET description = ? WHERE id = ?");
+    expect(sql).toBe(
+      "UPDATE `groups` SET description = ? WHERE id = ? AND deletedAt IS NULL",
+    );
     expect(params).toEqual([null, 3]);
   });
 

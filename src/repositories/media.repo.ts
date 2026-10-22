@@ -71,6 +71,19 @@ export async function findMediaAssetById(id: number): Promise<MediaAsset | null>
   return toAsset(rows[0]);
 }
 
+/**
+ * Only the checksum (used to version media URLs). Does not read the `data`
+ * blob, which findMediaAssetById would transfer for every picture in a list.
+ */
+export async function findMediaChecksumById(id: number): Promise<string | null> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    "SELECT checksum_sha256 FROM media_assets WHERE id = ? LIMIT 1",
+    [id],
+  );
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return String(rows[0].checksum_sha256);
+}
+
 export async function deleteMediaAssetById(id: number): Promise<void> {
   await pool.query("DELETE FROM media_assets WHERE id = ?", [id]);
 }

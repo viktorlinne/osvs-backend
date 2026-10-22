@@ -208,6 +208,31 @@ export async function updateUserHandler(
     );
     if (!payload) return;
 
+    // Archiving a member ends their access (see services/accountStatus.ts).
+    // Guard the change so it cannot lock out an Admin or the caller.
+    if (typeof payload.archive !== "undefined") {
+      const target = await findUserById(targetId);
+      if (!target) return sendError(res, 404, "Användaren hittades inte");
+      const currentArchive = target.archive ?? null;
+      const nextArchive = payload.archive ?? null;
+      if (currentArchive !== nextArchive) {
+        if (nextArchive !== null && targetId === callerId) {
+          return sendError(res, 403, "Du kan inte arkivera ditt eget konto");
+        }
+        const callerRoles = req.userRoles ?? (await getUserRoles(callerId));
+        if (!callerRoles.includes("Admin")) {
+          const targetRoles = await getUserRoles(targetId);
+          if (targetRoles.includes("Admin")) {
+            return sendError(
+              res,
+              403,
+              "Endast en administratör kan ändra arkivstatus för en administratör",
+            );
+          }
+        }
+      }
+    }
+
     await updateUserProfile(targetId, payload as UpdateUserProfileBody);
 
     const updated = await findUserById(targetId);

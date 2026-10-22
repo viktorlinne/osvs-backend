@@ -75,6 +75,7 @@ export async function listGroups(): Promise<Group[]> {
       SELECT g.id, g.name, g.description, ug.uid
       FROM \`groups\` g
       LEFT JOIN users_groups ug ON ug.gid = g.id
+      WHERE g.deletedAt IS NULL
       ORDER BY g.name ASC, g.id ASC, ug.uid ASC
     `,
   );
@@ -88,7 +89,7 @@ export async function findGroupById(id: number): Promise<Group | null> {
       SELECT g.id, g.name, g.description, ug.uid
       FROM \`groups\` g
       LEFT JOIN users_groups ug ON ug.gid = g.id
-      WHERE g.id = ?
+      WHERE g.id = ? AND g.deletedAt IS NULL
       ORDER BY ug.uid ASC
     `,
     [id],
@@ -107,7 +108,8 @@ export async function findGroupIdByName(
   excludeId?: number,
 ): Promise<number | null> {
   const params: unknown[] = [name.trim()];
-  let sql = "SELECT id FROM `groups` WHERE LOWER(TRIM(name)) = LOWER(?)";
+  let sql =
+    "SELECT id FROM `groups` WHERE deletedAt IS NULL AND LOWER(TRIM(name)) = LOWER(?)";
   if (typeof excludeId === "number") {
     sql += " AND id <> ?";
     params.push(excludeId);
@@ -150,16 +152,24 @@ export async function updateGroup(
 
   params.push(id);
   await pool.query(
-    `UPDATE \`groups\` SET ${sets.join(", ")} WHERE id = ?`,
+    `UPDATE \`groups\` SET ${sets.join(", ")} WHERE id = ? AND deletedAt IS NULL`,
     params,
   );
 }
 
-/** Memberships (users_groups) and event links (groups_events) cascade via FK. */
-export async function deleteGroup(id: number): Promise<number> {
+/**
+ * Soft delete (decision D4): memberships (users_groups) and event links
+ * (groups_events) stay so the group can be restored by clearing deletedAt;
+ * reads and event audiences skip deleted groups.
+ */
+export async function softDeleteGroup(
+  id: number,
+  deletedBy: number | null,
+  deletedAt: string,
+): Promise<number> {
   const [result] = await pool.query<ResultSetHeader>(
-    "DELETE FROM `groups` WHERE id = ?",
-    [id],
+    "UPDATE `groups` SET deletedAt = ?, deletedBy = ? WHERE id = ? AND deletedAt IS NULL",
+    [deletedAt, deletedBy, id],
   );
   return result && typeof result.affectedRows === "number"
     ? result.affectedRows
@@ -268,6 +278,7 @@ export async function selectUserIdsForGroups(
     `
       SELECT DISTINCT ug.uid
       FROM users_groups ug
+      JOIN \`groups\` g ON g.id = ug.gid AND g.deletedAt IS NULL
       JOIN users u ON u.matrikelnummer = ug.uid AND u.archive IS NULL
       WHERE ug.gid IN (${placeholders})
       ORDER BY ug.uid ASC
@@ -284,7 +295,7 @@ export default {
   findGroupIdByName,
   insertGroup,
   updateGroup,
-  deleteGroup,
+  softDeleteGroup,
   listGroupMembers,
   selectExistingUserIds,
   selectMemberIdsInGroup,

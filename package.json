@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "A simple Node + Express Typescript backend for a degree project for a fraternal organization to handle their members and website content",
   "main": "index.js",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "jest --runInBand",
     "build": "tsc -p tsconfig.build.json",
@@ -34,7 +37,7 @@
   "dependencies": {
     "@sentry/node": "^7.51.0",
     "@sentry/tracing": "^7.51.0",
-    "argon2": "^0.30.3",
+    "argon2": "^0.44.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -43,13 +46,13 @@
     "express-rate-limit": "^7.0.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.15.3",
-    "nodemailer": "^8.0.10",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.5",
+    "nodemailer": "^10.0.16",
     "pino": "^8.16.0",
     "pino-http": "^8.0.0",
     "pino-pretty": "^11.0.1",
-    "sharp": "^0.32.6",
+    "sharp": "^0.35.5",
     "swagger-ui-express": "^4.6.3"
   },
   "devDependencies": {
@@ -62,7 +65,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.11",
     "@types/node": "^24.10.1",
-    "@types/nodemailer": "^8.0.0",
     "@types/supertest": "^2.0.12",
     "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^8.48.1",

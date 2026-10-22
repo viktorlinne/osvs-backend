@@ -55,7 +55,12 @@ export async function login(
   res: Response,
   _next: NextFunction,
 ): Promise<Response | void> {
-  const { email, password } = req.body;
+  // Express 5 leaves req.body undefined without a JSON body. Only strings are
+  // accepted: mysql2 expands an object parameter into `col = val` pairs, which
+  // would turn `email = ?` into a condition that matches any row.
+  const body = (req.body ?? {}) as Partial<Record<keyof LoginBody, unknown>>;
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const password = typeof body.password === "string" ? body.password : "";
   if (!email || !password) {
     return sendError(res, 400, "E-post och lösenord är obligatoriska");
   }

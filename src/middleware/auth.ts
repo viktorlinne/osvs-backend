@@ -8,6 +8,10 @@ import { isJtiRevoked } from "../services/tokenService";
 import { findById } from "../services/userService";
 import { getAccessTokenFromReq } from "../utils/authTokens";
 import { getJwtSecret } from "../config/env";
+import {
+  ACCOUNT_INACTIVE_MESSAGE,
+  isArchivedMember,
+} from "../services/accountStatus";
 
 export async function authMiddleware(
   req: AuthenticatedRequest,
@@ -67,7 +71,23 @@ export async function authMiddleware(
         typeof decodedPayload?.iat === "number" ? decodedPayload.iat : undefined;
       if (typeof matrikelnummerCandidate === "number") {
         const dbUser = await findById(matrikelnummerCandidate);
-        if (dbUser && dbUser.revokedAt) {
+        // A token for a deleted member is no longer valid.
+        if (!dbUser) {
+          logger.warn({
+            msg: "Token for unknown user",
+            matrikelnummer: matrikelnummerCandidate,
+          });
+          return sendError(res, 401, "Inloggning utgången");
+        }
+        // Archived members (Avliden/Urgången/Avförd) lose access immediately.
+        if (isArchivedMember(dbUser)) {
+          logger.warn({
+            msg: "Token for archived member rejected",
+            matrikelnummer: matrikelnummerCandidate,
+          });
+          return sendError(res, 401, ACCOUNT_INACTIVE_MESSAGE);
+        }
+        if (dbUser.revokedAt) {
           const revokedAt = new Date(dbUser.revokedAt as string);
           if (tokenIat) {
             const tokenIatMs = tokenIat * 1000;

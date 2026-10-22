@@ -1,5 +1,6 @@
 import * as groupsRepo from "../repositories/groups.repo";
 import type { Group, GroupMember } from "../types";
+import { getNowStockholmSqlDateTime } from "../utils/eventDateTime";
 import { ConflictError, ValidationError, notFound } from "../utils/errors";
 
 export const GROUP_NOT_FOUND_MESSAGE = "Gruppen hittades inte";
@@ -66,8 +67,16 @@ export async function updateGroup(
   return await requireGroup(id);
 }
 
-export async function deleteGroup(id: number): Promise<void> {
-  const affected = await groupsRepo.deleteGroup(id);
+/** Soft delete (decision D4); memberships and event links are kept. */
+export async function deleteGroup(
+  id: number,
+  deletedBy: number | null = null,
+): Promise<void> {
+  const affected = await groupsRepo.softDeleteGroup(
+    id,
+    deletedBy,
+    getNowStockholmSqlDateTime(),
+  );
   if (affected === 0) throw notFound(GROUP_NOT_FOUND_MESSAGE);
 }
 

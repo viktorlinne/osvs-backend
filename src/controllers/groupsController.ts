@@ -77,7 +77,7 @@ export async function deleteGroupHandler(
 ) {
   const id = parseGroupId(req, res);
   if (id === null) return;
-  await groupsService.deleteGroup(id);
+  await groupsService.deleteGroup(id, req.user?.matrikelnummer ?? null);
   return res.status(200).json({ success: true });
 }
 

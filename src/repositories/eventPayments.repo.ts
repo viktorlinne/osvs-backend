@@ -155,6 +155,7 @@ export async function selectOutstandingEventPayments(filters: {
 }): Promise<OutstandingPaymentRow[]> {
   const where: string[] = [
     "ep.status = 'Pending'",
+    "e.deletedAt IS NULL",
     "ep.amount > 0",
     "(ea.rsvp = 1 OR ea.attended = 1)",
   ];

@@ -73,6 +73,35 @@ export async function findFeeExemptUserIds(uids: number[]): Promise<number[]> {
     .filter((uid) => Number.isFinite(uid));
 }
 
+export type MonthDay = { month: number; day: number };
+
+/**
+ * Members whose account anniversary (month/day of users.createdAt) is one of
+ * `days` and who are due a yearly fee for `year`: not archived (Avliden,
+ * Urgången, Avförd) and created before `year` (the joining year is billed at
+ * registration, see services/users/write.ts createUser).
+ */
+export async function findAnniversaryUserIds(
+  year: number,
+  days: MonthDay[],
+): Promise<number[]> {
+  if (!Array.isArray(days) || days.length === 0) return [];
+  const dayClauses = days
+    .map(() => "(MONTH(createdAt) = ? AND DAY(createdAt) = ?)")
+    .join(" OR ");
+  const params: number[] = [year];
+  for (const d of days) params.push(d.month, d.day);
+  const [rows] = await pool.query(
+    `SELECT matrikelnummer AS uid FROM users
+     WHERE archive IS NULL AND YEAR(createdAt) < ? AND (${dayClauses})
+     ORDER BY matrikelnummer ASC`,
+    params,
+  );
+  return asRows<ExistingUserPaymentRow>(rows)
+    .map((r) => Number(r.uid))
+    .filter((uid) => Number.isFinite(uid));
+}
+
 export async function bulkInsertIfMissing(values: Array<Array<unknown>>) {
   if (values.length === 0) return;
   try {
@@ -231,6 +260,7 @@ export default {
   findById,
   findExistingForUsers,
   findFeeExemptUserIds,
+  findAnniversaryUserIds,
   bulkInsertIfMissing,
   findPaymentsForUsers,
   findPaymentsForUser,

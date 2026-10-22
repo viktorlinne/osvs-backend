@@ -81,10 +81,17 @@ export async function runMailWorkerTick(): Promise<TickResult> {
   const sentLastHour = await mailingsRepo.countSentInLastHour();
   result.budget = Math.max(0, config.ratePerHour - sentLastHour);
 
-  if (result.budget > 0) {
+  if (result.budget > 0 && !stopRequested) {
     const claimed = await mailingsRepo.claimDueRows(Math.min(result.budget, BATCH_SIZE));
     for (let i = 0; i < claimed.length; i += 1) {
       const row = claimed[i];
+
+      if (stopRequested) {
+        // Shutting down (SIGTERM): give the unsent rest of the batch back
+        // now instead of leaving it in `sending` for STALE_CLAIM_MINUTES.
+        await mailingsRepo.releaseClaims(claimed.slice(i).map((r) => r.id));
+        break;
+      }
 
       if (!config.production && !isAllowedByDevAllowlist(row.toEmail, config.devAllowlist)) {
         await mailingsRepo.markSkipped(row.id, "dev_allowlist");
@@ -138,24 +145,28 @@ export async function runMailWorkerTick(): Promise<TickResult> {
 }
 
 let timer: ReturnType<typeof globalThis.setInterval> | null = null;
-let tickRunning = false;
+let currentTick: Promise<TickResult | null> | null = null;
+let stopRequested = false;
 
 /** Runs a tick unless one is already in progress (ticks never overlap). */
 export async function runGuardedTick(): Promise<TickResult | null> {
-  if (tickRunning) return null;
-  tickRunning = true;
-  try {
-    return await runMailWorkerTick();
-  } catch (err) {
-    logger.error({ err }, "Mail worker tick failed");
-    return null;
-  } finally {
-    tickRunning = false;
-  }
+  if (currentTick) return null;
+  currentTick = (async () => {
+    try {
+      return await runMailWorkerTick();
+    } catch (err) {
+      logger.error({ err }, "Mail worker tick failed");
+      return null;
+    } finally {
+      currentTick = null;
+    }
+  })();
+  return currentTick;
 }
 
 export function startMailWorker(intervalMs = MAIL_WORKER_INTERVAL_MS): void {
   if (timer) return;
+  stopRequested = false;
   // Validate MAIL_RATE_PER_HOUR / MAIL_DEV_ALLOWLIST at startup (throws on bad values).
   const config = getMailingConfig();
   logger.info(
@@ -173,9 +184,17 @@ export function startMailWorker(intervalMs = MAIL_WORKER_INTERVAL_MS): void {
   void runGuardedTick();
 }
 
-export function stopMailWorker(): void {
+/**
+ * Graceful shutdown: stops the interval and waits for an in-flight tick. That
+ * tick finishes the message it is sending, then returns the rest of its batch
+ * to `pending`, so a restart neither re-sends a delivered message (after
+ * STALE_CLAIM_MINUTES) nor delays the rest of the batch.
+ */
+export async function stopMailWorker(): Promise<void> {
   if (timer) globalThis.clearInterval(timer);
   timer = null;
+  stopRequested = true;
+  if (currentTick) await currentTick;
 }
 
 export default {

@@ -2,7 +2,7 @@ import "../../config/env";
 import type { StorageAdapter, StorageUploadResult } from "./adapter";
 import {
   deleteMediaAssetById,
-  findMediaAssetById,
+  findMediaChecksumById,
   insertMediaAsset,
 } from "../../repositories/media.repo";
 
@@ -52,8 +52,10 @@ export const databaseStorageAdapter: StorageAdapter = {
   async getUrl(key: string): Promise<string> {
     const id = parseMediaId(key);
     if (id !== null) {
-      const asset = await findMediaAssetById(id);
-      const version = asset?.checksumSha256.slice(0, 16);
+      // Checksum only: loading the whole asset here read every picture's
+      // blob from MySQL just to build list URLs.
+      const checksum = await findMediaChecksumById(id);
+      const version = checksum?.slice(0, 16);
       return mediaUrl(`/api/media/${id}${version ? `?v=${version}` : ""}`);
     }
 

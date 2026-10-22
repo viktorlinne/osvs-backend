@@ -56,7 +56,7 @@ export async function listPosts(
 
   const filterParams: Array<number | string> = [];
   let fromSql = "FROM posts p";
-  const where: string[] = [];
+  const where: string[] = ["p.deletedAt IS NULL"];
 
   if (normalizedLodgeIds && normalizedLodgeIds.length > 0) {
     const placeholders = normalizedLodgeIds.map(() => "?").join(", ");
@@ -112,7 +112,7 @@ export async function listPublicumPosts(): Promise<
   const sql = `
     SELECT id, title, createdAt, description, picture
     FROM posts
-    WHERE publicum = 1
+    WHERE publicum = 1 AND deletedAt IS NULL
     ORDER BY createdAt DESC, id DESC
   `;
   const [rows] = await pool.query(sql);
@@ -144,7 +144,7 @@ export async function insertPost(
 
 export async function findPostById(postId: number): Promise<PostRecord | null> {
   const sql =
-    "SELECT id, title, description, picture, publicum FROM posts WHERE id = ? LIMIT 1";
+    "SELECT id, title, description, picture, publicum FROM posts WHERE id = ? AND deletedAt IS NULL LIMIT 1";
   const [rows] = await pool.query(sql, [postId]);
   const arr = asRows<PostRow>(rows);
   if (arr.length === 0) return null;
@@ -164,7 +164,7 @@ export async function selectPostPicture(
 ): Promise<string | null> {
   const executor = getExecutor(conn);
   const [rows] = await executor.query(
-    "SELECT picture FROM posts WHERE id = ? LIMIT 1",
+    "SELECT picture FROM posts WHERE id = ? AND deletedAt IS NULL LIMIT 1",
     [postId],
   );
   const arr = asRows<PostPictureRow>(rows);
@@ -204,17 +204,27 @@ export async function updatePost(
 
   if (sets.length === 0) return;
 
-  const sql = `UPDATE posts SET ${sets.join(", ")} WHERE id = ?`;
+  const sql = `UPDATE posts SET ${sets.join(", ")} WHERE id = ? AND deletedAt IS NULL`;
   params.push(postId);
   await executor.query(sql, params);
 }
 
-export async function deletePost(
+/**
+ * Soft delete (decision D4): the row, its lodge links and its picture stay;
+ * reads skip it via `deletedAt IS NULL`. Returns the affected row count.
+ */
+export async function softDeletePost(
   postId: number,
-  conn?: PoolConnection,
-): Promise<void> {
-  const executor = getExecutor(conn);
-  await executor.query("DELETE FROM posts WHERE id = ?", [postId]);
+  deletedBy: number | null,
+  deletedAt: string,
+): Promise<number> {
+  const [result] = await pool.query<ResultSetHeader>(
+    "UPDATE posts SET deletedAt = ?, deletedBy = ? WHERE id = ? AND deletedAt IS NULL",
+    [deletedAt, deletedBy, postId],
+  );
+  return result && typeof result.affectedRows === "number"
+    ? result.affectedRows
+    : 0;
 }
 
 export async function selectPostLodges(
@@ -279,7 +289,7 @@ export default {
   findPostById,
   selectPostPicture,
   updatePost,
-  deletePost,
+  softDeletePost,
   selectPostLodges,
   replacePostLodges,
 };

@@ -241,3 +241,74 @@ describe("GET /users/:matrikelnummer user flags", () => {
     });
   });
 });
+
+describe("PUT /users/:matrikelnummer archive guard (audit A-01)", () => {
+  function rolesByUid(map: Record<number, string[]>) {
+    mockedGetUserRoles.mockImplementation(
+      async (uid: number) => (map[uid] ?? ["Member"]) as never,
+    );
+  }
+
+  it("blocks an Editor from archiving an Admin", async () => {
+    rolesByUid({ 7: ["Editor"], 42: ["Admin"] });
+
+    const response = await request(buildApp())
+      .put("/users/42")
+      .set("Authorization", token(7))
+      .send({ archive: "Avförd" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.message).toBe(
+      "Endast en administratör kan ändra arkivstatus för en administratör",
+    );
+    expect(mockedUpdateUserProfile).not.toHaveBeenCalled();
+  });
+
+  it("lets an Editor save an Admin's profile when archive is unchanged", async () => {
+    rolesByUid({ 7: ["Editor"], 42: ["Admin"] });
+
+    const response = await request(buildApp())
+      .put("/users/42")
+      .set("Authorization", token(7))
+      .send({ archive: null, city: "Lyckeby" });
+
+    expect(response.status).toBe(200);
+    expect(mockedUpdateUserProfile).toHaveBeenCalled();
+  });
+
+  it("lets an Editor archive an ordinary member", async () => {
+    rolesByUid({ 7: ["Editor"], 42: ["Member"] });
+
+    const response = await request(buildApp())
+      .put("/users/42")
+      .set("Authorization", token(7))
+      .send({ archive: "Urgången" });
+
+    expect(response.status).toBe(200);
+    expect(mockedUpdateUserProfile).toHaveBeenCalledWith(42, { archive: "Urgången" });
+  });
+
+  it("lets an Admin archive another Admin", async () => {
+    rolesByUid({ 7: ["Admin"], 42: ["Admin"] });
+
+    const response = await request(buildApp())
+      .put("/users/42")
+      .set("Authorization", token(7))
+      .send({ archive: "Avliden" });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("blocks archiving your own account", async () => {
+    rolesByUid({ 42: ["Admin"] });
+
+    const response = await request(buildApp())
+      .put("/users/42")
+      .set("Authorization", token(42))
+      .send({ archive: "Avförd" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.message).toBe("Du kan inte arkivera ditt eget konto");
+    expect(mockedUpdateUserProfile).not.toHaveBeenCalled();
+  });
+});

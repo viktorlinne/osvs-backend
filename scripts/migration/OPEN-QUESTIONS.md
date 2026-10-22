@@ -39,6 +39,8 @@ than a lodge.
 
 We should add Orion Damklubb and Stamlogen Damklubb directly through seeding. lodges arent axcpected to be added / changed or removed on a regular basis ao no need for a inferface for it 
 
+**2026-10-22 (Viktor):** until the client answers, the two Damklubb rows (ids 6–7) copy city, description, e-mail and picture from Orion and Stamlogen; they can be edited manually later. The final text is still TBD (client).
+
 ## 3. Missing official titles / unclear abbreviations
 
 A draft pass matched member history text against the app's existing

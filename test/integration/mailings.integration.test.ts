@@ -75,7 +75,10 @@ function bearer(matrikelnummer = 4089) {
 }
 
 beforeEach(() => {
-  mockedFindById.mockResolvedValue(undefined);
+  // An existing, active (non-archived) member; auth rejects unknown users.
+  mockedFindById.mockResolvedValue(
+    { matrikelnummer: 1, archive: null, revokedAt: null } as never,
+  );
   mockedIsJtiRevoked.mockResolvedValue(false);
   mockedGetUserRoles.mockResolvedValue(["Editor"]);
   groups.findGroupById.mockResolvedValue({

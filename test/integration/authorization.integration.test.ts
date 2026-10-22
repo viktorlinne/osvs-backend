@@ -34,6 +34,7 @@ import {
   getUserRoles,
 } from "../../src/services/userService";
 import { isJtiRevoked } from "../../src/services/tokenService";
+import { ACCOUNT_INACTIVE_MESSAGE } from "../../src/services/accountStatus";
 
 const mockedFindById = findById as jest.MockedFunction<typeof findById>;
 const mockedGetUserRoles = getUserRoles as jest.MockedFunction<typeof getUserRoles>;
@@ -74,7 +75,10 @@ function buildAuthorizationApp() {
 }
 
 beforeEach(() => {
-  mockedFindById.mockResolvedValue(undefined);
+  // An existing, active (non-archived) member; auth rejects unknown users.
+  mockedFindById.mockResolvedValue(
+    { matrikelnummer: 1, archive: null, revokedAt: null } as never,
+  );
   mockedGetUserRoles.mockResolvedValue(["Member"]);
   mockedIsJtiRevoked.mockResolvedValue(false);
 });
@@ -197,5 +201,47 @@ describe("authorization middleware", () => {
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Inloggning utgången");
     expect(mockedGetUserRoles).not.toHaveBeenCalled();
+  });
+});
+
+describe("authMiddleware account status (audit A-01)", () => {
+  it.each(["Avliden", "Urgången", "Avförd"])(
+    "rejects a valid token of an archived member (%s)",
+    async (archive) => {
+      const app = buildAuthorizationApp();
+      mockedFindById.mockResolvedValue({
+        matrikelnummer: 77,
+        archive,
+        revokedAt: null,
+      } as never);
+
+      const response = await request(app)
+        .put("/users/77/location")
+        .set(
+          "Authorization",
+          `Bearer ${signAccessToken({ matrikelnummer: 77 })}`,
+        );
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({
+        message: ACCOUNT_INACTIVE_MESSAGE,
+      });
+      expect(mockedGetUserRoles).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a valid token of a member that no longer exists", async () => {
+    const app = buildAuthorizationApp();
+    mockedFindById.mockResolvedValue(undefined);
+
+    const response = await request(app)
+      .put("/users/78/location")
+      .set(
+        "Authorization",
+        `Bearer ${signAccessToken({ matrikelnummer: 78 })}`,
+      );
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toBe("Inloggning utgången");
   });
 });

@@ -72,8 +72,25 @@ async function migrate() {
       charset: "utf8mb4",
     });
 
-    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+    // Explicit charset/collation, so a database created here matches the
+    // tables (utf8mb4_general_ci) even on a stock MySQL 8 server, whose
+    // default is utf8mb4_0900_ai_ci.
+    await conn.query(
+      `CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci`,
+    );
     await conn.query(`USE \`${dbName}\``);
+
+    // One runner at a time per database (two overlapping deploys would
+    // otherwise apply the same file twice and fail half-way).
+    const [lockRows] = await conn.query<mysql.RowDataPacket[]>(
+      "SELECT GET_LOCK(?, 30) AS acquired",
+      [`osvs_migrate:${dbName}`],
+    );
+    if (Number(lockRows[0]?.acquired) !== 1) {
+      throw new Error(
+        `Another migration run holds the lock for ${dbName}; try again when it has finished.`,
+      );
+    }
 
     // Create migrations tracking table
     await conn.query(`
@@ -169,7 +186,10 @@ async function migrate() {
       "All migrations completed",
     );
   } catch (err) {
-    logger.error("Migration failed:", err);
+    logger.error(
+      { err },
+      "Migration failed. MySQL DDL is not transactional: statements before the failing one stay applied. Fix the cause and re-run, or restore the pre-deploy backup.",
+    );
     // eslint-disable-next-line no-console
     console.error(err && (err as Error).stack ? (err as Error).stack : err);
     process.exitCode = 1;

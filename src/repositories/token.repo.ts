@@ -83,6 +83,25 @@ export async function cleanupExpiredRefreshTokens() {
   logger.info({ deleted }, "Cleanup: removed expired refresh_tokens rows");
 }
 
+/**
+ * Password set/reset links are single-use and expire after
+ * PASSWORD_ACTION_TOKEN_HOURS; nothing needs them afterwards. Rows are kept
+ * `graceDays` past expiry (a late click still gets the "expired" answer), then
+ * removed. Uses idx_password_action_tokens_expiresAt.
+ */
+export async function cleanupExpiredPasswordActionTokens(graceDays = 7) {
+  const sql =
+    "DELETE FROM password_action_tokens WHERE expiresAt < NOW() - INTERVAL ? DAY";
+  const [result] = await exec(sql, [graceDays]);
+  const execResult = result as ExecResult;
+  const deleted =
+    typeof execResult?.affectedRows === "number"
+      ? execResult.affectedRows
+      : 0;
+  logger.info({ deleted }, "Cleanup: removed expired password_action_tokens rows");
+  return deleted;
+}
+
 export async function insertRefreshToken(
   hash: string,
   userId: number,
@@ -280,6 +299,7 @@ export default {
   isJtiRevoked,
   cleanupExpiredRevocations,
   cleanupExpiredRefreshTokens,
+  cleanupExpiredPasswordActionTokens,
   insertRefreshToken,
   findRefreshTokenByHash,
   markRefreshTokenRevokedByHash,

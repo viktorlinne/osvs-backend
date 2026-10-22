@@ -245,7 +245,11 @@ export async function deleteEventHandler(
 ) {
   const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
-  await eventsService.deleteEvent(id);
+  const deleted = await eventsService.deleteEvent(
+    id,
+    req.user?.matrikelnummer ?? null,
+  );
+  if (!deleted) return sendError(res, 404, "Mötet hittades inte");
 
   return res.status(200).json({ success: true });
 }

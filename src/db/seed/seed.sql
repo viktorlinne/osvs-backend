@@ -3,7 +3,7 @@
 -- =====================================================
 -- Only real reference rows the app needs to function: roles, achievements
 -- (grades/medals), officials (titles 1-44, incl. the deputy titles), allergies and
--- lodges (incl. the Orion/Stamlogen Damklubb placeholders 6-7).
+-- lodges (incl. the Orion/Stamlogen Damklubbar 6-7).
 --
 -- No members, posts, events, payments, documents or other demo content
 -- belongs here. Development, staging and production databases get their
@@ -175,23 +175,25 @@ VALUES
     '/halmstad.webp'
   ),
   -- Damklubbar (Access lodge codes OrionDK / StamlogenDK), added for the data
-  -- migration (OPEN-QUESTIONS.md §2). city/description are PLACEHOLDERS until
-  -- the real text is supplied.
+  -- migration (OPEN-QUESTIONS.md §2). Until the client supplies their own text
+  -- they copy city, description, e-mail and picture from Orion (4) and
+  -- Stamlogen (1); edit them in the app afterwards (decision 2026-10-22).
+  -- Re-running this seed overwrites such edits, like for every lodge row.
   (
     6,
     'Orion Damklubb',
-    'PLATSHÅLLARE',
-    'PLATSHÅLLARE: beskrivning saknas.',
-    NULL,
-    '/osvs.png'
+    'Göteborg',
+    'Logen Orion instiftades den 26 februari 1943. Logens tillkomst föregicks av några sammanträden under senare delen av 1942 mellan från Karlskrona till Nya Varvet flyttad militär personal, och personer i Göteborg, som gjort sin värnplikt i Karlskrona. Till Logens Styrande Recor valdes Löjtnant Gustaf Idh. Från 1955 egen fastighet där logelokalen är förlagd. Idag har logen 180 medlemmar och 80 i Damklubben.',
+    'orion@osvs.se',
+    '/goteborg.webp'
   ),
   (
     7,
     'Stamlogen Damklubb',
-    'PLATSHÅLLARE',
-    'PLATSHÅLLARE: beskrivning saknas.',
-    NULL,
-    '/osvs.png'
+    'Karlskrona',
+    'Stamlogens Fastighetsförening bildades och verkade i sju år innan man vid ett logemöte 1939 meddelade förvärv av Johanneskapellet och året därefter bildades V - Sexans första Damklubben. Idag har Stamogen 200 medlemmar varav där är 30 i Damklubben.',
+    'stamlogen@osvs.se',
+    '/karlskrona.webp'
   ) ON DUPLICATE KEY
 UPDATE
   `name` =

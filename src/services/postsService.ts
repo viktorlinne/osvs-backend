@@ -2,6 +2,7 @@ import pool from "../config/db";
 import { deleteProfilePicture } from "../utils/fileUpload";
 import * as postsRepo from "../repositories/posts.repo";
 import type { Post as PostRecord } from "../types";
+import { getNowStockholmSqlDateTime } from "../utils/eventDateTime";
 
 export type PaginatedPosts = {
   posts: PostRecord[];
@@ -123,32 +124,21 @@ export async function updatePostAtomic(
   }
 }
 
-export async function deletePostAtomic(postId: number): Promise<void> {
-  const conn = await pool.getConnection();
-  let oldKey: string | null = null;
-  try {
-    await conn.beginTransaction();
-    oldKey = await postsRepo.selectPostPicture(postId, conn);
-    await postsRepo.deletePost(postId, conn);
-    await conn.commit();
-  } catch (err) {
-    try {
-      await conn.rollback();
-    } catch {
-      // ignore
-    }
-    throw err;
-  } finally {
-    conn.release();
-  }
-
-  if (oldKey) {
-    try {
-      await deleteProfilePicture(oldKey);
-    } catch {
-      // best-effort cleanup
-    }
-  }
+/**
+ * Soft delete (decision D4): the post, its lodge links and its picture stay in
+ * the database. Returns false when the post does not exist or was already
+ * deleted.
+ */
+export async function deletePostAtomic(
+  postId: number,
+  deletedBy: number | null = null,
+): Promise<boolean> {
+  const affected = await postsRepo.softDeletePost(
+    postId,
+    deletedBy,
+    getNowStockholmSqlDateTime(),
+  );
+  return affected > 0;
 }
 
 export default {

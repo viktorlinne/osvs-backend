@@ -48,7 +48,12 @@ import { hashPassword, verifyPassword } from "../../src/services/authService";
 import { LEGACY_PASSWORD_PLACEHOLDER } from "../../src/services/legacyPassword";
 import { createRefreshToken } from "../../src/services/tokenService";
 import { setAuthCookies } from "../../src/utils/authTokens";
-import { loginWithEmail } from "../../src/services/sessionService";
+import { loginWithEmail, refreshFromCookie } from "../../src/services/sessionService";
+import { HttpError } from "../../src/utils/errors";
+import {
+  ACCOUNT_INACTIVE_MESSAGE,
+  ACCOUNT_INACTIVE_REASON,
+} from "../../src/services/accountStatus";
 
 const mockedFindByEmail = findByEmail as jest.MockedFunction<typeof findByEmail>;
 const mockedVerifyPassword = verifyPassword as jest.MockedFunction<typeof verifyPassword>;
@@ -275,5 +280,124 @@ describe("sessionService.loginWithEmail with legacy passwords", () => {
     );
     expect(mockedUpgradeLegacyPassword).not.toHaveBeenCalled();
     expect(mockedHashPassword).not.toHaveBeenCalled();
+  });
+});
+
+describe("sessionService: archived members (audit A-01)", () => {
+  const userService = jest.requireMock("../../src/services/userService");
+  const tokenService = jest.requireMock("../../src/services/tokenService");
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedVerifyPassword.mockResolvedValue(true);
+    mockedCreateRefreshToken.mockResolvedValue(undefined);
+  });
+
+  it("rejects an archived member with the right password and sets no cookies", async () => {
+    mockedFindByEmail.mockResolvedValue({
+      matrikelnummer: 12,
+      email: "former@example.com",
+      passwordHash: "hash",
+      archive: "Avförd",
+    } as never);
+
+    const attempt = loginWithEmail("former@example.com", "secret", createResponseMock());
+
+    await expect(attempt).rejects.toBeInstanceOf(HttpError);
+    await expect(attempt).rejects.toMatchObject({
+      status: 401,
+      message: ACCOUNT_INACTIVE_MESSAGE,
+      details: { reason: ACCOUNT_INACTIVE_REASON },
+    });
+    expect(mockedCreateRefreshToken).not.toHaveBeenCalled();
+    expect(mockedSetAuthCookies).not.toHaveBeenCalled();
+  });
+
+  it("answers an archived member with a wrong password like any wrong password", async () => {
+    mockedVerifyPassword.mockResolvedValue(false);
+    mockedFindByEmail.mockResolvedValue({
+      matrikelnummer: 12,
+      email: "former@example.com",
+      passwordHash: "hash",
+      archive: "Urgången",
+    } as never);
+
+    await expect(
+      loginWithEmail("former@example.com", "wrong", createResponseMock()),
+    ).resolves.toBeNull();
+  });
+
+  it("refuses to renew the session of an archived member and drops the token", async () => {
+    tokenService.findRefreshToken.mockResolvedValue({
+      uid: 12,
+      expiresAt: new Date(Date.now() + 60_000),
+      isRevoked: false,
+      createdAt: new Date(),
+      lastUsed: new Date(),
+    });
+    userService.findById.mockResolvedValue({ matrikelnummer: 12, archive: "Avliden" });
+
+    const res = createResponseMock();
+    await expect(refreshFromCookie(res, "refresh-cookie")).resolves.toBeNull();
+    expect(tokenService.revokeRefreshToken).toHaveBeenCalledWith("refresh-cookie");
+    expect(tokenService.rotateRefreshToken).not.toHaveBeenCalled();
+    expect(mockedSetAuthCookies).not.toHaveBeenCalled();
+  });
+
+  it("still renews the session of an active member", async () => {
+    tokenService.findRefreshToken.mockResolvedValue({
+      uid: 12,
+      expiresAt: new Date(Date.now() + 60_000),
+      isRevoked: false,
+      createdAt: new Date(),
+      lastUsed: new Date(),
+    });
+    tokenService.rotateRefreshToken.mockResolvedValue(true);
+    userService.findById.mockResolvedValue({ matrikelnummer: 12, archive: null });
+
+    await expect(refreshFromCookie(createResponseMock(), "refresh-cookie")).resolves.not.toBeNull();
+    expect(mockedSetAuthCookies).toHaveBeenCalled();
+  });
+});
+
+describe("sessionService refresh race (audit A-09, decision D6)", () => {
+  const userService = jest.requireMock("../../src/services/userService");
+  const tokenService = jest.requireMock("../../src/services/tokenService");
+
+  beforeEach(() => jest.clearAllMocks());
+
+  it("answers the loser of a concurrent rotation with null and keeps other sessions", async () => {
+    tokenService.findRefreshToken.mockResolvedValue({
+      uid: 12,
+      expiresAt: new Date(Date.now() + 60_000),
+      isRevoked: false,
+      createdAt: new Date(),
+      lastUsed: new Date(),
+    });
+    tokenService.rotateRefreshToken.mockResolvedValue(false);
+    userService.findById.mockResolvedValue({ matrikelnummer: 12, archive: null });
+
+    await expect(refreshFromCookie(createResponseMock(), "refresh-cookie")).resolves.toBeNull();
+    expect(userService.revokeAllSessions).not.toHaveBeenCalled();
+    expect(mockedSetAuthCookies).not.toHaveBeenCalled();
+  });
+});
+
+describe("sessionService.logoutFromRequest without an access token (audit C-01)", () => {
+  it("revokes the refresh session and clears cookies when only the refresh cookie remains", async () => {
+    const { logoutFromRequest } = await import("../../src/services/sessionService");
+    const { revokeRefreshToken, revokeJti } = await import("../../src/services/tokenService");
+    const { clearAuthCookies, getAccessTokenFromReq } = await import("../../src/utils/authTokens");
+    (getAccessTokenFromReq as jest.Mock).mockReturnValue(undefined);
+    const res = {} as Response;
+
+    await logoutFromRequest(
+      { cookies: { refreshToken: "stale-device-token" } } as never,
+      res,
+    );
+
+    expect(revokeJti).not.toHaveBeenCalled();
+    expect(revokeRefreshToken).toHaveBeenCalledWith("stale-device-token");
+    expect(clearAuthCookies).toHaveBeenCalledWith(res);
   });
 });

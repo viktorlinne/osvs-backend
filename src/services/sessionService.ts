@@ -2,6 +2,12 @@ import { Response } from "express";
 import { findByEmail, findById, upgradeLegacyPassword } from "./userService";
 import { hashPassword, verifyPassword } from "./authService";
 import {
+  ACCOUNT_INACTIVE_MESSAGE,
+  ACCOUNT_INACTIVE_REASON,
+  isArchivedMember,
+} from "./accountStatus";
+import { HttpError } from "../utils/errors";
+import {
   isLegacyPasswordPlaceholder,
   verifyLegacyPassword,
 } from "./legacyPassword";
@@ -26,7 +32,6 @@ import {
   REFRESH_DAYS,
 } from "../config/constants";
 import logger from "../utils/logger";
-import { revokeAllSessions } from "./userService";
 
 export type SessionMetadata = {
   inactivityTimeoutMs: number;
@@ -47,6 +52,13 @@ export async function loginWithEmail(
   if (!user || !user.matrikelnummer) return null;
   const ok = await verifyLoginPassword(user, password);
   if (!ok) return null;
+  // Checked only after the password matched, so the distinct message does not
+  // reveal an archived account to someone who does not know the password.
+  if (isArchivedMember(user)) {
+    throw new HttpError(401, ACCOUNT_INACTIVE_MESSAGE, {
+      reason: ACCOUNT_INACTIVE_REASON,
+    });
+  }
   const jti = cryptoSafeId();
   const payload = { matrikelnummer: user.matrikelnummer, jti };
   const accessToken = createAccessToken(payload);
@@ -226,6 +238,10 @@ async function renewSessionFromCookie(
 
   const user = await findById(stored.uid);
   if (!user) return null;
+  if (isArchivedMember(user)) {
+    await revokeRefreshToken(refresh);
+    return null;
+  }
 
   const jti = cryptoSafeId();
   const payload = { matrikelnummer: user.matrikelnummer, jti };
@@ -245,11 +261,14 @@ async function renewSessionFromCookie(
     rotatedAt,
   );
   if (!rotated) {
-    try {
-      await revokeAllSessions(stored.uid);
-    } catch (err) {
-      logger.error("Failed to revoke all sessions after concurrent reuse", err);
-    }
+    // Another request rotated this token first (parallel tabs, or a retry after
+    // a lost response). The browser already holds the winner's cookie, so this
+    // is not evidence of theft: answer 401 without touching the member's other
+    // sessions (audit A-09, decision D6).
+    logger.info(
+      { uid: stored.uid },
+      "Refresh lost a concurrent rotation; other sessions kept",
+    );
     return null;
   }
 

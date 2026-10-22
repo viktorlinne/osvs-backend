@@ -12,7 +12,7 @@ jest.mock("../../src/services/tokenService", () => ({
 }));
 
 jest.mock("../../src/services/userService", () => ({
-  findById: jest.fn(),
+  findById: jest.fn(async () => ({ matrikelnummer: 1, archive: null, revokedAt: null })),
   getUserRoles: jest.fn(),
 }));
 

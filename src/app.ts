@@ -14,6 +14,7 @@ import scrubRequestBody from "./middleware/scrubRequest";
 import * as Sentry from "@sentry/node";
 import { Integrations } from "@sentry/tracing";
 import errorHandler from "./middleware/errorHandler";
+import { scrubSentryEvent } from "./utils/sentryScrub";
 import originProtection from "./middleware/originProtection";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./docs/openapi";
@@ -102,6 +103,10 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE) || 0.0,
     integrations: [new Integrations.Express({ app })],
+    // Never ship auth cookies, tokens or request bodies (passwords, personal
+    // data) to Sentry.
+    beforeSend: (event) => scrubSentryEvent(event),
+    beforeSendTransaction: (event) => scrubSentryEvent(event),
   });
   app.use(Sentry.Handlers.requestHandler());
 }
@@ -235,9 +240,9 @@ if (process.env.NODE_ENV !== "production") {
 
 app.get("/api/health", async (_req, res) => {
   try {
-    const conn = await pool.getConnection();
-    await conn.query("SELECT 1");
-    conn.release();
+    // pool.query releases the connection on error too (getConnection plus a
+    // failing conn.query leaked one pool connection per failed health check).
+    await pool.query("SELECT 1");
     return res.status(200).json({ status: "OK", db: "connected", timestamp: Date.now() });
   } catch (err) {
     logger.error({ err }, "Health check DB ping failed");

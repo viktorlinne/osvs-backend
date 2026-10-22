@@ -17,6 +17,14 @@ export type EventPaymentChange = {
   currentPrice: number;
 };
 
+export const CONCURRENT_CHANGE_MESSAGE =
+  "Betalningen ändrades samtidigt av någon annan, ladda om och försök igen";
+
+function isConcurrentInsertError(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  return code === "ER_DUP_ENTRY" || code === "ER_LOCK_DEADLOCK";
+}
+
 /**
  * Marks one member's event payment paid or unpaid (manual path, SWISH.md §5).
  * Must run inside the caller's transaction: the payment row is locked, the new
@@ -43,12 +51,23 @@ export async function applyEventPaymentChange(
 
   if (change.paid) {
     if (!row) {
-      const id = await eventPaymentsRepo.insertPendingEventPayment(
-        conn,
-        change.eventId,
-        change.userId,
-        change.currentPrice,
-      );
+      let id: number;
+      try {
+        id = await eventPaymentsRepo.insertPendingEventPayment(
+          conn,
+          change.eventId,
+          change.userId,
+          change.currentPrice,
+        );
+      } catch (err) {
+        // Two concurrent "mark paid" clicks on a member without a payment row
+        // both try to insert it: the unique (uid, eid) key or InnoDB's gap
+        // locks reject one of them. Report a conflict instead of a 500.
+        if (isConcurrentInsertError(err)) {
+          throw new HttpError(409, CONCURRENT_CHANGE_MESSAGE);
+        }
+        throw err;
+      }
       row = { id, amount: change.currentPrice, status: "Pending", method: null };
     } else if (row.status === "Paid") {
       throw new HttpError(

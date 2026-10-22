@@ -27,6 +27,31 @@ function getMulterFieldMessage(err: multer.MulterError): { field: string; messag
   return { field, message: "Ogiltig filuppladdning" };
 }
 
+function getExposedClientError(
+  err: unknown,
+): { status: number; type?: string } | null {
+  if (!err || typeof err !== "object") return null;
+  const record = err as {
+    status?: unknown;
+    statusCode?: unknown;
+    expose?: unknown;
+    type?: unknown;
+  };
+  const status = Number(record.status ?? record.statusCode);
+  if (!Number.isInteger(status) || status < 400 || status >= 500) return null;
+  if (record.expose !== true) return null;
+  return {
+    status,
+    type: typeof record.type === "string" ? record.type : undefined,
+  };
+}
+
+function clientErrorMessage(status: number): string {
+  if (status === 413) return "Begäran är för stor";
+  if (status === 415) return "Innehållstypen stöds inte";
+  return "Ogiltig begäran";
+}
+
 export default function errorHandler(
   err: unknown,
   req: Request,
@@ -97,6 +122,24 @@ export default function errorHandler(
       requestId,
     });
     return sendError(res, err.status, err.message, err.details);
+  }
+
+  // Client errors raised by body-parser / http-errors (413 body too large,
+  // 415 unsupported charset, 400 aborted request, ...) carry an exposable 4xx
+  // status. They are the client's fault, not a server error.
+  const clientError = getExposedClientError(err);
+  if (clientError) {
+    logger.warn({
+      msg: "Client request error",
+      status: clientError.status,
+      type: clientError.type,
+      requestId,
+    });
+    return sendError(
+      res,
+      clientError.status,
+      clientErrorMessage(clientError.status),
+    );
   }
 
   // Unknown error: capture and return 500

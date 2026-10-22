@@ -136,6 +136,8 @@ export async function updateUserProfile(
     data.archive !== null
   ) {
     await userRepo.removeUserFromFutureEvents(userId);
+    // An archived member loses access: end every session right away.
+    await revokeAllSessions(userId);
   }
 
   if (shouldRegeocode) {
@@ -367,6 +369,7 @@ export async function createUser(
 
     if (!insertId) {
       await conn.rollback();
+      conn.release();
       return undefined;
     }
 
