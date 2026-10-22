@@ -251,6 +251,13 @@ export type EventAttendanceRow = {
   attended: boolean;
   paymentStatus: "Pending" | "Paid" | null;
   paymentPaid: boolean;
+  /** Payment audit (Admin/Editor only; stripped for members). */
+  paymentAmount: number | null;
+  paymentPaidAt: string | null;
+  paymentPaidBy: number | null;
+  paymentPaidByName: string | null;
+  paymentMethod: "manual" | "swish" | null;
+  paymentNote: string | null;
 };
 
 export type MembershipPayment = {

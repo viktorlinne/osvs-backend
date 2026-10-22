@@ -3,12 +3,14 @@ import type { EventAttendanceRow } from "../../types";
 import { badRequest, forbidden } from "../../utils/errors";
 import { fromDbRsvp, toDbRsvp, type RsvpStatus } from "../../utils/rsvp";
 import * as eventsRepo from "../../repositories/events.repo";
+import { applyEventPaymentChange } from "../eventPaymentsService";
 
 type PatchAttendanceInput = Partial<{
   rsvp: boolean;
   bookFood: boolean;
   attended: boolean;
   paymentPaid: boolean;
+  paymentNote: string;
 }>;
 
 function toDbFlag(value: unknown): number {
@@ -45,8 +47,23 @@ function parseAllergies(value: unknown): string[] {
     .filter((item) => item.length > 0);
 }
 
+function toNullableText(value: unknown): string | null {
+  if (value === null || typeof value === "undefined") return null;
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
+
+function toPaymentMethod(value: unknown): "manual" | "swish" | null {
+  return value === "manual" || value === "swish" ? value : null;
+}
+
 function asAttendanceRow(row: Record<string, unknown>): EventAttendanceRow {
   const paymentStatus = toPaymentStatus(row.paymentStatus);
+  const amount = Number(row.paymentAmount);
+  const paidByName = [row.paymentPaidByFirstname, row.paymentPaidByLastname]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter((part) => part.length > 0)
+    .join(" ");
   return {
     uid: Number(row.uid),
     firstname: String(row.firstname ?? ""),
@@ -57,6 +74,16 @@ function asAttendanceRow(row: Record<string, unknown>): EventAttendanceRow {
     attended: toDbFlag(row.attended) === 1,
     paymentStatus,
     paymentPaid: paymentStatus === "Paid",
+    paymentAmount:
+      paymentStatus !== null && Number.isFinite(amount) ? amount : null,
+    paymentPaidAt: toNullableText(row.paymentPaidAt),
+    paymentPaidBy:
+      row.paymentPaidBy == null || !Number.isFinite(Number(row.paymentPaidBy))
+        ? null
+        : Number(row.paymentPaidBy),
+    paymentPaidByName: paidByName.length > 0 ? paidByName : null,
+    paymentMethod: toPaymentMethod(row.paymentMethod),
+    paymentNote: toNullableText(row.paymentNote),
   };
 }
 
@@ -175,10 +202,16 @@ export async function listEventAttendances(
     .filter((row) => Number.isFinite(row.uid));
 }
 
+/**
+ * Admin/Editor override of one invitee's row. Attendance fields (rsvp,
+ * bookFood, attended) are Admin-only; the controller enforces that. Payment
+ * changes go through applyEventPaymentChange (audit columns + log).
+ */
 export async function patchEventAttendanceByAdmin(
   eventId: number,
   userId: number,
   patch: PatchAttendanceInput,
+  actorUid: number | null = null,
 ): Promise<EventAttendanceRow> {
   const invited = await eventsRepo.isUserInvitedToEvent(eventId, userId);
   if (!invited) throw forbidden("Användaren är inte inbjuden till mötet");
@@ -220,13 +253,14 @@ export async function patchEventAttendanceByAdmin(
 
     if (touchesPayment) {
       const amount = await eventsRepo.selectEventPrice(eventId, conn);
-      await eventsRepo.upsertEventPaymentStatus(
-        userId,
+      await applyEventPaymentChange(conn, {
         eventId,
-        Number.isFinite(amount) ? amount : 0,
-        patch.paymentPaid ? "Paid" : "Pending",
-        conn,
-      );
+        userId,
+        paid: patch.paymentPaid === true,
+        note: patch.paymentNote ?? null,
+        actorUid,
+        currentPrice: Number.isFinite(amount) ? amount : 0,
+      });
     }
 
     await conn.commit();

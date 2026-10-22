@@ -537,12 +537,13 @@ export async function listEventAttendancesHandler(
   const attendances = await eventsService.listEventAttendances(id);
   if (isPrivileged) return res.status(200).json({ attendances });
 
-  // Payment status is for Admin/Editor only; invited members still see who
-  // attends (and allergies, per the member directory policy).
+  // Payment data (status and audit) is for Admin/Editor only; invited members
+  // still see who attends (and allergies, per the member directory policy).
   const withoutPayments = attendances.map((row) => {
-    const rest: Record<string, unknown> = { ...row };
-    delete rest.paymentStatus;
-    delete rest.paymentPaid;
+    const rest: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (!key.startsWith("payment")) rest[key] = value;
+    }
     return rest;
   });
   return res.status(200).json({ attendances: withoutPayments });
@@ -553,6 +554,9 @@ export async function patchEventAttendanceHandler(
   res: Response,
   _next: NextFunction,
 ) {
+  const actorUid = requireAuthMatrikelnummer(req, res);
+  if (actorUid === null) return;
+
   const id = parseNumericParam(res, req.params.id, "Ogiltigt mötes-id");
   if (id === null) return;
   const uid = parseNumericParam(res, req.params.uid, "Ogiltigt användar-id");
@@ -564,6 +568,22 @@ export async function patchEventAttendanceHandler(
   const parsed = unwrapValidation(res, validatePatchAttendanceBody(req.body));
   if (!parsed) return;
 
-  const row = await eventsService.patchEventAttendanceByAdmin(id, uid, parsed);
+  // Route allows Admin and Editor. Editors may only mark payments; changing
+  // attendance (rsvp, bookFood, attended) stays Admin-only.
+  const touchesAttendance =
+    typeof parsed.rsvp === "boolean" ||
+    typeof parsed.bookFood === "boolean" ||
+    typeof parsed.attended === "boolean";
+  if (touchesAttendance) {
+    const roles = req.userRoles ?? (await getUserRoles(actorUid));
+    if (!roles.includes("Admin")) return sendError(res, 403, "Åtkomst nekad");
+  }
+
+  const row = await eventsService.patchEventAttendanceByAdmin(
+    id,
+    uid,
+    parsed,
+    actorUid,
+  );
   return res.status(200).json({ success: true, row });
 }

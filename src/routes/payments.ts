@@ -26,4 +26,13 @@ router.patch(
   wrapAsync(paymentsController.updateMembershipStatusHandler),
 );
 
+// Event payments overview for the treasurer (Admin/Editor). Marking a payment
+// paid/unpaid uses PATCH /api/events/:id/attendances/:uid.
+router.get(
+  "/events/outstanding",
+  authMiddleware,
+  requireRole("Admin", "Editor"),
+  wrapAsync(paymentsController.getOutstandingEventPaymentsHandler),
+);
+
 export default router;

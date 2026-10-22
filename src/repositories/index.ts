@@ -11,3 +11,4 @@ export { default as documentsRepo } from "./documents.repo";
 export { default as geocodeRepo } from "./geocode.repo";
 export { default as groupsRepo } from "./groups.repo";
 export { default as mailingsRepo } from "./mailings.repo";
+export { default as eventPaymentsRepo } from "./eventPayments.repo";

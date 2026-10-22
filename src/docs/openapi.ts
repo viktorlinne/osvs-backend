@@ -746,6 +746,106 @@ export const swaggerSpec = {
             description: "Only returned to Admin/Editor.",
           },
           paymentPaid: { type: "boolean", description: "Only returned to Admin/Editor." },
+          paymentAmount: {
+            type: "number",
+            nullable: true,
+            example: 350,
+            description: "Only returned to Admin/Editor. Amount due/paid; null when no payment row exists.",
+          },
+          paymentPaidAt: {
+            type: "string",
+            nullable: true,
+            example: "2026-10-22 14:05:00",
+            description: "Only returned to Admin/Editor. Stockholm local time; null when not paid or paid before the audit columns existed (migration 014).",
+          },
+          paymentPaidBy: {
+            type: "integer",
+            nullable: true,
+            example: 4089,
+            description: "Only returned to Admin/Editor. Who marked it paid (manual); null for Swish.",
+          },
+          paymentPaidByName: {
+            type: "string",
+            nullable: true,
+            example: "Test Admin",
+            description: "Only returned to Admin/Editor.",
+          },
+          paymentMethod: {
+            type: "string",
+            enum: ["manual", "swish"],
+            nullable: true,
+            description: "Only returned to Admin/Editor. How the current Paid state was set.",
+          },
+          paymentNote: {
+            type: "string",
+            nullable: true,
+            maxLength: 500,
+            description: "Only returned to Admin/Editor. Note of the latest payment change.",
+          },
+        },
+      },
+      OutstandingEventPayments: {
+        type: "object",
+        properties: {
+          period: { type: "string", enum: ["3m", "12m", "all"], example: "12m" },
+          fromDate: {
+            type: "string",
+            nullable: true,
+            example: "2025-10-22 00:00:00",
+            description: "Events starting on/after this date are included; null for `all`.",
+          },
+          totals: {
+            type: "object",
+            properties: {
+              events: { type: "integer", example: 2 },
+              count: { type: "integer", example: 5 },
+              amount: { type: "number", example: 1750 },
+            },
+          },
+          events: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "integer", example: 499 },
+                title: { type: "string", example: "Mårtensloge" },
+                startDate: { type: "string", example: "2026-11-11 18:00:00" },
+                price: { type: "number", example: 350 },
+                daysSinceEvent: {
+                  type: "integer",
+                  example: -20,
+                  description: "Whole days since the event date (Stockholm); negative for upcoming events.",
+                },
+                lodges: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "integer", example: 1 },
+                      name: { type: "string", example: "Stamlogen" },
+                    },
+                  },
+                },
+                count: { type: "integer", example: 3 },
+                amount: { type: "number", example: 1050 },
+                payments: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      uid: { type: "integer", example: 308 },
+                      firstname: { type: "string", example: "Bo" },
+                      lastname: { type: "string", example: "Ek" },
+                      lodgeName: { type: "string", nullable: true, example: "Stamlogen" },
+                      amount: { type: "number", example: 350 },
+                      rsvp: { type: "boolean", example: true },
+                      attended: { type: "boolean", example: false },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       Lodge: {
@@ -1317,7 +1417,18 @@ export const swaggerSpec = {
           rsvp: { type: "boolean" },
           bookFood: { type: "boolean" },
           attended: { type: "boolean" },
-          paymentPaid: { type: "boolean" },
+          paymentPaid: {
+            type: "boolean",
+            description:
+              "true = mark paid manually (method=manual, paidAt/paidBy recorded). false = revert to Pending (a correction; `paymentNote` required). 409 when the payment is already in the requested state, e.g. already confirmed via Swish.",
+          },
+          paymentNote: {
+            type: "string",
+            maxLength: 500,
+            description:
+              "Why the payment changed. Only together with `paymentPaid`; optional when marking paid, required when reverting.",
+            example: "Swish mottagen 2026-10-21, kontrollerad mot bankens rapport",
+          },
         },
       },
       CreatePostRequest: {
@@ -3493,7 +3604,7 @@ export const swaggerSpec = {
         tags: ["Events"],
         summary: "Patch event attendance row",
         description:
-          "Admin endpoint to patch `rsvp/bookFood/attended/paymentPaid` for one user attendance row.",
+          "Patches one invitee's row. `rsvp/bookFood/attended` require Admin. `paymentPaid` (+ `paymentNote`) may be sent by Admin or Editor: it marks the event payment paid/unpaid manually, records paidAt/paidBy/method=manual and appends an `event_payment_log` row. Validation errors use `details.fields` (e.g. `paymentNote`).",
         operationId: "patchEventAttendanceByIdAndUid",
         security: authSecurity,
         parameters: [
@@ -3535,10 +3646,22 @@ export const swaggerSpec = {
               },
             },
           },
-          ...badRequest,
+          "400": {
+            description: "Validation failed.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: {
+                  message: "Formuläret innehåller fel",
+                  details: { fields: { paymentNote: "Ange varför betalningen ångras" } },
+                },
+              },
+            },
+          },
           ...unauthorized,
           ...forbidden,
           ...notFound,
+          ...conflict,
           ...internal,
         },
       },
@@ -4365,6 +4488,63 @@ export const swaggerSpec = {
           },
           ...badRequest,
           ...unauthorized,
+          ...internal,
+        },
+      },
+    },
+    "/payments/events/outstanding": {
+      get: {
+        tags: ["Payments"],
+        summary: "Outstanding event payments (Admin/Editor)",
+        description:
+          "Treasurer overview: Pending event payments with amount > 0 where the member said kommer (rsvp) or attended, grouped per event (oldest first) with totals. Members get 403. Mark paid via PATCH /events/{id}/attendances/{uid}.",
+        operationId: "getPaymentsEventsOutstanding",
+        security: authSecurity,
+        parameters: [
+          {
+            in: "query",
+            name: "period",
+            required: false,
+            schema: { type: "string", enum: ["3m", "12m", "all"], default: "12m" },
+            description: "Events starting within the last 3 or 12 months (and all upcoming), or all events.",
+          },
+          {
+            in: "query",
+            name: "lodgeId",
+            required: false,
+            schema: { type: "integer", minimum: 1 },
+            description: "Only events that invite this lodge.",
+          },
+          {
+            in: "query",
+            name: "eventId",
+            required: false,
+            schema: { type: "integer", minimum: 1 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Outstanding payments per event.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OutstandingEventPayments" },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid filter.",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: {
+                  message: "Ogiltiga filter",
+                  details: { fields: { period: "Välj 3m, 12m eller all" } },
+                },
+              },
+            },
+          },
+          ...unauthorized,
+          ...forbidden,
           ...internal,
         },
       },

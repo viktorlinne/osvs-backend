@@ -119,8 +119,58 @@ export async function updateMembershipStatusHandler(
   }
 }
 
+function parseOptionalPositiveInt(value: unknown): number | undefined | null {
+  if (typeof value === "undefined" || value === "") return undefined;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return parsed > 0 ? parsed : null;
+}
+
+/**
+ * Admin/Editor: outstanding event payments (Pending, amount > 0, member said
+ * "kommer" or attended), grouped per event, with totals for the treasurer.
+ */
+export async function getOutstandingEventPaymentsHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const fields: Record<string, string> = {};
+
+    const rawPeriod = req.query.period;
+    const period =
+      typeof rawPeriod === "undefined" || rawPeriod === "" ? "12m" : rawPeriod;
+    if (
+      typeof period !== "string" ||
+      !(paymentsService.OUTSTANDING_PERIODS as string[]).includes(period)
+    ) {
+      fields.period = "Välj 3m, 12m eller all";
+    }
+
+    const lodgeId = parseOptionalPositiveInt(req.query.lodgeId);
+    if (lodgeId === null) fields.lodgeId = "Ogiltigt loge-id";
+    const eventId = parseOptionalPositiveInt(req.query.eventId);
+    if (eventId === null) fields.eventId = "Ogiltigt mötes-id";
+
+    if (Object.keys(fields).length > 0) {
+      return sendError(res, 400, "Ogiltiga filter", { fields });
+    }
+
+    const result = await paymentsService.listOutstandingEventPayments({
+      period: period as paymentsService.OutstandingPeriod,
+      lodgeId: lodgeId ?? undefined,
+      eventId: eventId ?? undefined,
+    });
+    return res.json(result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 export default {
   getMyMembershipsHandler,
   getAllMembershipsHandler,
   updateMembershipStatusHandler,
+  getOutstandingEventPaymentsHandler,
 };
