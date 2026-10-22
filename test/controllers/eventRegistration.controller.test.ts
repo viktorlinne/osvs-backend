@@ -14,7 +14,7 @@ jest.mock("../../src/services/userService", () => ({
 
 jest.mock("../../src/utils/eventDateTime", () => ({
   ...jest.requireActual("../../src/utils/eventDateTime"),
-  isAtOrBeforeNowStockholm: jest.fn(),
+  isRegistrationClosedStockholm: jest.fn(),
 }));
 
 jest.mock("../../src/utils/logger", () => ({
@@ -31,6 +31,7 @@ jest.mock("../../src/utils/logger", () => ({
 }));
 
 import {
+  getEventHandler,
   getUserRegistrationHandler,
   saveUserRegistrationHandler,
 } from "../../src/controllers/eventsController";
@@ -40,7 +41,7 @@ import {
   isUserInvitedToEvent,
   saveUserRegistration,
 } from "../../src/services/eventsService";
-import { isAtOrBeforeNowStockholm } from "../../src/utils/eventDateTime";
+import { isRegistrationClosedStockholm } from "../../src/utils/eventDateTime";
 import { wrapAsync } from "../../src/middleware/asyncHandler";
 import type { AuthenticatedRequest } from "../../src/types/auth";
 
@@ -51,8 +52,9 @@ const mockedGetRegistration =
   getUserRegistration as jest.MockedFunction<typeof getUserRegistration>;
 const mockedSaveRegistration =
   saveUserRegistration as jest.MockedFunction<typeof saveUserRegistration>;
-const mockedIsPast =
-  isAtOrBeforeNowStockholm as jest.MockedFunction<typeof isAtOrBeforeNowStockholm>;
+const mockedIsClosed = isRegistrationClosedStockholm as jest.MockedFunction<
+  typeof isRegistrationClosedStockholm
+>;
 
 function buildApp(user?: { matrikelnummer: number }) {
   const app = express();
@@ -63,6 +65,7 @@ function buildApp(user?: { matrikelnummer: number }) {
     }
     next();
   });
+  app.get("/events/:id", wrapAsync(getEventHandler));
   app.get("/events/:id/registration", wrapAsync(getUserRegistrationHandler));
   app.put("/events/:id/registration", wrapAsync(saveUserRegistrationHandler));
   return app;
@@ -81,11 +84,31 @@ describe("event registration endpoints", () => {
       startDate: "2099-01-01 18:00:00",
     } as never);
     mockedIsInvited.mockResolvedValue(true);
-    mockedIsPast.mockReturnValue(false);
+    mockedIsClosed.mockReturnValue(false);
     mockedSaveRegistration.mockImplementation(async (_uid, _eid, _food, input) => ({
       rsvp: input.rsvp,
       bookFood: input.bookFood,
     }));
+  });
+
+  describe("GET /events/:id", () => {
+    it("includes when member registration closes", async () => {
+      mockedGetEventById.mockResolvedValue({
+        id: 5,
+        title: "Högtidsmöte",
+        startDate: "2026-11-08 12:00:00",
+      } as never);
+
+      const response = await request(buildApp(member)).get("/events/5");
+
+      expect(response.status).toBe(200);
+      expect(response.body.event).toEqual({
+        id: 5,
+        title: "Högtidsmöte",
+        startDate: "2026-11-08 12:00:00",
+        registrationClosesAt: "2026-11-01 21:00:00",
+      });
+    });
   });
 
   describe("PUT /events/:id/registration", () => {
@@ -157,8 +180,13 @@ describe("event registration endpoints", () => {
       expect(mockedSaveRegistration).not.toHaveBeenCalled();
     });
 
-    it("returns 400 when the event has already started", async () => {
-      mockedIsPast.mockReturnValue(true);
+    it("returns 400 with the cutoff when registration has closed", async () => {
+      mockedIsClosed.mockReturnValue(true);
+      mockedGetEventById.mockResolvedValue({
+        id: 5,
+        food: true,
+        startDate: "2026-11-09 18:30:00",
+      } as never);
 
       const response = await request(buildApp(member))
         .put("/events/5/registration")
@@ -166,8 +194,9 @@ describe("event registration endpoints", () => {
 
       expect(response.status).toBe(400);
       expect(response.body.message).toBe(
-        "Det går inte att anmäla sig till påbörjade eller avslutade möten",
+        "Anmälan till mötet stängde söndag 8 november kl. 21:00",
       );
+      expect(mockedIsClosed).toHaveBeenCalledWith("2026-11-09 18:30:00");
       expect(mockedSaveRegistration).not.toHaveBeenCalled();
     });
 

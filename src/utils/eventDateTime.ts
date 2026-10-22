@@ -150,3 +150,47 @@ export function isAtOrBeforeNowStockholm(
   return Number.isFinite(cmp) && cmp <= 0;
 }
 
+
+/** Stockholm wall-clock hour when member registration closes. */
+const REGISTRATION_CLOSE_TIME = "21:00:00";
+
+/**
+ * When member registration (RSVP and food booking) closes for an event:
+ * 21:00 Stockholm time on the latest Sunday strictly before the start date.
+ * A Monday meeting closes the evening before; a Sunday meeting closes the
+ * previous Sunday. Works on wall-clock strings, so DST needs no handling.
+ * Returns null for an unparseable start date.
+ */
+export function getRegistrationClosesAt(startDate: string): string | null {
+  const normalized = normalizeEventDateTimeInput(startDate);
+  if (!normalized) return null;
+  const [year, month, day] = normalized.slice(0, 10).split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day));
+  const daysBack = start.getUTCDay() === 0 ? 7 : start.getUTCDay();
+  start.setUTCDate(start.getUTCDate() - daysBack);
+  return `${start.toISOString().slice(0, 10)} ${REGISTRATION_CLOSE_TIME}`;
+}
+
+/** True once the registration cutoff for the event has passed. */
+export function isRegistrationClosedStockholm(
+  startDate: string,
+  now: Date = new Date(),
+): boolean {
+  const closesAt = getRegistrationClosesAt(startDate);
+  if (!closesAt) return false;
+  const nowSql = getNowStockholmSqlDateTime(now);
+  if (!nowSql) return false;
+  return nowSql >= closesAt;
+}
+
+/** "söndag 18 oktober kl. 21:00" for a cutoff from getRegistrationClosesAt. */
+export function formatRegistrationClosesAtSv(closesAt: string): string {
+  const [year, month, day] = closesAt.slice(0, 10).split("-").map(Number);
+  const date = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+  return `${date} kl. ${closesAt.slice(11, 16)}`;
+}

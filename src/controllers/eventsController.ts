@@ -5,7 +5,9 @@ import logger from "../utils/logger";
 import { sendError } from "../utils/response";
 import {
   compareSqlDateTime,
-  isAtOrBeforeNowStockholm,
+  formatRegistrationClosesAtSv,
+  getRegistrationClosesAt,
+  isRegistrationClosedStockholm,
   normalizeEventDateTimeInput,
 } from "../utils/eventDateTime";
 import * as eventsService from "../services/eventsService";
@@ -76,7 +78,12 @@ export async function getEventHandler(
   if (id === null) return;
   const ev = await eventsService.getEventById(id);
   if (!ev) return sendError(res, 404, "Mötet hittades inte");
-  return res.status(200).json({ event: ev });
+  return res.status(200).json({
+    event: {
+      ...ev,
+      registrationClosesAt: getRegistrationClosesAt(ev.startDate),
+    },
+  });
 }
 
 export async function createEventHandler(
@@ -332,17 +339,25 @@ export async function listEventLodgesHandler(
 
 /**
  * Shared rules for a member responding to an event (RSVP, food, combined
- * registration): the event must not have started and the member must be
- * invited. Sends the error response and returns false when not allowed.
+ * registration): registration must still be open (see
+ * getRegistrationClosesAt) and the member must be invited. Admin changes
+ * through patchEventAttendanceHandler are not bound by the cutoff. Sends the
+ * error response and returns false when not allowed.
  */
 async function ensureMemberCanRespond(
   res: Response,
   uid: number,
   ev: { id: number; startDate: string },
-  startedMessage: string,
 ): Promise<boolean> {
-  if (isAtOrBeforeNowStockholm(ev.startDate)) {
-    sendError(res, 400, startedMessage);
+  if (isRegistrationClosedStockholm(ev.startDate)) {
+    const closesAt = getRegistrationClosesAt(ev.startDate);
+    sendError(
+      res,
+      400,
+      closesAt
+        ? `Anmälan till mötet stängde ${formatRegistrationClosesAtSv(closesAt)}`
+        : "Anmälan till mötet har stängt",
+    );
     return false;
   }
 
@@ -376,7 +391,6 @@ export async function rsvpHandler(
     res,
     uid,
     { id, startDate: ev.startDate },
-    "Det går inte att osa till påbörjade eller avslutade möten",
   );
   if (!allowed) return;
 
@@ -445,7 +459,6 @@ export async function bookFoodHandler(
     res,
     uid,
     { id, startDate: ev.startDate },
-    "Det går inte att boka mat till påbörjade eller avslutade möten",
   );
   if (!allowed) return;
 
@@ -504,7 +517,6 @@ export async function saveUserRegistrationHandler(
     res,
     uid,
     { id, startDate: ev.startDate },
-    "Det går inte att anmäla sig till påbörjade eller avslutade möten",
   );
   if (!allowed) return;
 

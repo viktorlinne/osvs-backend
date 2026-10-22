@@ -712,6 +712,13 @@ export const swaggerSpec = {
           description: { type: "string", nullable: true },
           startDate: { type: "string", example: "2026-03-14 18:00:00" },
           endDate: { type: "string", example: "2026-03-14 21:00:00" },
+          registrationClosesAt: {
+            type: "string",
+            nullable: true,
+            example: "2026-03-08 21:00:00",
+            description:
+              "Only on `GET /events/{id}`. Stockholm wall time when member registration (RSVP and food booking) closes: 21:00 on the latest Sunday strictly before the start date (a Sunday meeting closes the previous Sunday). Null if the start date cannot be parsed.",
+          },
           lodgeMeeting: { type: "boolean", nullable: true },
           food: { type: "boolean", nullable: true },
           price: { type: "number", format: "float", example: 275 },
@@ -3300,7 +3307,7 @@ export const swaggerSpec = {
       post: {
         tags: ["Events"],
         summary: "Set RSVP for current user",
-        description: "Sets RSVP status (`going` or `not-going`) for current user.",
+        description: "Sets RSVP status (`going` or `not-going`) for current user. The caller must be invited and registration must still be open (see `registrationClosesAt`); otherwise 400 with a Swedish message such as `Anmälan till mötet stängde söndag 8 mars kl. 21:00`.",
         operationId: "postEventRsvpById",
         security: authSecurity,
         parameters: [
@@ -3426,7 +3433,7 @@ export const swaggerSpec = {
         tags: ["Events"],
         summary: "Set food booking state",
         description:
-          "Sets current user's food booking state (`bookFood`) for event.",
+          "Sets current user's food booking state (`bookFood`) for event. Same rules as `/rsvp`: the caller must be invited and registration must still be open (see `registrationClosesAt`).",
         operationId: "postEventFoodById",
         security: authSecurity,
         parameters: [
@@ -3513,7 +3520,7 @@ export const swaggerSpec = {
         tags: ["Events"],
         summary: "Save current user's registration",
         description:
-          "Atomically saves attendance (`rsvp`) and food (`bookFood`) for the current user in one write. `bookFood` is forced to `false` when `rsvp` is `false` or the event has no food. Same rules as `/rsvp`: the caller must be invited and the event must not have started. Payment is not handled here.",
+          "Atomically saves attendance (`rsvp`) and food (`bookFood`) for the current user in one write. `bookFood` is forced to `false` when `rsvp` is `false` or the event has no food. Same rules as `/rsvp`: the caller must be invited and registration must still be open (see `registrationClosesAt`). Payment is not handled here.",
         operationId: "putEventRegistrationById",
         security: authSecurity,
         parameters: [
@@ -3606,7 +3613,7 @@ export const swaggerSpec = {
         tags: ["Events"],
         summary: "Patch event attendance row",
         description:
-          "Patches one invitee's row. `rsvp/bookFood/attended` require Admin. `paymentPaid` (+ `paymentNote`) may be sent by Admin or Editor: it marks the event payment paid/unpaid manually, records paidAt/paidBy/method=manual and appends an `event_payment_log` row. Validation errors use `details.fields` (e.g. `paymentNote`).",
+          "Patches one invitee's row. `rsvp/bookFood/attended` require Admin and are not bound by the member registration cutoff (`registrationClosesAt`). `paymentPaid` (+ `paymentNote`) may be sent by Admin or Editor: it marks the event payment paid/unpaid manually, records paidAt/paidBy/method=manual and appends an `event_payment_log` row. Validation errors use `details.fields` (e.g. `paymentNote`).",
         operationId: "patchEventAttendanceByIdAndUid",
         security: authSecurity,
         parameters: [
