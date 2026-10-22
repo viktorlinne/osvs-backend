@@ -26,7 +26,11 @@ export type ValidPatchAttendanceBody = Partial<{
   bookFood: boolean;
   attended: boolean;
   paymentPaid: boolean;
+  /** Optional when marking paid, required when reverting to unpaid. */
+  paymentNote: string;
 }>;
+
+export const PAYMENT_NOTE_MAX_LENGTH = 500;
 
 export function validateLinkLodgeBody(
   input: unknown,
@@ -116,7 +120,7 @@ export function validatePatchAttendanceBody(
   if (!body) return fail("Ogiltig begäran");
 
   const out: ValidPatchAttendanceBody = {};
-  const keys: Array<keyof ValidPatchAttendanceBody> = [
+  const keys: Array<"rsvp" | "bookFood" | "attended" | "paymentPaid"> = [
     "rsvp",
     "bookFood",
     "attended",
@@ -130,6 +134,32 @@ export function validatePatchAttendanceBody(
       return failFields({ [key]: "Ogiltigt värde" });
     }
     out[key] = value;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "paymentNote")) {
+    const raw = body.paymentNote;
+    if (raw !== null && typeof raw !== "string") {
+      return failFields({ paymentNote: "Ogiltig anteckning" });
+    }
+    const note = typeof raw === "string" ? raw.trim() : "";
+    if (note.length > PAYMENT_NOTE_MAX_LENGTH) {
+      return failFields({
+        paymentNote: `Anteckningen får vara högst ${PAYMENT_NOTE_MAX_LENGTH} tecken`,
+      });
+    }
+    if (typeof out.paymentPaid !== "boolean") {
+      return failFields({
+        paymentNote: "En anteckning kan bara skickas tillsammans med betalstatus",
+      });
+    }
+    if (note.length > 0) out.paymentNote = note;
+  }
+
+  // Reverting a payment is a correction: the reason must be recorded.
+  if (out.paymentPaid === false && !out.paymentNote) {
+    return failFields({
+      paymentNote: "Ange varför betalningen ångras",
+    });
   }
 
   if (Object.keys(out).length === 0) {

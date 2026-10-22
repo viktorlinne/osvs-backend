@@ -1,5 +1,6 @@
 export * from "./authService";
 export * from "./eventsService";
+export * from "./eventPaymentsService";
 export * from "./lodgeService";
 export * from "./membershipPaymentsService";
 export * from "./postsService";

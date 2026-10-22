@@ -34,6 +34,13 @@ type EventAttendanceListRow = {
   bookFood?: unknown;
   attended?: unknown;
   paymentStatus?: unknown;
+  paymentAmount?: unknown;
+  paymentPaidAt?: unknown;
+  paymentPaidBy?: unknown;
+  paymentPaidByFirstname?: unknown;
+  paymentPaidByLastname?: unknown;
+  paymentMethod?: unknown;
+  paymentNote?: unknown;
 };
 
 function asRows<T>(rows: unknown): T[] {
@@ -600,11 +607,20 @@ export async function selectEventAttendances(
       COALESCE(ea.rsvp, 0) AS rsvp,
       COALESCE(ea.bookFood, 0) AS bookFood,
       COALESCE(ea.attended, 0) AS attended,
-      ep.status AS paymentStatus
+      ep.status AS paymentStatus,
+      ep.amount AS paymentAmount,
+      DATE_FORMAT(ep.paidAt, '%Y-%m-%d %H:%i:%s') AS paymentPaidAt,
+      ep.paidBy AS paymentPaidBy,
+      pb.firstname AS paymentPaidByFirstname,
+      pb.lastname AS paymentPaidByLastname,
+      ep.method AS paymentMethod,
+      ep.note AS paymentNote
     FROM events_attendances ea
     JOIN users u ON u.matrikelnummer = ea.uid
     LEFT JOIN event_payments ep
       ON ep.uid = ea.uid AND ep.eid = ea.eid
+    LEFT JOIN users pb
+      ON pb.matrikelnummer = ep.paidBy
     LEFT JOIN users_allergies ua
       ON ua.uid = ea.uid
     LEFT JOIN allergies a
@@ -617,30 +633,19 @@ export async function selectEventAttendances(
       ea.rsvp,
       ea.bookFood,
       ea.attended,
-      ep.status
+      ep.id,
+      ep.status,
+      ep.amount,
+      ep.paidAt,
+      ep.paidBy,
+      pb.firstname,
+      pb.lastname,
+      ep.method,
+      ep.note
     ORDER BY u.firstname ASC, u.lastname ASC, ea.uid ASC
   `;
   const [rows] = await pool.query(sql, [eventId]);
   return asRows<EventAttendanceListRow>(rows);
-}
-
-export async function upsertEventPaymentStatus(
-  userId: number,
-  eventId: number,
-  amount: number,
-  status: "Pending" | "Paid",
-  conn?: PoolConnection,
-) {
-  const executor = getExecutor(conn);
-  const sql = `
-    INSERT INTO event_payments (uid, eid, amount, status, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, NOW(), NOW())
-    ON DUPLICATE KEY UPDATE
-      amount = VALUES(amount),
-      status = VALUES(status),
-      updatedAt = NOW()
-  `;
-  await executor(sql, [userId, eventId, amount, status]);
 }
 
 export async function findEventPaymentByUidEid(uid: number, eid: number) {
@@ -719,7 +724,6 @@ export default {
   upsertEventAttendance,
   upsertEventRegistration,
   selectEventAttendances,
-  upsertEventPaymentStatus,
   findEventPaymentByUidEid,
   insertEventPayment,
   findEventPaymentById,

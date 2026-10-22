@@ -94,12 +94,14 @@ router.put(
   wrapAsync(saveUserRegistrationHandler),
 );
 
-// Attendances table for invited users + admin patch endpoint
+// Attendances table for invited users + admin patch endpoint.
+// PATCH: Admin may change attendance and payment; Editor may only mark payments
+// (paymentPaid/paymentNote), enforced in the controller.
 router.get("/:id/attendances", authMiddleware, wrapAsync(listEventAttendancesHandler));
 router.patch(
   "/:id/attendances/:uid",
   authMiddleware,
-  requireRole("Admin"),
+  requireRole("Admin", "Editor"),
   wrapAsync(patchEventAttendanceHandler),
 );
 
