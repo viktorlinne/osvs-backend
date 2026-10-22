@@ -1636,7 +1636,7 @@ export const swaggerSpec = {
         tags: ["Auth"],
         summary: "Refresh session",
         description:
-          "Rotates the refresh token and issues fresh auth cookies if the session has not exceeded the inactivity window.",
+          "Rotates the refresh token and issues fresh auth cookies if the session has not exceeded the inactivity window. Clients should call this only after an authenticated request returned 401, and share one in-flight call. Rate limited per session (hash of the refresh cookie, default 30 per 15 min) and per client IP (default 300 per 15 min); a 429 does not mean the session is invalid.",
         operationId: "refreshSession",
         security: [{ refreshCookieAuth: [] }],
         responses: {
@@ -1657,6 +1657,7 @@ export const swaggerSpec = {
             },
           },
           ...unauthorized,
+          ...rateLimited,
           ...internal,
         },
       },
@@ -1666,7 +1667,7 @@ export const swaggerSpec = {
         tags: ["Auth"],
         summary: "Heartbeat session",
         description:
-          "Keeps an active session alive from the refresh cookie while enforcing the same inactivity window as `/auth/refresh`.",
+          "Keeps an active session alive from the refresh cookie while enforcing the same inactivity window as `/auth/refresh`. Rate limited per session (default 60 per 15 min) and per client IP (default 1200 per 15 min); a 429 does not mean the session is invalid.",
         operationId: "heartbeatSession",
         security: [{ refreshCookieAuth: [] }],
         responses: {
@@ -1692,6 +1693,7 @@ export const swaggerSpec = {
             },
           },
           ...unauthorized,
+          ...rateLimited,
           ...internal,
         },
       },
