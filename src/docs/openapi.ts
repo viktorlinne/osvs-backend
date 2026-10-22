@@ -739,8 +739,13 @@ export const swaggerSpec = {
           rsvp: { type: "boolean" },
           bookFood: { type: "boolean" },
           attended: { type: "boolean" },
-          paymentStatus: { type: "string", nullable: true, example: "Pending" },
-          paymentPaid: { type: "boolean" },
+          paymentStatus: {
+            type: "string",
+            nullable: true,
+            example: "Pending",
+            description: "Only returned to Admin/Editor.",
+          },
+          paymentPaid: { type: "boolean", description: "Only returned to Admin/Editor." },
         },
       },
       Lodge: {

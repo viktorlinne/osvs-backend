@@ -85,6 +85,33 @@ describe("listEventAttendancesHandler authorization", () => {
     expect(mockedIsUserInvitedToEvent).toHaveBeenCalledWith(42, 1);
   });
 
+  it("hides payment status from invited members", async () => {
+    mockedIsUserInvitedToEvent.mockResolvedValue(true);
+    mockedListEventAttendances.mockResolvedValue([
+      { uid: 10, firstname: "Ada", lastname: "Lovelace", rsvp: true, paymentStatus: "Pending", paymentPaid: false },
+    ] as never);
+
+    const response = await request(buildApp({ matrikelnummer: 42 })).get(
+      "/events/1/attendances",
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.attendances[0]).toEqual({ uid: 10, firstname: "Ada", lastname: "Lovelace", rsvp: true });
+  });
+
+  it("returns payment status to Admin/Editor", async () => {
+    mockedGetUserRoles.mockResolvedValue(["Editor"]);
+    mockedListEventAttendances.mockResolvedValue([
+      { uid: 10, firstname: "Ada", lastname: "Lovelace", paymentStatus: "Paid", paymentPaid: true },
+    ] as never);
+
+    const response = await request(buildApp({ matrikelnummer: 77 })).get(
+      "/events/1/attendances",
+    );
+
+    expect(response.body.attendances[0]).toMatchObject({ paymentStatus: "Paid", paymentPaid: true });
+  });
+
   it("allows Admin without invitation check", async () => {
     mockedGetUserRoles.mockResolvedValue(["Admin"]);
 
