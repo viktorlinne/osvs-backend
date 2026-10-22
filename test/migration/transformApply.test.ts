@@ -121,4 +121,11 @@ describe("migration apply gates", () => {
     expect(lodges).toContain("'Orion Damklubb'");
     expect(lodges).toContain("'Stamlogen Damklubb'");
   });
+
+  it("keeps seed.sql lookup-only and idempotent (no mock members, posts or events)", () => {
+    const sql = fs.readFileSync(path.resolve(__dirname, "../../src/db/seed/seed.sql"), "utf8");
+    const statements = splitSqlStatements(sql).filter((s) => s.trim());
+    expect(selectLookupSeedStatements(statements)).toEqual(statements);
+    for (const s of statements) expect(s).toMatch(/ON DUPLICATE KEY\s+UPDATE/i);
+  });
 });

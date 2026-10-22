@@ -65,7 +65,7 @@ See ARCHITECTURE.md for detailed architecture.
 Schema references:
 
 - [`src/db/schema.sql`](./src/db/schema.sql) — baseline reference snapshot
-- [`src/db/seed.sql`](./src/db/seed.sql) — seed data reference
+- [`src/db/seed/seed.sql`](./src/db/seed/seed.sql) — lookup/reference data only
 - [`src/db/migrations/`](./src/db/migrations/) — incremental SQL migrations
 
 Migration command:
@@ -77,6 +77,32 @@ npm run seed
 
 The migration runner applies tracked incremental SQL files. See AGENTS.md for
 safety gates and production guidance.
+
+### Seed data and real content
+
+`npm run seed` only loads lookup/reference data (roles, achievements,
+officials, allergies, lodges) as idempotent upserts. There are no mock
+members, posts, events or payments. Development and staging databases are
+filled with the migrated real data from the old Access system, using the same
+path as production:
+
+```bash
+npm run migrate          # schema
+npm run seed             # lookups
+# dry run: writes <extract>/_reports and prints the merge hash
+npm run migrate:legacy -- --extract-dir=<extract> --extra-site-root=<dir> --cutover=2026-12-31
+# apply (empty users table required)
+npm run migrate:legacy -- --extract-dir=<extract> --extra-site-root=<dir> --cutover=2026-12-31 --apply --approve-merges=<hash>
+```
+
+The loader needs a fresh, migrated `_dev`/`_test` database with an empty
+`users` table. If the seed step was skipped, `--seed-lookups` upserts the same
+lookup rows. The Access extract and the old-site files contain personal data
+(including personnummer) and live outside git (`scripts/migration/extract/` is
+git-ignored). Details:
+[`scripts/migration/MIGRATION_PLAN.md`](./scripts/migration/MIGRATION_PLAN.md).
+Without an extract the app runs against lookups only: there are no members,
+so there is no login.
 
 ## Member Directory
 
@@ -127,16 +153,15 @@ npm run migrate
 npm run seed
 ```
 
+and load real data with `npm run migrate:legacy` (see "Seed data and real
+content" above).
+
 If port `3306` is already in use on your machine, change the left side of the
 port mapping in `docker-compose.yml` and update `DB_PORT` to the same host
 port.
 
-`npm run seed` applies the baseline development seed plus the optional add-on
-seed files in `src/db/seed`. To load only the baseline seed, run:
-
-```bash
-npm run seed -- --base-only
-```
+`npm run seed` applies the lookup files in `src/db/seed` (`seed.sql` first).
+It is safe to re-run.
 
 ## Testing and CI
 

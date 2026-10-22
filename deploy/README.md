@@ -103,7 +103,13 @@ Then load data: either import a dump of an existing database, or run the
 Access import (`npm run migrate:legacy -- --apply …`, see
 `scripts/migration/MIGRATION_PLAN.md`) — the latter needs the extract and the
 old-site files on the server and `ts-node` (dev dependencies are installed by
-`npm ci`).
+`npm ci`). There is no demo seed: `src/db/seed/seed.sql` only holds lookup
+rows (roles, achievements, officials, allergies, lodges). On the server, add
+`--seed-lookups` to the apply run to upsert them (same rows as `npm run seed`,
+which in production would also need `SEED_ALLOW_PRODUCTION=true`); the apply
+itself needs `MIGRATE_ALLOW_PRODUCTION=true` and a fresh backup. Staging
+rehearsals use the same commands. The extract contains personal data: copy it
+to the server outside the repo and delete it after the import.
 
 ## 6. Backups (as osvs)
 

@@ -156,6 +156,22 @@ lodge + exact date only; `Verksamhet` rows run 2015–2027, not "mostly pre-2013
 download (2026-10-21: 11 post images and 12 profile photos fetched from the live site into
 `C:OSVSFTP OSVS 2026-10-21 supplement`). Trial import and reconciliation: `RECONCILIATION.md`.
 
+**Seed = lookups only; real data everywhere (2026-10-22, developer decision):** `src/db/seed/seed.sql`
+holds only lookup rows (roles, achievements, officials 1–44, allergies, lodges incl. the Damklubb
+placeholders 6–7); the mock users/posts/events/documents/groups and the add-on seed files were removed.
+Development, staging rehearsal and production all get their content the same way:
+
+```bash
+npm run migrate                       # schema
+npm run seed                          # lookups (or pass --seed-lookups to the apply below)
+npm run migrate:legacy -- --extract-dir=<extract> --extra-site-root=<dir> --cutover=2026-12-31            # dry run
+npm run migrate:legacy -- --extract-dir=<extract> --extra-site-root=<dir> --cutover=2026-12-31 --apply --approve-merges=<hash>
+```
+
+The extract (`*.json`) and the old-site files contain personal data (incl. personnummer) and stay
+outside git (`scripts/migration/extract/` is git-ignored); copy them to each machine separately and
+delete them when no longer needed.
+
 ## 6. Open items before implementation starts
 
 - [x] Exact Swedish enum value for "removed": **Avförd** (2026-10-20).
